@@ -1,0 +1,42 @@
+{
+  "name": "etesync",
+  "version": "0.1.0",
+  "description": "EteSync TypeScript API for the web, node and react-native",
+  "main": "src/EteSync.ts",
+  "scripts": {
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx --ignore-pattern '*.d.ts' src",
+    "test": "jest"
+  },
+  "dependencies": {
+    "node-rsa": "^1.0.6",
+    "sjcl": "git+https://github.com/etesync/sjcl",
+    "urijs": "^1.19.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.2",
+    "@babel/plugin-proposal-class-properties": "^7.7.0",
+    "@babel/plugin-transform-runtime": "^7.6.2",
+    "@babel/preset-env": "^7.7.1",
+    "@babel/preset-typescript": "^7.7.2",
+    "@babel/runtime": "^7.7.2",
+    "@types/jest": "^24.0.22",
+    "@types/node": "^11.9.3",
+    "@types/node-rsa": "^1.0.0",
+    "@types/sjcl": "^1.0.28",
+    "@types/urijs": "^1.15.38",
+    "@types/uuid": "^3.4.3",
+    "@typescript-eslint/eslint-plugin": "^2.6.1",
+    "@typescript-eslint/parser": "^2.6.1",
+    "@typescript-eslint/typescript-estree": "^2.6.1",
+    "babel-jest": "^24.9.0",
+    "babel-plugin-syntax-async-functions": "^6.13.0",
+    "core-js": "3",
+    "eslint": "^6.6.0",
+    "eslint-plugin-react": "^7.16.0",
+    "jest": "^24.9.0",
+    "typescript": "^3.7.1",
+    "whatwg-fetch": "^3.0.0"
+  },
+  "author": "Tom Hacohen <tom@stosb.com> (https://stosb.com)",
+  "license": "LGPL-3.0-only"
+}
