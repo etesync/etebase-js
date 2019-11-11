@@ -26,7 +26,7 @@
     "strictBindCallApply": true,
     "suppressImplicitAnyIndexErrors": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
+    "isolatedModules": false,
     "noEmit": true
   },
   "exclude": [

@@ -6,6 +6,7 @@ import * as Constants from './Constants';
 import { byte, base64, stringToByteArray } from './Helpers';
 import { CryptoManager, AsymmetricCryptoManager, AsymmetricKeyPair, HMAC_SIZE_BYTES } from './Crypto';
 export { CryptoManager, AsymmetricCryptoManager, AsymmetricKeyPair, deriveKey, genUid } from './Crypto';
+export { byte, base64 } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
 
