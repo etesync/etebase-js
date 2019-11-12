@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "outDir": "build/dist",
+    "outDir": "dist",
     "module": "esnext",
     "target": "es5",
     "lib": [
@@ -26,8 +26,10 @@
     "strictBindCallApply": true,
     "suppressImplicitAnyIndexErrors": true,
     "resolveJsonModule": true,
+
     "isolatedModules": false,
-    "noEmit": true
+    "declaration": true,
+    "noEmit": false
   },
   "exclude": [
     "node_modules",

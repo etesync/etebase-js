@@ -2,10 +2,15 @@
   "name": "etesync",
   "version": "0.1.0",
   "description": "EteSync TypeScript API for the web, node and react-native",
-  "main": "src/EteSync.ts",
+  "main": "dist/EteSync.js",
+  "files": ["dist/**/*"],
+  "types": "dist/EteSync.d.ts",
   "scripts": {
+    "build": "tsc",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx --ignore-pattern '*.d.ts' src",
-    "test": "jest"
+    "test": "jest",
+    "prepare": "yarn build",
+    "prepublishOnly": "yarn test && yarn lint"
   },
   "dependencies": {
     "node-rsa": "^1.0.6",
@@ -32,11 +37,14 @@
     "babel-plugin-syntax-async-functions": "^6.13.0",
     "core-js": "3",
     "eslint": "^6.6.0",
-    "eslint-plugin-react": "^7.16.0",
     "jest": "^24.9.0",
     "typescript": "^3.7.1",
     "whatwg-fetch": "^3.0.0"
   },
+  "jest": {
+      "testPathIgnorePatterns": ["dist"]
+  },
+  "keywords": ["EteSync", "encryption", "crypto", "synchronization"],
   "author": "Tom Hacohen <tom@stosb.com> (https://stosb.com)",
   "license": "LGPL-3.0-only"
 }
