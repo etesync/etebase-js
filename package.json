@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "description": "EteSync TypeScript API for the web, node and react-native",
   "main": "dist/EteSync.js",
-  "files": ["dist/**/*"],
+  "files": [
+    "dist/**/*"
+  ],
   "types": "dist/EteSync.d.ts",
   "scripts": {
     "build": "tsc",
@@ -42,9 +44,16 @@
     "whatwg-fetch": "^3.0.0"
   },
   "jest": {
-      "testPathIgnorePatterns": ["dist"]
+    "testPathIgnorePatterns": [
+      "dist"
+    ]
   },
-  "keywords": ["EteSync", "encryption", "crypto", "synchronization"],
+  "keywords": [
+    "EteSync",
+    "encryption",
+    "crypto",
+    "synchronization"
+  ],
   "author": "Tom Hacohen <tom@stosb.com> (https://stosb.com)",
   "license": "LGPL-3.0-only"
 }
