@@ -137,11 +137,7 @@ export interface JournalJson extends BaseJson {
 export class Journal extends BaseJournal<JournalJson> {
   constructor(initial?: Partial<JournalJson>, version: number = Constants.CURRENT_VERSION) {
     super();
-    this._json = {
-      ...this._json,
-      version,
-      ...initial,
-    };
+    this.deserialize({ version, ...initial } as JournalJson);
   }
 
   get key(): byte[] | undefined {
