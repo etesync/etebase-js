@@ -55,5 +55,6 @@
     "synchronization"
   ],
   "author": "Tom Hacohen <tom@stosb.com> (https://stosb.com)",
+  "repository": "https://www.github.com/etesync/etesync-js",
   "license": "LGPL-3.0-only"
 }
