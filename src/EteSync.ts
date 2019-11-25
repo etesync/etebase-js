@@ -29,6 +29,14 @@ export class HTTPError extends ExtendableError {
   }
 }
 
+export class NetworkError extends ExtendableError {
+  constructor(message: any) {
+    super(message);
+    Object.setPrototypeOf(this, NetworkError.prototype);
+    this.name = 'NetworkError';
+  }
+}
+
 export class IntegrityError extends ExtendableError {
   constructor(message: any) {
     super(message);
@@ -381,7 +389,7 @@ class BaseNetwork {
           reject(error);
         });
       }).catch((error) => {
-        reject(error);
+        reject(new NetworkError(error.message));
       });
     });
   }
