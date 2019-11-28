@@ -22,10 +22,14 @@ class ExtendableError extends Error {
 }
 
 export class HTTPError extends ExtendableError {
-  constructor(message: any) {
+  public status: number;
+
+  constructor(status: number, message: any) {
     super(message);
     Object.setPrototypeOf(this, HTTPError.prototype);
     this.name = 'HTTPError';
+
+    this.status = status;
   }
 }
 
@@ -380,9 +384,9 @@ class BaseNetwork {
             resolve(body);
           } else {
             if (json) {
-              reject(new HTTPError(json.detail || json.non_field_errors || JSON.stringify(json)));
+              reject(new HTTPError(response.status, json.detail || json.non_field_errors || JSON.stringify(json)));
             } else {
-              reject(new HTTPError(body));
+              reject(new HTTPError(response.status, body));
             }
           }
         }).catch((error) => {
