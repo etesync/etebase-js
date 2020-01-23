@@ -144,6 +144,7 @@ export interface JournalJson extends BaseJson {
   owner: string;
   readOnly?: boolean;
   key?: base64;
+  lastUid?: string;
 }
 
 export class Journal extends BaseJournal<JournalJson> {
@@ -166,6 +167,10 @@ export class Journal extends BaseJournal<JournalJson> {
 
   get readOnly(): boolean | undefined {
     return this._json.readOnly;
+  }
+
+  get lastUid(): string | undefined {
+    return this._json.lastUid;
   }
 
   get version(): number {
