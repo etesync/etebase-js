@@ -1,6 +1,6 @@
 {
   "name": "etesync",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "EteSync TypeScript API for the web, node and react-native",
   "main": "dist/EteSync.js",
   "files": [
