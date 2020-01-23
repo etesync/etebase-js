@@ -400,11 +400,6 @@ class BaseNetwork {
 }
 
 export class Authenticator extends BaseNetwork {
-  constructor(apiBase: string) {
-    super(apiBase);
-    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api-token-auth', '']);
-  }
-
   public getAuthToken(username: string, password: string): Promise<string> {
     return new Promise((resolve, reject) => {
       // FIXME: should be FormData but doesn't work for whatever reason
@@ -418,8 +413,26 @@ export class Authenticator extends BaseNetwork {
         body: form,
       };
 
-      this.newCall<{token: string}>([], extra).then((json) => {
+      this.newCall<{token: string}>(['api-token-auth', ''], extra).then((json) => {
         resolve(json.token);
+      }).catch((error: Error) => {
+        reject(error);
+      });
+    });
+  }
+
+  public invalidateToken(authToken: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const extra = {
+        method: 'post',
+        headers: {
+          'Content-Type': 'application/json;charset=UTF-8',
+          'Authorization': 'Token ' + authToken,
+        },
+      };
+
+      this.newCall<{token: string}>(['api', 'logout', ''], extra).then(() => {
+        resolve();
       }).catch((error: Error) => {
         reject(error);
       });

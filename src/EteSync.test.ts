@@ -25,6 +25,11 @@ beforeEach(async () => {
   });
 });
 
+afterEach(async () => {
+  const authenticator = new EteSync.Authenticator(testApiBase);
+  await authenticator.invalidateToken(credentials.authToken);
+});
+
 it('Simple sync', async () => {
   const journalManager = new EteSync.JournalManager(credentials, testApiBase);
   let journals = await journalManager.list();
