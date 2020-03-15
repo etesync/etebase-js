@@ -1,47 +1,165 @@
-import sjcl from 'sjcl';
 import URI from 'urijs';
 
 import * as Constants from './Constants';
 
 import { byte, base64, stringToByteArray } from './Helpers';
-import { CryptoManager, AsymmetricCryptoManager, AsymmetricKeyPair, HMAC_SIZE_BYTES } from './Crypto';
-export { CryptoManager, AsymmetricCryptoManager, AsymmetricKeyPair, deriveKey, genUid } from './Crypto';
+import { CryptoManager, sodium } from './Crypto';
+export { CryptoManager, deriveKey, genUid, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
-export { byte, base64 } from './Helpers';
+import { base62, base64, base64url } from './Helpers';
+export { base62, base64, base64url } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
-
-type URI = typeof URI;
 
 // FIXME: Make secure + types
 function CastJson(json: any, to: any) {
   return Object.assign(to, json);
 }
 
-function hmacToHex(hmac: byte[]): string {
-  return sjcl.codec.hex.fromBits(sjcl.codec.bytes.toBits(hmac));
-}
-
 export class Credentials {
-  public email: string;
+  public username: string;
   public authToken: string;
 
-  constructor(email: string, authToken: string) {
-    this.email = email;
+  constructor(username: string, authToken: string) {
+    this.username = username;
     this.authToken = authToken;
   }
 }
 
-export class CollectionInfo {
-  public uid: string;
-  public type: string;
-  public displayName: string;
-  public description: string;
-  public color: number;
+export interface CollectionMetadata {
+  type: string;
+  name: string;
+  description: string;
+  color: string;
+}
 
-  constructor(json?: any) {
-    CastJson(json, this);
+interface CollectionItemRevisionBase {
+  chunks: base64url[];
+  deleted: boolean;
+  chunksUrls?: string[];
+}
+
+export interface CollectionItemRevisionJson extends CollectionItemRevisionBase {
+  hmac: base64;
+  chunksData?: base64[];
+}
+
+export interface CollectionItem {
+  uid: base62;
+  version: number;
+  encryptionKey: Uint8Array;
+}
+
+export enum CollectionAccessLevel {
+  Admin = 'adm',
+  ReadWrite = 'rw',
+  ReadOnly = 'ro',
+}
+
+export interface CollectionBase {
+  uid: base62;
+  version: number;
+  accessLevel: CollectionAccessLevel;
+  ctag: base64url;
+}
+
+interface CollectionJson extends CollectionBase {
+  encryptionKey: base64;
+  meta: base64;
+  content: CollectionItemRevisionJson;
+}
+
+export class CollectionItemRevision implements CollectionItemRevisionBase {
+  public chunks: base64url[];
+  public deleted: boolean;
+  public chunksUrls?: string[];
+  public hmac: Uint8Array;
+  public chunksData?: Uint8Array[];
+
+  public static deserialize(json: CollectionItemRevisionJson) {
+    const ret = new CollectionItemRevision();
+    ret.chunks = json.chunks;
+    ret.deleted = json.deleted;
+    ret.chunksUrls = json.chunksUrls;
+    ret.hmac = sodium.from_base64(json.hmac);
+    ret.chunksData = json.chunksData?.map((x) => sodium.from_base64(x));
+    return ret;
+  }
+}
+
+export class Collection implements CollectionBase {
+  public uid: base62;
+  public version: number;
+  public accessLevel: CollectionAccessLevel;
+  public ctag: base64url;
+
+  public encryptionKey: Uint8Array;
+  public meta: Uint8Array;
+  public content: CollectionItemRevision;
+
+  public static genUid() {
+    const rand = sodium.randombytes_buf(32);
+    return sodium.to_base64(Buffer.from(rand), sodium.base64_variants.URLSAFE_NO_PADDING);
+  }
+
+  public static deserialize(json: CollectionJson) {
+    const ret = new Collection();
+    ret.uid = json.uid;
+    ret.version = json.version;
+    ret.accessLevel = json.accessLevel;
+    ret.ctag = json.ctag;
+
+    ret.encryptionKey = sodium.from_base64(json.encryptionKey);
+    ret.meta = sodium.from_base64(json.meta);
+    ret.content = CollectionItemRevision.deserialize(json.content);
+
+    return ret;
+  }
+
+  public getCryptoManager(derived: string, keyPair: AsymmetricKeyPair) {
+    if (this.key) {
+      const asymmetricCryptoManager = new AsymmetricCryptoManager(keyPair);
+      const derivedJournalKey = asymmetricCryptoManager.decryptBytes(this.key);
+      return CryptoManager.fromDerivedKey(derivedJournalKey, this.version);
+    } else {
+      return new CryptoManager(derived, this.uid, this.version);
+    }
+  }
+
+  public setInfo(cryptoManager: CryptoManager, info: CollectionMetadata) {
+    this._json.uid = info.uid;
+    this._content = info;
+    const encrypted = cryptoManager.encrypt(JSON.stringify(this._content));
+    this._encrypted = this.calculateHmac(cryptoManager, encrypted).concat(encrypted);
+  }
+
+  public getInfo(cryptoManager: CryptoManager): CollectionMetadata {
+    this.verify(cryptoManager);
+
+    if (this._content === undefined) {
+      this._content = JSON.parse(cryptoManager.decrypt(this.encryptedContent()));
+    }
+
+    const ret = new CollectionMetadata(this._content);
+    ret.uid = this.uid;
+    return ret;
+  }
+
+  public calculateHmac(cryptoManager: CryptoManager, encrypted: byte[]): byte[] {
+    const prefix = stringToByteArray(this.uid);
+    return cryptoManager.hmac(prefix.concat(encrypted));
+  }
+
+  public verify(cryptoManager: CryptoManager) {
+    const calculated = this.calculateHmac(cryptoManager, this.encryptedContent());
+    const hmac = this._encrypted.slice(0, HMAC_SIZE_BYTES);
+
+    super.verifyBase(hmac, calculated);
+  }
+
+  private encryptedContent(): byte[] {
+    return this._encrypted.slice(HMAC_SIZE_BYTES);
   }
 }
 
@@ -144,21 +262,21 @@ export class Journal extends BaseJournal<JournalJson> {
     }
   }
 
-  public setInfo(cryptoManager: CryptoManager, info: CollectionInfo) {
+  public setInfo(cryptoManager: CryptoManager, info: CollectionMetadata) {
     this._json.uid = info.uid;
     this._content = info;
     const encrypted = cryptoManager.encrypt(JSON.stringify(this._content));
     this._encrypted = this.calculateHmac(cryptoManager, encrypted).concat(encrypted);
   }
 
-  public getInfo(cryptoManager: CryptoManager): CollectionInfo {
+  public getInfo(cryptoManager: CryptoManager): CollectionMetadata {
     this.verify(cryptoManager);
 
     if (this._content === undefined) {
       this._content = JSON.parse(cryptoManager.decrypt(this.encryptedContent()));
     }
 
-    const ret = new CollectionInfo(this._content);
+    const ret = new CollectionMetadata(this._content);
     ret.uid = this.uid;
     return ret;
   }

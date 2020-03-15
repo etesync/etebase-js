@@ -1,165 +1,52 @@
-import sjcl from 'sjcl';
-import NodeRSA from 'node-rsa';
+import _sodium from 'libsodium-wrappers';
 
 import * as Constants from './Constants';
-import { byte, base64 } from './Helpers';
 
-(sjcl as any).beware['CBC mode is dangerous because it doesn\'t protect message integrity.']();
+export const sodium = _sodium;
+export const ready = _sodium.ready;
 
-export const HMAC_SIZE_BYTES = 32;
-
-export class AsymmetricKeyPair {
-  public publicKey: byte[];
-  public privateKey: byte[];
-
-  constructor(publicKey: byte[], privateKey: byte[]) {
-    this.publicKey = publicKey;
-    this.privateKey = privateKey;
-  }
+function concatArrayBuffers(buffer1: Uint8Array, buffer2: Uint8Array): Uint8Array {
+  const ret = new Uint8Array(buffer1.length + buffer2.length);
+  ret.set(buffer1, 0);
+  ret.set(buffer2, buffer1.length);
+  return ret;
 }
 
-export function deriveKey(salt: string, password: string): string {
-  const keySize = 190 * 8;
+export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
+  // XXX should probably move to scrypt or at least change parameters.
 
-  return sjcl.codec.base64.fromBits((sjcl.misc as any).scrypt(password, salt, 16384, 8, 1, keySize));
-}
-
-export function genUid() {
-  const rand = sjcl.random.randomWords(4);
-  return sjcl.codec.hex.fromBits(hmac256(rand, rand));
-}
-
-function hmac256(salt: sjcl.BitArray, key: sjcl.BitArray) {
-  const hmac = new sjcl.misc.hmac(salt);
-  return hmac.encrypt(key);
+  return sodium.crypto_pwhash(
+    32,
+    Buffer.from(password),
+    salt,
+    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
+    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    sodium.crypto_pwhash_ALG_DEFAULT
+  );
 }
 
 export class CryptoManager {
-
-  public static fromDerivedKey(key: byte[], version: number = Constants.CURRENT_VERSION) {
-    // FIXME: Cleanup this hack
-    const ret = new CryptoManager('', '', version);
-    ret.key = sjcl.codec.bytes.toBits(key);
-    ret._updateDerivedKeys();
-    return ret;
-  }
   public version: number;
-  public key: sjcl.BitArray;
-  public cipherKey: sjcl.BitArray;
-  public hmacKey: sjcl.BitArray;
+  public cipherKey: Uint8Array;
+  public hmacKey: Uint8Array;
 
-  public cipherWords = 4;
-
-  constructor(_keyBase64: base64, salt: string, version: number = Constants.CURRENT_VERSION) {
+  constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
     this.version = version;
-    const key = sjcl.codec.base64.toBits(_keyBase64);
-    // FIXME: Clean up all exeptions
-    if (version > Constants.CURRENT_VERSION) {
-      throw new Error('VersionTooNewException');
-    } else if (version === 1) {
-      this.key = key;
-    } else {
-      this.key = hmac256(sjcl.codec.utf8String.toBits(salt), key);
-    }
 
-    this._updateDerivedKeys();
+    this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
+    this.hmacKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
   }
 
-  public _updateDerivedKeys() {
-    this.cipherKey = hmac256(sjcl.codec.utf8String.toBits('aes'), this.key);
-    this.hmacKey = hmac256(sjcl.codec.utf8String.toBits('hmac'), this.key);
+  public encrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
+    const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+    return concatArrayBuffers(nonce,
+      sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(message, additionalData, null, nonce, this.cipherKey));
   }
 
-  public encryptBits(content: sjcl.BitArray): byte[] {
-    const iv = sjcl.random.randomWords(this.cipherWords);
-
-    const prp = new sjcl.cipher.aes(this.cipherKey);
-    const cipherText = sjcl.mode.cbc.encrypt(prp, content, iv);
-    return sjcl.codec.bytes.fromBits(iv.concat(cipherText));
-  }
-
-  public decryptBits(content: byte[]): sjcl.BitArray {
-    const cipherText = sjcl.codec.bytes.toBits(content);
-    const iv = cipherText.splice(0, this.cipherWords);
-
-    const prp = new sjcl.cipher.aes(this.cipherKey);
-    const clearText = sjcl.mode.cbc.decrypt(prp, cipherText, iv);
-    return clearText;
-  }
-
-  public encryptBytes(content: byte[]): byte[] {
-    return this.encryptBits(sjcl.codec.bytes.toBits(content));
-  }
-
-  public decryptBytes(content: byte[]): byte[] {
-    return sjcl.codec.bytes.fromBits(this.decryptBits(content));
-  }
-
-  public encrypt(content: string): byte[] {
-    return this.encryptBits(sjcl.codec.utf8String.toBits(content));
-  }
-
-  public decrypt(content: byte[]): string {
-    return sjcl.codec.utf8String.fromBits(this.decryptBits(content));
-  }
-
-  public getEncryptedKey(keyPair: AsymmetricKeyPair, publicKey: byte[]) {
-    const cryptoManager = new AsymmetricCryptoManager(keyPair);
-    return cryptoManager.encryptBytes(publicKey, sjcl.codec.bytes.fromBits(this.key));
-  }
-
-  public hmac(content: byte[]): byte[] {
-    return sjcl.codec.bytes.fromBits(this.hmacBase(content));
-  }
-
-  public hmac64(content: byte[]): base64 {
-    return sjcl.codec.base64.fromBits(this.hmacBase(content));
-  }
-
-  public hmacHex(content: byte[]): string {
-    return sjcl.codec.hex.fromBits(this.hmacBase(content));
-  }
-
-  private hmacBase(_content: byte[]): sjcl.BitArray {
-    let content;
-    if (this.version === 1) {
-      content = sjcl.codec.bytes.toBits(_content);
-    } else {
-      content = sjcl.codec.bytes.toBits(_content.concat([this.version]));
-    }
-
-    return hmac256(this.hmacKey, content);
-  }
-}
-
-function bufferToArray(buffer: Buffer) {
-  return Array.prototype.slice.call(buffer);
-}
-
-export class AsymmetricCryptoManager {
-
-  public static generateKeyPair() {
-    const keyPair = new NodeRSA();
-    keyPair.generateKeyPair(3072, 65537);
-    const pubkey = keyPair.exportKey('pkcs8-public-der') as Buffer;
-    const privkey = keyPair.exportKey('pkcs8-private-der') as Buffer;
-    return new AsymmetricKeyPair(
-      bufferToArray(pubkey), bufferToArray(privkey));
-  }
-  public keyPair: NodeRSA;
-
-  constructor(keyPair: AsymmetricKeyPair) {
-    this.keyPair = new NodeRSA();
-    this.keyPair.importKey(Buffer.from(keyPair.privateKey), 'pkcs8-der');
-  }
-
-  public encryptBytes(publicKey: byte[], content: byte[]): byte[] {
-    const key = new NodeRSA();
-    key.importKey(Buffer.from(publicKey), 'pkcs8-public-der');
-    return bufferToArray(key.encrypt(Buffer.from(content), 'buffer'));
-  }
-
-  public decryptBytes(content: byte[]): byte[] {
-    return bufferToArray(this.keyPair.decrypt(Buffer.from(content), 'buffer'));
+  public decrypt(nonceCiphertext: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
+    const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
+    const nonce = nonceCiphertext.subarray(0, nonceSize);
+    const ciphertext = nonceCiphertext.subarray(nonceSize);
+    return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, additionalData, nonce, this.cipherKey);
   }
 }
