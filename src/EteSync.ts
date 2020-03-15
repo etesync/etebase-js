@@ -3,7 +3,7 @@ import URI from 'urijs';
 import * as Constants from './Constants';
 
 import { CryptoManager, sodium } from './Crypto';
-export { CryptoManager, deriveKey, ready } from './Crypto';
+export { deriveKey, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
 import { base62, base64url } from './Helpers';
@@ -61,11 +61,29 @@ export interface CollectionJson {
   ctag: base64url;
 }
 
-export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: number) {
-  return new CryptoManager(mainEncryptionKey, 'ColKey', version);
+export class MainCryptoManager extends CryptoManager {
+  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+    super(key, 'Main', version);
+  }
 }
 
-export class CollectionItemRevision implements CollectionItemRevisionJson {
+export class CollectionCryptoManager extends CryptoManager {
+  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+    super(key, 'Col', version);
+  }
+}
+
+export class CollectionItemCryptoManager extends CryptoManager {
+  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+    super(key, 'ColItem', version);
+  }
+}
+
+export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: number) {
+  return new MainCryptoManager(mainEncryptionKey, version);
+}
+
+export class CollectionItemRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> implements CollectionItemRevisionJson {
   public chunks: base64url[];
   public deleted: boolean;
   public chunksUrls?: string[];
@@ -83,8 +101,8 @@ export class CollectionItemRevision implements CollectionItemRevisionJson {
     return ret;
   }
 
-  public static create<M extends {}>(
-    cryptoManager: CryptoManager, additionalDataMac: Uint8Array[] = [],
+  public static create<M extends {}, CM extends CollectionCryptoManager | CollectionItemCryptoManager>(
+    cryptoManager: CM, additionalDataMac: Uint8Array[] = [],
     content: {
       meta?: M;
       chunks?: base64url[];
@@ -101,7 +119,7 @@ export class CollectionItemRevision implements CollectionItemRevisionJson {
     return ret;
   }
 
-  public verify(cryptoManager: CryptoManager, additionalData: Uint8Array[] = []) {
+  public verify(cryptoManager: CM, additionalData: Uint8Array[] = []) {
     const calculatedMac = this.calculateMac(cryptoManager, additionalData);
     if (sodium.memcmp(
       sodium.from_base64(this.hmac),
@@ -113,7 +131,7 @@ export class CollectionItemRevision implements CollectionItemRevisionJson {
     }
   }
 
-  public calculateMac(cryptoManager: CryptoManager, additionalData: Uint8Array[] = []) {
+  public calculateMac(cryptoManager: CM, additionalData: Uint8Array[] = []) {
     const cryptoMac = cryptoManager.getCryptoMac();
     cryptoMac.update(Uint8Array.from([(this.deleted) ? 1 : 0]));
     this.chunks.forEach((chunk) =>
@@ -130,9 +148,9 @@ export class CollectionItemRevision implements CollectionItemRevisionJson {
     return cryptoMac.finalize();
   }
 
-  public decryptMeta(cryptoManager: CryptoManager): CollectionMetadata | null {
+  public decryptMeta(cryptoManager: CM): any | null {
     if (this.meta) {
-      return JSON.parse(sodium.to_string(cryptoManager.decrypt(sodium.from_base64(this.meta)))) as CollectionMetadata;
+      return JSON.parse(sodium.to_string(cryptoManager.decrypt(sodium.from_base64(this.meta))));
     } else {
       return null;
     }
@@ -147,7 +165,7 @@ export class Collection implements CollectionJson {
   public ctag: base64url;
 
   public encryptionKey: base64url;
-  public content: CollectionItemRevision;
+  public content: CollectionItemRevision<CollectionCryptoManager>;
 
   public static genUid() {
     const rand = sodium.randombytes_buf(24);
@@ -169,7 +187,7 @@ export class Collection implements CollectionJson {
   }
 
   public static create<M extends CollectionMetadata>(
-    parentCryptoManager: CryptoManager, meta: M,
+    mainCryptoManager: MainCryptoManager, meta: M,
     collectionExtra?: {
       encryptionKey?: Uint8Array;
       version?: number;
@@ -181,9 +199,9 @@ export class Collection implements CollectionJson {
     ret.version = collectionExtra?.version ?? Constants.CURRENT_VERSION;
     const encryptionKey = collectionExtra?.encryptionKey ?? sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
 
-    ret.encryptionKey = sodium.to_base64(parentCryptoManager.encrypt(encryptionKey));
+    ret.encryptionKey = sodium.to_base64(mainCryptoManager.encrypt(encryptionKey));
 
-    const cryptoManager = ret.getCryptoManager(parentCryptoManager);
+    const cryptoManager = ret.getCryptoManager(mainCryptoManager);
     ret.content = CollectionItemRevision.create(cryptoManager, ret.getAdditionalMacData(), {
       meta,
     });
@@ -192,7 +210,7 @@ export class Collection implements CollectionJson {
   }
 
   public update<M extends CollectionMetadata>(
-    cryptoManager: CryptoManager, data: {
+    cryptoManager: CollectionCryptoManager, data: {
       meta?: M;
       chunks?: base64url[];
     }) {
@@ -200,18 +218,18 @@ export class Collection implements CollectionJson {
     this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), data);
   }
 
-  public verify(cryptoManager: CryptoManager) {
+  public verify(cryptoManager: CollectionCryptoManager) {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
-  public decryptMeta(cryptoManager: CryptoManager): CollectionMetadata | null {
+  public decryptMeta(cryptoManager: CollectionCryptoManager): CollectionMetadata | null {
     return this.content.decryptMeta(cryptoManager);
   }
 
-  public getCryptoManager(parentCryptoManager: CryptoManager) {
+  public getCryptoManager(parentCryptoManager: MainCryptoManager) {
     const encryptionKey = parentCryptoManager.decrypt(sodium.from_base64(this.encryptionKey));
 
-    return new CryptoManager(encryptionKey, 'Col', this.version);
+    return new CollectionCryptoManager(encryptionKey, this.version);
   }
 
   protected getAdditionalMacData() {
