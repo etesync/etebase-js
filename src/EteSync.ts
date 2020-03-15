@@ -86,18 +86,19 @@ export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: num
 export class CollectionItemRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
   public chunks: base64url[];
   public deleted: boolean;
-  public chunksUrls?: string[];
   public hmac: base64url;
-  public meta: base64url | null;
-  public chunksData?: base64url[];
+  public meta: Uint8Array | null;
+  public chunksUrls?: string[];
+  public chunksData?: Uint8Array[];
 
   public static deserialize(json: CollectionItemRevisionJson) {
     const ret = new this();
     ret.chunks = json.chunks;
     ret.deleted = json.deleted;
-    ret.chunksUrls = json.chunksUrls;
     ret.hmac = json.hmac;
-    ret.chunksData = json.chunksData;
+    ret.meta = (json.meta) ? sodium.from_base64(json.meta) : null;
+    ret.chunksUrls = json.chunksUrls;
+    ret.chunksData = json.chunksData?.map((x) => sodium.from_base64(x));
     return ret;
   }
 
@@ -113,7 +114,7 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
     ret.chunks = content?.chunks ?? [];
     ret.deleted = content?.deleted ?? false;
     ret.meta = (content.meta) ?
-      sodium.to_base64(cryptoManager.encrypt(sodium.from_string(JSON.stringify(content.meta)))) :
+      cryptoManager.encrypt(sodium.from_string(JSON.stringify(content.meta))) :
       null;
     ret.hmac = sodium.to_base64(ret.calculateMac(cryptoManager, additionalDataMac));
     return ret;
@@ -139,7 +140,7 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
     );
     if (this.meta) {
       // the tag is appended to the message
-      cryptoMac.update(sodium.from_base64(this.meta).subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
+      cryptoMac.update(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
     }
     additionalData.forEach((data) =>
       cryptoMac.update(data)
@@ -150,7 +151,7 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
 
   public decryptMeta(cryptoManager: CM): any | null {
     if (this.meta) {
-      return JSON.parse(sodium.to_string(cryptoManager.decrypt(sodium.from_base64(this.meta))));
+      return JSON.parse(sodium.to_string(cryptoManager.decrypt(this.meta)));
     } else {
       return null;
     }
@@ -164,7 +165,7 @@ export class Collection {
   public accessLevel: CollectionAccessLevel;
   public ctag: string;
 
-  public encryptionKey: base64url;
+  public encryptionKey: Uint8Array;
   public content: CollectionItemRevision<CollectionCryptoManager>;
 
   public static genUid() {
@@ -180,7 +181,7 @@ export class Collection {
     ret.accessLevel = json.accessLevel;
     ret.ctag = json.ctag;
 
-    ret.encryptionKey = json.encryptionKey;
+    ret.encryptionKey = sodium.from_base64(json.encryptionKey);
     ret.content = CollectionItemRevision.deserialize(json.content);
 
     return ret;
@@ -198,8 +199,7 @@ export class Collection {
     ret.uid = collectionExtra?.uid ?? Collection.genUid();
     ret.version = collectionExtra?.version ?? Constants.CURRENT_VERSION;
     const encryptionKey = collectionExtra?.encryptionKey ?? sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
-
-    ret.encryptionKey = sodium.to_base64(mainCryptoManager.encrypt(encryptionKey));
+    ret.encryptionKey = mainCryptoManager.encrypt(encryptionKey);
 
     const cryptoManager = ret.getCryptoManager(mainCryptoManager);
     ret.content = CollectionItemRevision.create(cryptoManager, ret.getAdditionalMacData(), {
@@ -227,7 +227,7 @@ export class Collection {
   }
 
   public getCryptoManager(parentCryptoManager: MainCryptoManager) {
-    const encryptionKey = parentCryptoManager.decrypt(sodium.from_base64(this.encryptionKey));
+    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
 
     return new CollectionCryptoManager(encryptionKey, this.version);
   }
