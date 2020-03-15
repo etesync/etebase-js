@@ -266,26 +266,23 @@ export class Collection {
 
 
 
-// FIXME: baseUrl and apiBase should be the right type all around.
-
 class BaseNetwork {
 
-  public static urlExtend(_baseUrl: URI, segments: string[]): URI {
-    let baseUrl = _baseUrl as any;
-    baseUrl = baseUrl.clone();
+  public static urlExtend(baseUrlIn: URI, segments: string[]): URI {
+    const baseUrl = baseUrlIn.clone();
     for (const segment of segments) {
       baseUrl.segment(segment);
     }
     return baseUrl.normalize();
   }
-  public apiBase: any; // FIXME
+  public apiBase: URI;
 
   constructor(apiBase: string) {
     this.apiBase = URI(apiBase).normalize();
   }
 
-  public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, _apiBase: URI = this.apiBase): Promise<T> {
-    const apiBase = BaseNetwork.urlExtend(_apiBase, segments);
+  public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBaseIn: URI = this.apiBase): Promise<T> {
+    const apiBase = BaseNetwork.urlExtend(apiBaseIn, segments);
 
     extra = {
       ...extra,
@@ -373,10 +370,10 @@ export class BaseManager extends BaseNetwork {
   constructor(credentials: Credentials, apiBase: string, segments: string[]) {
     super(apiBase);
     this.credentials = credentials;
-    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1'].concat(segments));
+    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v2'].concat(segments));
   }
 
-  public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBase: any = this.apiBase): Promise<T> {
+  public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBase: URI = this.apiBase): Promise<T> {
     extra = {
       ...extra,
       headers: {
