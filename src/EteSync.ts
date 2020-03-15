@@ -58,7 +58,7 @@ export interface CollectionJson {
   encryptionKey: base64url;
   content: CollectionItemRevisionJson;
 
-  ctag: base64url;
+  ctag: string;
 }
 
 export class MainCryptoManager extends CryptoManager {
@@ -162,7 +162,7 @@ export class Collection implements CollectionJson {
   public uid: base62;
   public version: number;
   public accessLevel: CollectionAccessLevel;
-  public ctag: base64url;
+  public ctag: string;
 
   public encryptionKey: base64url;
   public content: CollectionItemRevision<CollectionCryptoManager>;
