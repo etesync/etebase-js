@@ -83,6 +83,12 @@ export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: num
   return new MainCryptoManager(mainEncryptionKey, version);
 }
 
+export interface CollectionItemRevisionContent<M extends {}> {
+  meta?: M;
+  chunks?: base64url[];
+  deleted?: boolean;
+}
+
 export class CollectionItemRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
   public chunks: base64url[];
   public deleted: boolean;
@@ -104,11 +110,7 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
 
   public static create<M extends {}, CM extends CollectionCryptoManager | CollectionItemCryptoManager>(
     cryptoManager: CM, additionalDataMac: Uint8Array[] = [],
-    content: {
-      meta?: M;
-      chunks?: base64url[];
-      deleted?: boolean;
-    }) {
+    content: CollectionItemRevisionContent<M>) {
 
     const ret = new this();
     ret.chunks = content?.chunks ?? [];
@@ -210,10 +212,7 @@ export class Collection {
   }
 
   public update<M extends CollectionMetadata>(
-    cryptoManager: CollectionCryptoManager, data: {
-      meta?: M;
-      chunks?: base64url[];
-    }) {
+    cryptoManager: CollectionCryptoManager, data: CollectionItemRevisionContent<M>) {
 
     this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), data);
   }
