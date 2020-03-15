@@ -83,7 +83,7 @@ export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: num
   return new MainCryptoManager(mainEncryptionKey, version);
 }
 
-export class CollectionItemRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> implements CollectionItemRevisionJson {
+export class CollectionItemRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
   public chunks: base64url[];
   public deleted: boolean;
   public chunksUrls?: string[];
@@ -158,7 +158,7 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
 }
 
 
-export class Collection implements CollectionJson {
+export class Collection {
   public uid: base62;
   public version: number;
   public accessLevel: CollectionAccessLevel;
