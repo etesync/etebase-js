@@ -273,6 +273,7 @@ class BaseNetwork {
     for (const segment of segments) {
       baseUrl.segment(segment);
     }
+    baseUrl.segment('');
     return baseUrl.normalize();
   }
   public apiBase: URI;
@@ -337,7 +338,7 @@ export class Authenticator extends BaseNetwork {
         body: form,
       };
 
-      this.newCall<{token: string}>(['api-token-auth', ''], extra).then((json) => {
+      this.newCall<{token: string}>(['api-token-auth'], extra).then((json) => {
         resolve(json.token);
       }).catch((error: Error) => {
         reject(error);
@@ -355,7 +356,7 @@ export class Authenticator extends BaseNetwork {
         },
       };
 
-      this.newCall<{token: string}>(['api', 'logout', ''], extra).then(() => {
+      this.newCall<{token: string}>(['api', 'logout'], extra).then(() => {
         resolve();
       }).catch((error: Error) => {
         reject(error);
@@ -387,30 +388,33 @@ export class BaseManager extends BaseNetwork {
   }
 }
 
-export class JournalManager extends BaseManager {
+export class CollectionManager extends BaseManager {
   constructor(credentials: Credentials, apiBase: string) {
-    super(credentials, apiBase, ['journals', '']);
+    super(credentials, apiBase, ['collection']);
   }
 
-  public fetch(journalUid: string): Promise<Journal> {
+  public fetch(colUid: string, syncToken: string | null): Promise<Collection> {
     return new Promise((resolve, reject) => {
-      this.newCall<JournalJson>([journalUid, '']).then((json) => {
-        const journal = new Journal({ uid: json.uid }, json.version);
-        journal.deserialize(json);
-        resolve(journal);
+      this.newCall<CollectionJsonRead>([colUid]).then((json) => {
+        const collection = Collection.deserialize(json);
+        resolve(collection);
       }).catch((error: Error) => {
         reject(error);
       });
     });
   }
 
-  public list(): Promise<Journal[]> {
+  public list(syncToken: string | null, limit = 0): Promise<Collection[]> {
+    const apiBase = this.apiBase.clone().search({
+      syncToken: (syncToken !== null) ? syncToken : undefined,
+      limit: (limit > 0) ? limit : undefined,
+    });
+
     return new Promise((resolve, reject) => {
-      this.newCall<JournalJson[]>().then((json) => {
-        resolve(json.map((val: JournalJson) => {
-          const journal = new Journal({ uid: val.uid }, val.version);
-          journal.deserialize(val);
-          return journal;
+      this.newCall<CollectionJsonRead[]>(undefined, undefined, apiBase).then((json) => {
+        resolve(json.map((val) => {
+          const collection = Collection.deserialize(val);
+          return collection;
         }));
       }).catch((error: Error) => {
         reject(error);
@@ -418,36 +422,36 @@ export class JournalManager extends BaseManager {
     });
   }
 
-  public create(journal: Journal): Promise<{}> {
+  public create(collection: Collection): Promise<{}> {
     const extra = {
       method: 'post',
-      body: JSON.stringify(journal.serialize()),
+      body: JSON.stringify(collection.serialize()),
     };
 
-    return this.newCall<Journal>([], extra);
+    return this.newCall([], extra);
   }
 
-  public update(journal: Journal): Promise<{}> {
+  public update(collection: Collection, syncToken: string | null): Promise<{}> {
     const extra = {
       method: 'put',
-      body: JSON.stringify(journal.serialize()),
+      body: JSON.stringify(collection.serialize()),
     };
 
-    return this.newCall<Journal>([journal.uid, ''], extra);
+    return this.newCall<Collection>([collection.uid], extra);
   }
 
-  public delete(journal: Journal): Promise<{}> {
+  public delete(collection: Collection, syncToken: string | null): Promise<{}> {
     const extra = {
       method: 'delete',
     };
 
-    return this.newCall([journal.uid, ''], extra);
+    return this.newCall([collection.uid], extra);
   }
 }
 
 export class EntryManager extends BaseManager {
   constructor(credentials: Credentials, apiBase: string, journalId: string) {
-    super(credentials, apiBase, ['journals', journalId, 'entries', '']);
+    super(credentials, apiBase, ['journals', journalId, 'entries']);
   }
 
   public list(lastUid: string | null, limit = 0): Promise<Entry[]> {
@@ -493,7 +497,7 @@ export interface JournalMemberJson {
 
 export class JournalMembersManager extends BaseManager {
   constructor(credentials: Credentials, apiBase: string, journalId: string) {
-    super(credentials, apiBase, ['journals', journalId, 'members', '']);
+    super(credentials, apiBase, ['journals', journalId, 'members']);
   }
 
   public list(): Promise<JournalMemberJson[]> {
@@ -522,18 +526,18 @@ export class JournalMembersManager extends BaseManager {
       method: 'delete',
     };
 
-    return this.newCall([journalMember.user, ''], extra);
+    return this.newCall([journalMember.user], extra);
   }
 }
 
 export class UserInfoManager extends BaseManager {
   constructor(credentials: Credentials, apiBase: string) {
-    super(credentials, apiBase, ['user', '']);
+    super(credentials, apiBase, ['user']);
   }
 
   public fetch(owner: string): Promise<UserInfo> {
     return new Promise((resolve, reject) => {
-      this.newCall<UserInfoJson>([owner, '']).then((json) => {
+      this.newCall<UserInfoJson>([owner]).then((json) => {
         const userInfo = new UserInfo(owner, json.version);
         userInfo.deserialize(json);
         resolve(userInfo);
@@ -558,7 +562,7 @@ export class UserInfoManager extends BaseManager {
       body: JSON.stringify(userInfo.serialize()),
     };
 
-    return this.newCall([userInfo.owner, ''], extra);
+    return this.newCall([userInfo.owner], extra);
   }
 
   public delete(userInfo: UserInfo): Promise<{}> {
@@ -566,6 +570,6 @@ export class UserInfoManager extends BaseManager {
       method: 'delete',
     };
 
-    return this.newCall([userInfo.owner, ''], extra);
+    return this.newCall([userInfo.owner], extra);
   }
 }
