@@ -26,9 +26,9 @@ export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
 }
 
 export class CryptoManager {
-  public version: number;
-  public cipherKey: Uint8Array;
-  public hmacKey: Uint8Array;
+  protected version: number;
+  protected cipherKey: Uint8Array;
+  protected hmacKey: Uint8Array;
 
   constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
     this.version = version;
@@ -48,5 +48,27 @@ export class CryptoManager {
     const nonce = nonceCiphertext.subarray(0, nonceSize);
     const ciphertext = nonceCiphertext.subarray(nonceSize);
     return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, additionalData, nonce, this.cipherKey);
+  }
+
+  public getCryptoMac() {
+    return new CryptoMac(this.hmacKey);
+  }
+}
+
+export class CryptoMac {
+  private state: _sodium.StateAddress;
+  private length: number;
+
+  constructor(key: Uint8Array, length = 32) {
+    this.length = length;
+    this.state = sodium.crypto_generichash_init(key, length);
+  }
+
+  public update(messageChunk: Uint8Array) {
+    sodium.crypto_generichash_update(this.state, messageChunk);
+  }
+
+  public finalize() {
+    return sodium.crypto_generichash_final(this.state, this.length);
   }
 }

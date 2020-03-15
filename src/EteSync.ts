@@ -2,29 +2,18 @@ import URI from 'urijs';
 
 import * as Constants from './Constants';
 
-import { byte, base64, stringToByteArray } from './Helpers';
 import { CryptoManager, sodium } from './Crypto';
-export { CryptoManager, deriveKey, genUid, ready } from './Crypto';
+export { CryptoManager, deriveKey, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
-import { base62, base64, base64url } from './Helpers';
-export { base62, base64, base64url } from './Helpers';
+import { base62, base64url } from './Helpers';
+export { base62, base64url } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
 
-// FIXME: Make secure + types
-function CastJson(json: any, to: any) {
-  return Object.assign(to, json);
-}
-
-export class Credentials {
-  public username: string;
-  public authToken: string;
-
-  constructor(username: string, authToken: string) {
-    this.username = username;
-    this.authToken = authToken;
-  }
+export interface Credentials {
+  username: string;
+  authToken: string;
 }
 
 export interface CollectionMetadata {
@@ -34,15 +23,15 @@ export interface CollectionMetadata {
   color: string;
 }
 
-interface CollectionItemRevisionBase {
+export interface CollectionItemRevisionJson {
+  meta: base64url | null;
+
   chunks: base64url[];
   deleted: boolean;
   chunksUrls?: string[];
-}
 
-export interface CollectionItemRevisionJson extends CollectionItemRevisionBase {
-  hmac: base64;
-  chunksData?: base64[];
+  hmac: base64url;
+  chunksData?: base64url[];
 }
 
 export interface CollectionItem {
@@ -57,50 +46,104 @@ export enum CollectionAccessLevel {
   ReadOnly = 'ro',
 }
 
-export interface CollectionBase {
+export interface CollectionJson {
   uid: base62;
   version: number;
   accessLevel: CollectionAccessLevel;
+
+  encryptionKey: base64url;
+  content: CollectionItemRevisionJson;
+
   ctag: base64url;
 }
 
-interface CollectionJson extends CollectionBase {
-  encryptionKey: base64;
-  meta: base64;
-  content: CollectionItemRevisionJson;
-}
-
-export class CollectionItemRevision implements CollectionItemRevisionBase {
+export class CollectionItemRevision implements CollectionItemRevisionJson {
   public chunks: base64url[];
   public deleted: boolean;
   public chunksUrls?: string[];
-  public hmac: Uint8Array;
-  public chunksData?: Uint8Array[];
+  public hmac: base64url;
+  public meta: base64url | null;
+  public chunksData?: base64url[];
 
   public static deserialize(json: CollectionItemRevisionJson) {
     const ret = new CollectionItemRevision();
     ret.chunks = json.chunks;
     ret.deleted = json.deleted;
     ret.chunksUrls = json.chunksUrls;
-    ret.hmac = sodium.from_base64(json.hmac);
-    ret.chunksData = json.chunksData?.map((x) => sodium.from_base64(x));
+    ret.hmac = json.hmac;
+    ret.chunksData = json.chunksData;
     return ret;
+  }
+
+  public static create<M extends {}>(
+    cryptoManager: CryptoManager, additionalDataMac: Uint8Array[] = [],
+    content: {
+      meta?: M;
+      chunks?: base64url[];
+      deleted?: boolean;
+    }) {
+
+    const ret = new CollectionItemRevision();
+    ret.chunks = content?.chunks ?? [];
+    ret.deleted = content?.deleted ?? false;
+    ret.meta = (content.meta) ?
+      sodium.to_base64(cryptoManager.encrypt(sodium.from_string(JSON.stringify(content.meta)))) :
+      null;
+    ret.hmac = sodium.to_base64(ret.calculateMac(cryptoManager, additionalDataMac));
+    return ret;
+  }
+
+  public verify(cryptoManager: CryptoManager, additionalData: Uint8Array[] = []) {
+    const calculatedMac = this.calculateMac(cryptoManager, additionalData);
+    if (sodium.memcmp(
+      sodium.from_base64(this.hmac),
+      calculatedMac
+    )) {
+      return true;
+    } else {
+      throw new IntegrityError(`mac verification failed. Expected: ${this.hmac} got: ${sodium.to_base64(calculatedMac)}`);
+    }
+  }
+
+  public calculateMac(cryptoManager: CryptoManager, additionalData: Uint8Array[] = []) {
+    const cryptoMac = cryptoManager.getCryptoMac();
+    cryptoMac.update(Uint8Array.from([(this.deleted) ? 1 : 0]));
+    this.chunks.forEach((chunk) =>
+      cryptoMac.update(sodium.from_base64(chunk))
+    );
+    if (this.meta) {
+      // the tag is appended to the message
+      cryptoMac.update(sodium.from_base64(this.meta).subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
+    }
+    additionalData.forEach((data) =>
+      cryptoMac.update(data)
+    );
+
+    return cryptoMac.finalize();
+  }
+
+  public decryptMeta(cryptoManager: CryptoManager): CollectionMetadata | null {
+    if (this.meta) {
+      return JSON.parse(sodium.to_string(cryptoManager.decrypt(sodium.from_base64(this.meta)))) as CollectionMetadata;
+    } else {
+      return null;
+    }
   }
 }
 
-export class Collection implements CollectionBase {
+export class Collection implements CollectionJson {
   public uid: base62;
   public version: number;
   public accessLevel: CollectionAccessLevel;
   public ctag: base64url;
 
-  public encryptionKey: Uint8Array;
-  public meta: Uint8Array;
+  public encryptionKey: base64url;
   public content: CollectionItemRevision;
 
   public static genUid() {
-    const rand = sodium.randombytes_buf(32);
-    return sodium.to_base64(Buffer.from(rand), sodium.base64_variants.URLSAFE_NO_PADDING);
+    const rand = sodium.randombytes_buf(24);
+    // We only want alphanumeric and we don't care about the bias
+    return sodium.to_base64(Buffer.from(rand)).replace('-', 'a').replace('_', 'b');
   }
 
   public static deserialize(json: CollectionJson) {
@@ -110,61 +153,70 @@ export class Collection implements CollectionBase {
     ret.accessLevel = json.accessLevel;
     ret.ctag = json.ctag;
 
-    ret.encryptionKey = sodium.from_base64(json.encryptionKey);
-    ret.meta = sodium.from_base64(json.meta);
+    ret.encryptionKey = json.encryptionKey;
     ret.content = CollectionItemRevision.deserialize(json.content);
 
     return ret;
   }
 
-  public getCryptoManager(derived: string, keyPair: AsymmetricKeyPair) {
-    if (this.key) {
-      const asymmetricCryptoManager = new AsymmetricCryptoManager(keyPair);
-      const derivedJournalKey = asymmetricCryptoManager.decryptBytes(this.key);
-      return CryptoManager.fromDerivedKey(derivedJournalKey, this.version);
-    } else {
-      return new CryptoManager(derived, this.uid, this.version);
-    }
-  }
+  public static create<M extends CollectionMetadata>(
+    mainEncryptionKey: Uint8Array, meta: M,
+    collectionExtra?: {
+      encryptionKey?: Uint8Array;
+      version?: number;
+      uid?: base62;
+    }) {
 
-  public setInfo(cryptoManager: CryptoManager, info: CollectionMetadata) {
-    this._json.uid = info.uid;
-    this._content = info;
-    const encrypted = cryptoManager.encrypt(JSON.stringify(this._content));
-    this._encrypted = this.calculateHmac(cryptoManager, encrypted).concat(encrypted);
-  }
+    const ret = new Collection();
+    ret.uid = collectionExtra?.uid ?? Collection.genUid();
+    ret.version = collectionExtra?.version ?? Constants.CURRENT_VERSION;
+    const encryptionKey = collectionExtra?.encryptionKey ?? sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
 
-  public getInfo(cryptoManager: CryptoManager): CollectionMetadata {
-    this.verify(cryptoManager);
+    const keyCryptoManager = new CryptoManager(mainEncryptionKey, 'ColKey', ret.version);
+    ret.encryptionKey = sodium.to_base64(keyCryptoManager.encrypt(encryptionKey));
 
-    if (this._content === undefined) {
-      this._content = JSON.parse(cryptoManager.decrypt(this.encryptedContent()));
-    }
+    const cryptoManager = new CryptoManager(encryptionKey, 'Col', ret.version);
+    ret.content = CollectionItemRevision.create(cryptoManager, ret.getAdditionalMacData(), {
+      meta,
+    });
 
-    const ret = new CollectionMetadata(this._content);
-    ret.uid = this.uid;
     return ret;
   }
 
-  public calculateHmac(cryptoManager: CryptoManager, encrypted: byte[]): byte[] {
-    const prefix = stringToByteArray(this.uid);
-    return cryptoManager.hmac(prefix.concat(encrypted));
+  public update<M extends CollectionMetadata>(
+    mainEncryptionKey: Uint8Array, data: {
+      meta?: M;
+      chunks?: base64url[];
+    }) {
+
+    const cryptoManager = this.getCryptoManager(mainEncryptionKey);
+    this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), data);
   }
 
-  public verify(cryptoManager: CryptoManager) {
-    const calculated = this.calculateHmac(cryptoManager, this.encryptedContent());
-    const hmac = this._encrypted.slice(0, HMAC_SIZE_BYTES);
-
-    super.verifyBase(hmac, calculated);
+  public verify(mainEncryptionKey: Uint8Array) {
+    const cryptoManager = this.getCryptoManager(mainEncryptionKey);
+    return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
-  private encryptedContent(): byte[] {
-    return this._encrypted.slice(HMAC_SIZE_BYTES);
+  public decryptMeta(mainEncryptionKey: Uint8Array): CollectionMetadata | null {
+    const cryptoManager = this.getCryptoManager(mainEncryptionKey);
+    return this.content.decryptMeta(cryptoManager);
+  }
+
+  protected getCryptoManager(mainEncryptionKey: Uint8Array) {
+    const keyCryptoManager = new CryptoManager(mainEncryptionKey, 'ColKey', this.version);
+    const encryptionKey = keyCryptoManager.decrypt(sodium.from_base64(this.encryptionKey));
+
+    return new CryptoManager(encryptionKey, 'Col', this.version);
+  }
+
+  protected getAdditionalMacData() {
+    return [sodium.from_string(this.uid)];
   }
 }
 
 interface BaseItemJson {
-  content: base64;
+  content: base64url;
 }
 
 class BaseItem<T extends BaseItemJson> {
@@ -179,7 +231,7 @@ class BaseItem<T extends BaseItemJson> {
   public deserialize(json: T) {
     this._json = Object.assign({}, json);
     if (json.content) {
-      this._encrypted = sjcl.codec.bytes.fromBits(sjcl.codec.base64.toBits(json.content));
+      this._encrypted = sjcl.codec.bytes.fromBits(sjcl.codec.base64url.toBits(json.content));
     }
     this._content = undefined;
   }
@@ -188,7 +240,7 @@ class BaseItem<T extends BaseItemJson> {
     return Object.assign(
       {},
       this._json,
-      { content: sjcl.codec.base64.fromBits(sjcl.codec.bytes.toBits(this._encrypted)) }
+      { content: sjcl.codec.base64url.fromBits(sjcl.codec.bytes.toBits(this._encrypted)) }
     );
   }
 
@@ -218,7 +270,7 @@ export interface JournalJson extends BaseJson {
   version: number;
   owner: string;
   readOnly?: boolean;
-  key?: base64;
+  key?: base64url;
   lastUid?: string;
 }
 
@@ -230,7 +282,7 @@ export class Journal extends BaseJournal<JournalJson> {
 
   get key(): byte[] | undefined {
     if (this._json.key) {
-      return sjcl.codec.bytes.fromBits(sjcl.codec.base64.toBits(this._json.key));
+      return sjcl.codec.bytes.fromBits(sjcl.codec.base64url.toBits(this._json.key));
     }
 
     return undefined;
@@ -350,7 +402,7 @@ export class Entry extends BaseJournal<EntryJson> {
 export interface UserInfoJson extends BaseItemJson {
   version?: number;
   owner?: string;
-  pubkey: base64;
+  pubkey: base64url;
 }
 
 export class UserInfo extends BaseItem<UserInfoJson> {
@@ -385,7 +437,7 @@ export class UserInfo extends BaseItem<UserInfoJson> {
   }
 
   public setKeyPair(cryptoManager: CryptoManager, keyPair: AsymmetricKeyPair) {
-    this._json.pubkey = sjcl.codec.base64.fromBits(sjcl.codec.bytes.toBits(keyPair.publicKey));
+    this._json.pubkey = sjcl.codec.base64url.fromBits(sjcl.codec.bytes.toBits(keyPair.publicKey));
     this._content = keyPair.privateKey;
     const encrypted = cryptoManager.encryptBytes(keyPair.privateKey);
     this._encrypted = this.calculateHmac(cryptoManager, encrypted).concat(encrypted);
@@ -398,12 +450,12 @@ export class UserInfo extends BaseItem<UserInfoJson> {
       this._content = cryptoManager.decryptBytes(this.encryptedContent());
     }
 
-    const pubkey = sjcl.codec.bytes.fromBits(sjcl.codec.base64.toBits(this._json.pubkey));
+    const pubkey = sjcl.codec.bytes.fromBits(sjcl.codec.base64url.toBits(this._json.pubkey));
     return new AsymmetricKeyPair(pubkey, this._content as byte[]);
   }
 
   public calculateHmac(cryptoManager: CryptoManager, encrypted: byte[]): byte[] {
-    const postfix = sjcl.codec.bytes.fromBits(sjcl.codec.base64.toBits(this._json.pubkey));
+    const postfix = sjcl.codec.bytes.fromBits(sjcl.codec.base64url.toBits(this._json.pubkey));
     return cryptoManager.hmac(encrypted.concat(postfix));
   }
 
@@ -643,7 +695,7 @@ export class EntryManager extends BaseManager {
 
 export interface JournalMemberJson {
   user: string;
-  key: base64;
+  key: base64url;
   readOnly?: boolean;
 }
 
