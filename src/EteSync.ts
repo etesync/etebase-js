@@ -6,56 +6,13 @@ import * as Constants from './Constants';
 import { byte, base64, stringToByteArray } from './Helpers';
 import { CryptoManager, AsymmetricCryptoManager, AsymmetricKeyPair, HMAC_SIZE_BYTES } from './Crypto';
 export { CryptoManager, AsymmetricCryptoManager, AsymmetricKeyPair, deriveKey, genUid } from './Crypto';
+import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
+export * from './Exceptions';
 export { byte, base64 } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
 
 type URI = typeof URI;
-
-class ExtendableError extends Error {
-  constructor(message: any) {
-    super(message);
-    Object.setPrototypeOf(this, ExtendableError.prototype);
-    this.name = 'ExtendableError';
-    this.stack = (new Error(message)).stack;
-  }
-}
-
-export class HTTPError extends ExtendableError {
-  public status: number;
-
-  constructor(status: number, message: any) {
-    super(message);
-    Object.setPrototypeOf(this, HTTPError.prototype);
-    this.name = 'HTTPError';
-
-    this.status = status;
-  }
-}
-
-export class NetworkError extends ExtendableError {
-  constructor(message: any) {
-    super(message);
-    Object.setPrototypeOf(this, NetworkError.prototype);
-    this.name = 'NetworkError';
-  }
-}
-
-export class IntegrityError extends ExtendableError {
-  constructor(message: any) {
-    super(message);
-    Object.setPrototypeOf(this, IntegrityError.prototype);
-    this.name = 'IntegrityError';
-  }
-}
-
-export class EncryptionPasswordError extends ExtendableError {
-  constructor(message: any) {
-    super(message);
-    Object.setPrototypeOf(this, EncryptionPasswordError.prototype);
-    this.name = 'EncryptionPasswordError';
-  }
-}
 
 // FIXME: Make secure + types
 function CastJson(json: any, to: any) {
