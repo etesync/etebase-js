@@ -16,8 +16,10 @@ export interface Credentials {
   authToken: string;
 }
 
+export type CollectionType = string;
+
 export interface CollectionMetadata {
-  type: string;
+  type: CollectionType;
   name: string;
   description: string;
   color: string;
@@ -34,10 +36,12 @@ export interface CollectionItemRevisionJson {
   chunksData?: base64url[];
 }
 
-export interface CollectionItem {
+export interface CollectionItemJson {
   uid: base62;
   version: number;
-  encryptionKey: Uint8Array;
+  encryptionKey: base64url;
+
+  content: CollectionItemRevisionJson;
 }
 
 export enum CollectionAccessLevel {
@@ -57,6 +61,10 @@ export interface CollectionJson {
   ctag: base64url;
 }
 
+export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: number) {
+  return new CryptoManager(mainEncryptionKey, 'ColKey', version);
+}
+
 export class CollectionItemRevision implements CollectionItemRevisionJson {
   public chunks: base64url[];
   public deleted: boolean;
@@ -66,7 +74,7 @@ export class CollectionItemRevision implements CollectionItemRevisionJson {
   public chunksData?: base64url[];
 
   public static deserialize(json: CollectionItemRevisionJson) {
-    const ret = new CollectionItemRevision();
+    const ret = new this();
     ret.chunks = json.chunks;
     ret.deleted = json.deleted;
     ret.chunksUrls = json.chunksUrls;
@@ -83,7 +91,7 @@ export class CollectionItemRevision implements CollectionItemRevisionJson {
       deleted?: boolean;
     }) {
 
-    const ret = new CollectionItemRevision();
+    const ret = new this();
     ret.chunks = content?.chunks ?? [];
     ret.deleted = content?.deleted ?? false;
     ret.meta = (content.meta) ?
@@ -131,6 +139,7 @@ export class CollectionItemRevision implements CollectionItemRevisionJson {
   }
 }
 
+
 export class Collection implements CollectionJson {
   public uid: base62;
   public version: number;
@@ -147,7 +156,7 @@ export class Collection implements CollectionJson {
   }
 
   public static deserialize(json: CollectionJson) {
-    const ret = new Collection();
+    const ret = new this();
     ret.uid = json.uid;
     ret.version = json.version;
     ret.accessLevel = json.accessLevel;
@@ -160,22 +169,21 @@ export class Collection implements CollectionJson {
   }
 
   public static create<M extends CollectionMetadata>(
-    mainEncryptionKey: Uint8Array, meta: M,
+    parentCryptoManager: CryptoManager, meta: M,
     collectionExtra?: {
       encryptionKey?: Uint8Array;
       version?: number;
       uid?: base62;
     }) {
 
-    const ret = new Collection();
+    const ret = new this();
     ret.uid = collectionExtra?.uid ?? Collection.genUid();
     ret.version = collectionExtra?.version ?? Constants.CURRENT_VERSION;
     const encryptionKey = collectionExtra?.encryptionKey ?? sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
 
-    const keyCryptoManager = new CryptoManager(mainEncryptionKey, 'ColKey', ret.version);
-    ret.encryptionKey = sodium.to_base64(keyCryptoManager.encrypt(encryptionKey));
+    ret.encryptionKey = sodium.to_base64(parentCryptoManager.encrypt(encryptionKey));
 
-    const cryptoManager = new CryptoManager(encryptionKey, 'Col', ret.version);
+    const cryptoManager = ret.getCryptoManager(parentCryptoManager);
     ret.content = CollectionItemRevision.create(cryptoManager, ret.getAdditionalMacData(), {
       meta,
     });
@@ -184,28 +192,24 @@ export class Collection implements CollectionJson {
   }
 
   public update<M extends CollectionMetadata>(
-    mainEncryptionKey: Uint8Array, data: {
+    cryptoManager: CryptoManager, data: {
       meta?: M;
       chunks?: base64url[];
     }) {
 
-    const cryptoManager = this.getCryptoManager(mainEncryptionKey);
     this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), data);
   }
 
-  public verify(mainEncryptionKey: Uint8Array) {
-    const cryptoManager = this.getCryptoManager(mainEncryptionKey);
+  public verify(cryptoManager: CryptoManager) {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
-  public decryptMeta(mainEncryptionKey: Uint8Array): CollectionMetadata | null {
-    const cryptoManager = this.getCryptoManager(mainEncryptionKey);
+  public decryptMeta(cryptoManager: CryptoManager): CollectionMetadata | null {
     return this.content.decryptMeta(cryptoManager);
   }
 
-  protected getCryptoManager(mainEncryptionKey: Uint8Array) {
-    const keyCryptoManager = new CryptoManager(mainEncryptionKey, 'ColKey', this.version);
-    const encryptionKey = keyCryptoManager.decrypt(sodium.from_base64(this.encryptionKey));
+  public getCryptoManager(parentCryptoManager: CryptoManager) {
+    const encryptionKey = parentCryptoManager.decrypt(sodium.from_base64(this.encryptionKey));
 
     return new CryptoManager(encryptionKey, 'Col', this.version);
   }
@@ -214,6 +218,7 @@ export class Collection implements CollectionJson {
     return [sodium.from_string(this.uid)];
   }
 }
+
 
 interface BaseItemJson {
   content: base64url;
