@@ -25,15 +25,18 @@ export interface CollectionMetadata {
   color: string;
 }
 
-export interface CollectionItemRevisionJson {
+export interface CollectionItemRevisionJsonWrite {
   meta: base64url | null;
 
   chunks: base64url[];
   deleted: boolean;
-  chunksUrls?: string[];
-
   hmac: base64url;
+
   chunksData?: base64url[];
+}
+
+export interface CollectionItemRevisionJsonRead extends CollectionItemRevisionJsonWrite {
+  chunksUrls?: string[];
 }
 
 export interface CollectionItemJson {
@@ -41,7 +44,7 @@ export interface CollectionItemJson {
   version: number;
   encryptionKey: base64url;
 
-  content: CollectionItemRevisionJson;
+  content: CollectionItemRevisionJsonRead;
 }
 
 export enum CollectionAccessLevel {
@@ -50,15 +53,19 @@ export enum CollectionAccessLevel {
   ReadOnly = 'ro',
 }
 
-export interface CollectionJson {
+export interface CollectionJsonWrite {
   uid: base62;
   version: number;
-  accessLevel: CollectionAccessLevel;
 
   encryptionKey: base64url;
-  content: CollectionItemRevisionJson;
+  content: CollectionItemRevisionJsonWrite;
+}
 
+export interface CollectionJsonRead extends CollectionJsonWrite {
+  accessLevel: CollectionAccessLevel;
   ctag: string;
+
+  content: CollectionItemRevisionJsonRead;
 }
 
 export class MainCryptoManager extends CryptoManager {
@@ -97,7 +104,7 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
   public chunksUrls?: string[];
   public chunksData?: Uint8Array[];
 
-  public static deserialize(json: CollectionItemRevisionJson) {
+  public static deserialize(json: CollectionItemRevisionJsonRead) {
     const ret = new this();
     ret.chunks = json.chunks;
     ret.deleted = json.deleted;
@@ -105,6 +112,16 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
     ret.meta = (json.meta) ? sodium.from_base64(json.meta) : null;
     ret.chunksUrls = json.chunksUrls;
     ret.chunksData = json.chunksData?.map((x) => sodium.from_base64(x));
+    return ret;
+  }
+
+  public serialize() {
+    const ret: CollectionItemRevisionJsonWrite = {
+      deleted: this.deleted,
+      chunks: this.chunks,
+      hmac: this.hmac,
+      meta: (this.meta) ? sodium.to_base64(this.meta) : null,
+    };
     return ret;
   }
 
@@ -176,7 +193,7 @@ export class Collection {
     return sodium.to_base64(Buffer.from(rand)).replace('-', 'a').replace('_', 'b');
   }
 
-  public static deserialize(json: CollectionJson) {
+  public static deserialize(json: CollectionJsonRead) {
     const ret = new this();
     ret.uid = json.uid;
     ret.version = json.version;
@@ -186,6 +203,17 @@ export class Collection {
     ret.encryptionKey = sodium.from_base64(json.encryptionKey);
     ret.content = CollectionItemRevision.deserialize(json.content);
 
+    return ret;
+  }
+
+  public serialize() {
+    const ret: CollectionJsonWrite = {
+      uid: this.uid,
+      version: this.version,
+
+      encryptionKey: sodium.to_base64(this.encryptionKey),
+      content: this.content.serialize(),
+    };
     return ret;
   }
 
