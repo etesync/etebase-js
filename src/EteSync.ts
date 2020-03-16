@@ -428,7 +428,7 @@ export class CollectionManager extends BaseManager {
       body: JSON.stringify(collection.serialize()),
     };
 
-    return this.newCall([], extra);
+    return this.newCall(undefined, extra);
   }
 
   public update(collection: Collection, syncToken: string | null): Promise<{}> {
@@ -518,7 +518,7 @@ export class JournalMembersManager extends BaseManager {
       body: JSON.stringify(journalMember),
     };
 
-    return this.newCall([], extra);
+    return this.newCall(undefined, extra);
   }
 
   public delete(journalMember: JournalMemberJson): Promise<{}> {
@@ -553,7 +553,7 @@ export class UserInfoManager extends BaseManager {
       body: JSON.stringify(userInfo.serialize()),
     };
 
-    return this.newCall([], extra);
+    return this.newCall(undefined, extra);
   }
 
   public update(userInfo: UserInfo): Promise<{}> {
