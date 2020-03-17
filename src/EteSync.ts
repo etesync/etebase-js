@@ -179,33 +179,18 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
   }
 }
 
-
-export class Collection {
-  private encryptedEncryptionKey: Uint8Array;
-
-  public ctag: string | null;
-
-  private _meta: {};
+class Base<M extends {}> {
+  private _meta: M;
   private _content: ContentType;
   private _deleted: boolean;
-  private _changed: boolean;
+  private _changed = true;
 
   constructor(
     readonly uid = Collection.genUid(),
-    readonly version = Constants.CURRENT_VERSION,
-    readonly accessLevel = CollectionAccessLevel.Admin) {
-
-    this.ctag = null;
-    this._changed = false;
+    readonly version = Constants.CURRENT_VERSION) {
   }
 
-  public static genUid() {
-    const rand = sodium.randombytes_buf(24);
-    // We only want alphanumeric and we don't care about the bias
-    return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
-  }
-
-  private setMeta(meta: {}) {
+  protected setMeta(meta: M) {
     this._meta = meta;
 
     this._changed = true;
@@ -215,7 +200,7 @@ export class Collection {
     return this._meta;
   }
 
-  private setContent(content: ContentType) {
+  protected setContent(content: ContentType) {
     this._content = content;
 
     this._changed = true;
@@ -225,7 +210,7 @@ export class Collection {
     return this._content;
   }
 
-  private set deleted(deleted: boolean) {
+  protected set deleted(deleted: boolean) {
     this._deleted = deleted;
 
     this._changed = true;
@@ -239,27 +224,45 @@ export class Collection {
     return this._changed;
   }
 
-  public isFile() {
+  public isLarge() {
     return false;
   }
+}
 
-  public static create<M extends CollectionMetadata>(data: {
-    meta: M;
-    content?: ContentType;
-  }) {
-    const uid = Collection.genUid();
-    const version = Constants.CURRENT_VERSION;
-    const col = new Collection(uid, version);
+export class Collection<M extends CollectionMetadata> extends Base<M> {
+  private encryptedEncryptionKey: Uint8Array;
 
-    col.setMeta(data.meta);
-    if (data.content) {
-      col.setContent(data.content);
-    }
+  public readonly accessLevel: CollectionAccessLevel;
+  public ctag: string | null = null;
 
-    return col;
+  public static genUid() {
+    const rand = sodium.randombytes_buf(24);
+    // We only want alphanumeric and we don't care about the bias
+    return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
   }
 
-  public update<M extends CollectionMetadata>(data: {
+  constructor(
+    uid = Collection.genUid(),
+    version = Constants.CURRENT_VERSION,
+    data: {
+      meta: M;
+      content?: ContentType;
+      accessLevel?: CollectionAccessLevel.Admin;
+    }
+  ) {
+    super(uid, version);
+
+    this.accessLevel = data.accessLevel ?? CollectionAccessLevel.Admin;
+
+    this.setMeta(data.meta);
+    if (data.content) {
+      this.setContent(data.content);
+    }
+
+    return this;
+  }
+
+  public update(data: {
     meta?: M;
     content?: ContentType;
   }) {
