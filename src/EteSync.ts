@@ -217,6 +217,10 @@ export class Collection {
     return ret;
   }
 
+  // FIXME: need to have chunks here too. TBH, we need a higher level API.
+  // Need to be able to create a new CollectionItem even for an item we are editing and not just a new one we are creating.
+  // This is also not the right name. I guess we need to have the inner data (meta + maybe content) as a sort of "packet"
+  // we then encrypt and make something out of.
   public static create<M extends CollectionMetadata>(
     mainCryptoManager: MainCryptoManager, meta: M,
     collectionExtra?: {
@@ -243,6 +247,11 @@ export class Collection {
     cryptoManager: CollectionCryptoManager, data: CollectionItemRevisionContent<M>) {
 
     this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), data);
+  }
+
+  public remove(cryptoManager: CollectionCryptoManager) {
+    const meta = this.decryptMeta(cryptoManager) ?? undefined;
+    this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), { meta, deleted: true });
   }
 
   public verify(cryptoManager: CollectionCryptoManager) {
