@@ -18,6 +18,8 @@ export interface Credentials {
 
 export type CollectionType = string;
 
+export type ContentType = File | Blob | Uint8Array | string | null;
+
 export interface CollectionMetadata {
   type: CollectionType;
   name: string;
@@ -184,6 +186,10 @@ export class Collection {
   public encryptionKey: Uint8Array;
   public content: CollectionItemRevision<CollectionCryptoManager>;
 
+  protected _meta: {};
+  protected _content: ContentType;
+  protected _deleted: boolean;
+
   constructor(
     readonly uid = Collection.genUid(),
     readonly version = Constants.CURRENT_VERSION,
@@ -194,6 +200,19 @@ export class Collection {
     const rand = sodium.randombytes_buf(24);
     // We only want alphanumeric and we don't care about the bias
     return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
+  }
+
+  // FIXME: hide these functions
+  public setMeta<M extends {}>(meta: M) {
+    this._meta = meta;
+  }
+
+  public setContent(content: ContentType) {
+    this._content = content;
+  }
+
+  public setDeleted() {
+    this._deleted = true;
   }
 
   public static deserialize(json: CollectionJsonRead) {
@@ -217,41 +236,78 @@ export class Collection {
     return ret;
   }
 
-  // FIXME: need to have chunks here too. TBH, we need a higher level API.
-  // Need to be able to create a new CollectionItem even for an item we are editing and not just a new one we are creating.
-  // This is also not the right name. I guess we need to have the inner data (meta + maybe content) as a sort of "packet"
-  // we then encrypt and make something out of.
-  public static create<M extends CollectionMetadata>(
-    mainCryptoManager: MainCryptoManager, meta: M,
-    collectionExtra?: {
-      encryptionKey?: Uint8Array;
-      version?: number;
-      uid?: base62;
-    }) {
+}
 
-    const uid = collectionExtra?.uid ?? Collection.genUid();
-    const version = collectionExtra?.version ?? Constants.CURRENT_VERSION;
-    const ret = new this(uid, version);
-    const encryptionKey = collectionExtra?.encryptionKey ?? sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
-    ret.encryptionKey = mainCryptoManager.encrypt(encryptionKey);
+export class EteSync {
+  private mainEncryptionKey: Uint8Array;
+  private version: number;
 
-    const cryptoManager = ret.getCryptoManager(mainCryptoManager);
-    ret.content = CollectionItemRevision.create(cryptoManager, ret.getAdditionalMacData(), {
-      meta,
-    });
-
-    return ret;
+  private constructor(mainEncryptionKey: Uint8Array, version: number) {
+    this.mainEncryptionKey = mainEncryptionKey;
+    this.version = version;
   }
 
-  public update<M extends CollectionMetadata>(
-    cryptoManager: CollectionCryptoManager, data: CollectionItemRevisionContent<M>) {
-
-    this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), data);
+  public static login(_username: string, _password: string, _serverUrl?: string) {
+    // in reality these will be fetched:
+    const salt = sodium.randombytes_buf(32);
+    const version = 1;
+    return new this(salt, version);
   }
 
-  public remove(cryptoManager: CollectionCryptoManager) {
-    const meta = this.decryptMeta(cryptoManager) ?? undefined;
-    this.content = CollectionItemRevision.create(cryptoManager, this.getAdditionalMacData(), { meta, deleted: true });
+  public getCollectionManager() {
+    return new CollectionManager(this);
+  }
+
+  public getCryptoManager() {
+    return new MainCryptoManager(this.mainEncryptionKey, this.version);
+  }
+}
+
+export class CollectionManager {
+  private readonly etesync: EteSync;
+
+  constructor(etesync: EteSync) {
+    this.etesync = etesync;
+  }
+
+  public create<M extends CollectionMetadata>(data: {
+    meta: M;
+    content?: ContentType;
+  }) {
+    const mainCryptoManager = this.etesync.getCryptoManager();
+
+    const uid = Collection.genUid();
+    const version = Constants.CURRENT_VERSION;
+    const col = new Collection(uid, version);
+    const encryptionKey = sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
+    col.encryptionKey = mainCryptoManager.encrypt(encryptionKey);
+
+    col.setMeta(data.meta);
+    if (data.content) {
+      col.setContent(data.content);
+    }
+
+    return col;
+  }
+
+  public update<M extends CollectionMetadata>(col: Collection, data: {
+    meta?: M;
+    content?: ContentType;
+  }) {
+    if (data.meta) {
+      col.setMeta(data.meta);
+    }
+    if (data.content) {
+      col.setContent(data.content);
+    }
+
+    return col;
+  }
+
+  public remove(col: Collection) {
+    col.setDeleted();
+
+    return col;
   }
 
   public verify(cryptoManager: CollectionCryptoManager) {
@@ -262,17 +318,16 @@ export class Collection {
     return this.content.decryptMeta(cryptoManager);
   }
 
-  public getCryptoManager(parentCryptoManager: MainCryptoManager) {
-    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
+  public getCryptoManager(parentCryptoManager: MainCryptoManager, col: Collection) {
+    const encryptionKey = parentCryptoManager.decrypt(col.encryptionKey);
 
-    return new CollectionCryptoManager(encryptionKey, this.version);
+    return new CollectionCryptoManager(encryptionKey, col.version);
   }
 
-  protected getAdditionalMacData() {
-    return [sodium.from_string(this.uid)];
+  protected getAdditionalMacData(col: Collection) {
+    return [sodium.from_string(col.uid)];
   }
 }
-
 
 
 class BaseNetwork {
@@ -397,7 +452,7 @@ export class BaseManager extends BaseNetwork {
   }
 }
 
-export class CollectionManager extends BaseManager {
+export class CollectionManagerOnline extends BaseManager {
   constructor(credentials: Credentials, apiBase: string) {
     super(credentials, apiBase, ['collection']);
   }
