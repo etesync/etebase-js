@@ -181,19 +181,22 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
 
 
 export class Collection {
-  public ctag: string;
+  private encryptedEncryptionKey: Uint8Array;
 
-  public encryptionKey: Uint8Array;
-  public content: CollectionItemRevision<CollectionCryptoManager>;
+  public ctag: string | null;
 
-  protected _meta: {};
-  protected _content: ContentType;
-  protected _deleted: boolean;
+  private _meta: {};
+  private _content: ContentType;
+  private _deleted: boolean;
+  private _changed: boolean;
 
   constructor(
     readonly uid = Collection.genUid(),
     readonly version = Constants.CURRENT_VERSION,
     readonly accessLevel = CollectionAccessLevel.Admin) {
+
+    this.ctag = null;
+    this._changed = false;
   }
 
   public static genUid() {
@@ -202,24 +205,85 @@ export class Collection {
     return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
   }
 
-  // FIXME: hide these functions
-  public setMeta<M extends {}>(meta: M) {
+  private setMeta(meta: {}) {
     this._meta = meta;
+
+    this._changed = true;
   }
 
-  public setContent(content: ContentType) {
+  public getMeta(_collectionManager: CollectionManager) {
+    return this._meta;
+  }
+
+  private setContent(content: ContentType) {
     this._content = content;
+
+    this._changed = true;
   }
 
-  public setDeleted() {
-    this._deleted = true;
+  public getContent(_collectionManager: CollectionManager) {
+    return this._content;
+  }
+
+  private set deleted(deleted: boolean) {
+    this._deleted = deleted;
+
+    this._changed = true;
+  }
+
+  public isDeleted() {
+    return this._deleted;
+  }
+
+  public get changed() {
+    return this._changed;
+  }
+
+  public isFile() {
+    return false;
+  }
+
+  public static create<M extends CollectionMetadata>(data: {
+    meta: M;
+    content?: ContentType;
+  }) {
+    const uid = Collection.genUid();
+    const version = Constants.CURRENT_VERSION;
+    const col = new Collection(uid, version);
+
+    col.setMeta(data.meta);
+    if (data.content) {
+      col.setContent(data.content);
+    }
+
+    return col;
+  }
+
+  public update<M extends CollectionMetadata>(data: {
+    meta?: M;
+    content?: ContentType;
+  }) {
+    if (data.meta) {
+      this.setMeta(data.meta);
+    }
+    if (data.content) {
+      this.setContent(data.content);
+    }
+
+    return this;
+  }
+
+  public remove() {
+    this.deleted = true;
+
+    return this;
   }
 
   public static deserialize(json: CollectionJsonRead) {
     const ret = new this(json.uid, json.version, json.accessLevel);
     ret.ctag = json.ctag;
 
-    ret.encryptionKey = sodium.from_base64(json.encryptionKey);
+    ret.encryptedEncryptionKey = sodium.from_base64(json.encryptionKey);
     ret.content = CollectionItemRevision.deserialize(json.content);
 
     return ret;
@@ -230,7 +294,7 @@ export class Collection {
       uid: this.uid,
       version: this.version,
 
-      encryptionKey: sodium.to_base64(this.encryptionKey),
+      encryptionKey: sodium.to_base64(this.encryptedEncryptionKey),
       content: this.content.serialize(),
     };
     return ret;
@@ -268,46 +332,6 @@ export class CollectionManager {
 
   constructor(etesync: EteSync) {
     this.etesync = etesync;
-  }
-
-  public create<M extends CollectionMetadata>(data: {
-    meta: M;
-    content?: ContentType;
-  }) {
-    const mainCryptoManager = this.etesync.getCryptoManager();
-
-    const uid = Collection.genUid();
-    const version = Constants.CURRENT_VERSION;
-    const col = new Collection(uid, version);
-    const encryptionKey = sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
-    col.encryptionKey = mainCryptoManager.encrypt(encryptionKey);
-
-    col.setMeta(data.meta);
-    if (data.content) {
-      col.setContent(data.content);
-    }
-
-    return col;
-  }
-
-  public update<M extends CollectionMetadata>(col: Collection, data: {
-    meta?: M;
-    content?: ContentType;
-  }) {
-    if (data.meta) {
-      col.setMeta(data.meta);
-    }
-    if (data.content) {
-      col.setContent(data.content);
-    }
-
-    return col;
-  }
-
-  public remove(col: Collection) {
-    col.setDeleted();
-
-    return col;
   }
 
   public verify(cryptoManager: CollectionCryptoManager) {
