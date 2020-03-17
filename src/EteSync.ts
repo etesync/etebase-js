@@ -179,13 +179,16 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
 
 
 export class Collection {
-  public uid: base62;
-  public version: number;
-  public accessLevel: CollectionAccessLevel;
   public ctag: string;
 
   public encryptionKey: Uint8Array;
   public content: CollectionItemRevision<CollectionCryptoManager>;
+
+  constructor(
+    readonly uid = Collection.genUid(),
+    readonly version = Constants.CURRENT_VERSION,
+    readonly accessLevel = CollectionAccessLevel.Admin) {
+  }
 
   public static genUid() {
     const rand = sodium.randombytes_buf(24);
@@ -194,10 +197,7 @@ export class Collection {
   }
 
   public static deserialize(json: CollectionJsonRead) {
-    const ret = new this();
-    ret.uid = json.uid;
-    ret.version = json.version;
-    ret.accessLevel = json.accessLevel;
+    const ret = new this(json.uid, json.version, json.accessLevel);
     ret.ctag = json.ctag;
 
     ret.encryptionKey = sodium.from_base64(json.encryptionKey);
@@ -229,9 +229,9 @@ export class Collection {
       uid?: base62;
     }) {
 
-    const ret = new this();
-    ret.uid = collectionExtra?.uid ?? Collection.genUid();
-    ret.version = collectionExtra?.version ?? Constants.CURRENT_VERSION;
+    const uid = collectionExtra?.uid ?? Collection.genUid();
+    const version = collectionExtra?.version ?? Constants.CURRENT_VERSION;
+    const ret = new this(uid, version);
     const encryptionKey = collectionExtra?.encryptionKey ?? sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
     ret.encryptionKey = mainCryptoManager.encrypt(encryptionKey);
 
