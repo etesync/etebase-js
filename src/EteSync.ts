@@ -26,11 +26,11 @@ export interface CollectionMetadata {
 }
 
 export interface CollectionItemRevisionJsonWrite {
+  uid: base64url;
   meta: base64url | null;
 
   chunks: base64url[];
   deleted: boolean;
-  hmac: base64url;
 
   chunksData?: base64url[];
 }
@@ -97,18 +97,18 @@ export interface CollectionItemRevisionContent<M extends {}> {
 }
 
 export class CollectionItemRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
+  public uid: base64url;
   public chunks: base64url[];
   public deleted: boolean;
-  public hmac: base64url;
   public meta: Uint8Array | null;
   public chunksUrls?: string[];
   public chunksData?: Uint8Array[];
 
   public static deserialize(json: CollectionItemRevisionJsonRead) {
     const ret = new this();
+    ret.uid = json.uid;
     ret.chunks = json.chunks;
     ret.deleted = json.deleted;
-    ret.hmac = json.hmac;
     ret.meta = (json.meta) ? sodium.from_base64(json.meta) : null;
     ret.chunksUrls = json.chunksUrls;
     ret.chunksData = json.chunksData?.map((x) => sodium.from_base64(x));
@@ -119,7 +119,7 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
     const ret: CollectionItemRevisionJsonWrite = {
       deleted: this.deleted,
       chunks: this.chunks,
-      hmac: this.hmac,
+      uid: this.uid,
       meta: (this.meta) ? sodium.to_base64(this.meta) : null,
     };
     return ret;
@@ -135,19 +135,19 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
     ret.meta = (content.meta) ?
       cryptoManager.encrypt(sodium.from_string(JSON.stringify(content.meta))) :
       null;
-    ret.hmac = sodium.to_base64(ret.calculateMac(cryptoManager, additionalDataMac));
+    ret.uid = sodium.to_base64(ret.calculateMac(cryptoManager, additionalDataMac));
     return ret;
   }
 
   public verify(cryptoManager: CM, additionalData: Uint8Array[] = []) {
     const calculatedMac = this.calculateMac(cryptoManager, additionalData);
     if (sodium.memcmp(
-      sodium.from_base64(this.hmac),
+      sodium.from_base64(this.uid),
       calculatedMac
     )) {
       return true;
     } else {
-      throw new IntegrityError(`mac verification failed. Expected: ${this.hmac} got: ${sodium.to_base64(calculatedMac)}`);
+      throw new IntegrityError(`mac verification failed. Expected: ${this.uid} got: ${sodium.to_base64(calculatedMac)}`);
     }
   }
 
