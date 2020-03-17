@@ -193,7 +193,7 @@ export class Collection {
   public static genUid() {
     const rand = sodium.randombytes_buf(24);
     // We only want alphanumeric and we don't care about the bias
-    return sodium.to_base64(Buffer.from(rand)).replace('-', 'a').replace('_', 'b');
+    return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
   }
 
   public static deserialize(json: CollectionJsonRead) {
