@@ -29,7 +29,7 @@ export interface CollectionMetadata {
 
 export interface CollectionItemRevisionJsonWrite {
   uid: base64url;
-  meta: base64url | null;
+  meta: base64url;
 
   chunks: base64url[];
   deleted: boolean;
@@ -180,34 +180,57 @@ export class CollectionItemRevision<CM extends CollectionCryptoManager | Collect
 }
 
 class Base<M extends {}> {
-  private _meta: M;
-  private _content: ContentType;
+  protected encryptedEncryptionKey: Uint8Array;
+
+  private _localContent: {
+    meta?: M;
+    content?: ContentType;
+  };
+  protected _remoteContent: {
+    meta?: base64url;
+    chunks?: base64url[];
+    chunksUrls?: string[];
+    chunksData?: Uint8Array[];
+  };
+  protected remoteUid: base64url | null = null;
   private _deleted: boolean;
   private _changed = true;
 
   constructor(
-    readonly uid = Collection.genUid(),
-    readonly version = Constants.CURRENT_VERSION) {
+    readonly uid: base62,
+    readonly version = Constants.CURRENT_VERSION,
+    data: {
+      meta?: M;
+      content?: ContentType;
+      accessLevel?: CollectionAccessLevel;
+    }
+  ) {
+
+    this.update(data);
   }
 
   protected setMeta(meta: M) {
-    this._meta = meta;
+    this._localContent.meta = meta;
+    this._remoteContent.meta = undefined;
 
     this._changed = true;
   }
 
   public getMeta(_collectionManager: CollectionManager) {
-    return this._meta;
+    return this._localContent.meta;
   }
 
   protected setContent(content: ContentType) {
-    this._content = content;
+    this._localContent.content = content;
+    this._remoteContent.chunks = undefined;
+    this._remoteContent.chunksUrls = undefined;
+    this._remoteContent.chunksData = undefined;
 
     this._changed = true;
   }
 
   public getContent(_collectionManager: CollectionManager) {
-    return this._content;
+    return this._localContent.content;
   }
 
   protected set deleted(deleted: boolean) {
@@ -226,40 +249,6 @@ class Base<M extends {}> {
 
   public isLarge() {
     return false;
-  }
-}
-
-export class Collection<M extends CollectionMetadata> extends Base<M> {
-  private encryptedEncryptionKey: Uint8Array;
-
-  public readonly accessLevel: CollectionAccessLevel;
-  public ctag: string | null = null;
-
-  public static genUid() {
-    const rand = sodium.randombytes_buf(24);
-    // We only want alphanumeric and we don't care about the bias
-    return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
-  }
-
-  constructor(
-    uid = Collection.genUid(),
-    version = Constants.CURRENT_VERSION,
-    data: {
-      meta: M;
-      content?: ContentType;
-      accessLevel?: CollectionAccessLevel.Admin;
-    }
-  ) {
-    super(uid, version);
-
-    this.accessLevel = data.accessLevel ?? CollectionAccessLevel.Admin;
-
-    this.setMeta(data.meta);
-    if (data.content) {
-      this.setContent(data.content);
-    }
-
-    return this;
   }
 
   public update(data: {
@@ -282,17 +271,56 @@ export class Collection<M extends CollectionMetadata> extends Base<M> {
     return this;
   }
 
-  public static deserialize(json: CollectionJsonRead) {
-    const ret = new this(json.uid, json.version, json.accessLevel);
-    ret.ctag = json.ctag;
+  protected deserializeInner(json: CollectionJsonRead) {
+    this.encryptedEncryptionKey = sodium.from_base64(json.encryptionKey);
 
-    ret.encryptedEncryptionKey = sodium.from_base64(json.encryptionKey);
-    ret.content = CollectionItemRevision.deserialize(json.content);
+    this.deleted = json.content.deleted;
+    this.remoteUid = json.content.uid;
+    this._remoteContent = {
+      meta: json.content.meta,
+      chunks: json.content.chunks,
+      chunksData: json.content.chunksData?.map((data) => sodium.from_base64(data)),
+      chunksUrls: json.content.chunksUrls,
+    };
+  }
+}
+
+export class Collection<M extends CollectionMetadata> extends Base<M> {
+  public readonly accessLevel: CollectionAccessLevel;
+  public ctag: string | null = null;
+
+  public static genUid() {
+    const rand = sodium.randombytes_buf(24);
+    // We only want alphanumeric and we don't care about the bias
+    return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
+  }
+
+  constructor(
+    uid = Collection.genUid(),
+    version = Constants.CURRENT_VERSION,
+    data: {
+      meta?: M;
+      content?: ContentType;
+      accessLevel?: CollectionAccessLevel;
+    }
+  ) {
+    super(uid, version, data);
+
+    this.accessLevel = data.accessLevel ?? CollectionAccessLevel.Admin;
+  }
+
+  public static deserialize(json: CollectionJsonRead) {
+    const ret = new this(json.uid, json.version, {
+      accessLevel: json.accessLevel,
+    });
+    ret.deserializeInner(json);
+
+    ret.ctag = json.ctag;
 
     return ret;
   }
 
-  public serialize() {
+  public serialize(collectionManager: CollectionManager) {
     const ret: CollectionJsonWrite = {
       uid: this.uid,
       version: this.version,
@@ -345,8 +373,8 @@ export class CollectionManager {
     return this.content.decryptMeta(cryptoManager);
   }
 
-  public getCryptoManager(parentCryptoManager: MainCryptoManager, col: Collection) {
-    const encryptionKey = parentCryptoManager.decrypt(col.encryptionKey);
+  public getCryptoManager(parentCryptoManager: MainCryptoManager, col: Collection<any>) {
+    const encryptionKey = parentCryptoManager.decrypt(col.encryptedEncryptionKey);
 
     return new CollectionCryptoManager(encryptionKey, col.version);
   }
