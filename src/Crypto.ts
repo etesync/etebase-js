@@ -5,7 +5,7 @@ import * as Constants from './Constants';
 export const sodium = _sodium;
 export const ready = _sodium.ready;
 
-function concatArrayBuffers(buffer1: Uint8Array, buffer2: Uint8Array): Uint8Array {
+export function concatArrayBuffers(buffer1: Uint8Array, buffer2: Uint8Array): Uint8Array {
   const ret = new Uint8Array(buffer1.length + buffer2.length);
   ret.set(buffer1, 0);
   ret.set(buffer2, buffer1.length);

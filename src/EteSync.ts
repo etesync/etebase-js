@@ -2,7 +2,7 @@ import URI from 'urijs';
 
 import * as Constants from './Constants';
 
-import { CryptoManager, sodium } from './Crypto';
+import { CryptoManager, sodium, concatArrayBuffers } from './Crypto';
 export { deriveKey, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
@@ -98,51 +98,40 @@ export interface CollectionItemRevisionContent<M extends {}> {
   deleted?: boolean;
 }
 
-export class CollectionItemRevisionBla<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
-  public uid: base64url;
-  public chunks: base64url[];
-  public deleted: boolean;
-  public meta: Uint8Array | null;
-  public chunksUrls?: string[];
-  public chunksData?: Uint8Array[];
+class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
+  public readonly uid: base64url;
+  public readonly meta: Uint8Array;
+  public readonly deleted: boolean;
 
-  public static deserialize(json: CollectionItemRevisionJsonRead) {
-    const ret = new this();
-    ret.uid = json.uid;
-    ret.chunks = json.chunks;
-    ret.deleted = json.deleted;
-    ret.meta = (json.meta) ? sodium.from_base64(json.meta) : null;
-    ret.chunksUrls = json.chunksUrls;
-    ret.chunksData = json.chunksData?.map((x) => sodium.from_base64(x));
-    return ret;
+  public readonly chunks: base64url[];
+  public readonly chunksData?: Uint8Array[];
+  public readonly chunksUrls?: string[];
+
+  constructor(json: CollectionItemRevisionJsonRead) {
+    const { uid, meta, chunks, deleted, chunksData, chunksUrls } = json;
+    this.uid = uid;
+    this.meta = sodium.from_base64(meta);
+    this.deleted = deleted; // FIXME: this should also be part of the meta additional data too. Probably can remove from the major verification everything that's verified by meta.
+    this.chunks = chunks;
+    this.chunksData = chunksData?.map((x) => sodium.from_base64(x));
+    this.chunksUrls = chunksUrls;
   }
 
   public serialize() {
     const ret: CollectionItemRevisionJsonWrite = {
-      deleted: this.deleted,
-      chunks: this.chunks,
       uid: this.uid,
-      meta: (this.meta) ? sodium.to_base64(this.meta) : null,
+      meta: sodium.to_base64(this.meta),
+      deleted: this.deleted,
+
+      chunks: this.chunks,
+      chunksData: this.chunksData?.map((x) => sodium.to_base64(x)),
     };
+
     return ret;
   }
 
-  public static create<M extends {}, CM extends CollectionCryptoManager | CollectionItemCryptoManager>(
-    cryptoManager: CM, additionalDataMac: Uint8Array[] = [],
-    content: CollectionItemRevisionContent<M>) {
-
-    const ret = new this();
-    ret.chunks = content?.chunks ?? [];
-    ret.deleted = content?.deleted ?? false;
-    ret.meta = (content.meta) ?
-      cryptoManager.encrypt(sodium.from_string(JSON.stringify(content.meta))) :
-      null;
-    ret.uid = sodium.to_base64(ret.calculateMac(cryptoManager, additionalDataMac));
-    return ret;
-  }
-
-  public verify(cryptoManager: CM, additionalData: Uint8Array[] = []) {
-    const calculatedMac = this.calculateMac(cryptoManager, additionalData);
+  public async verify(cryptoManager: CM, additionalData: Uint8Array[] = []) {
+    const calculatedMac = await this.calculateMac(cryptoManager, additionalData);
     if (sodium.memcmp(
       sodium.from_base64(this.uid),
       calculatedMac
@@ -153,16 +142,13 @@ export class CollectionItemRevisionBla<CM extends CollectionCryptoManager | Coll
     }
   }
 
-  public calculateMac(cryptoManager: CM, additionalData: Uint8Array[] = []) {
+  public async calculateMac(cryptoManager: CM, additionalData: Uint8Array[] = []) {
     const cryptoMac = cryptoManager.getCryptoMac();
     cryptoMac.update(Uint8Array.from([(this.deleted) ? 1 : 0]));
     this.chunks.forEach((chunk) =>
       cryptoMac.update(sodium.from_base64(chunk))
     );
-    if (this.meta) {
-      // the tag is appended to the message
-      cryptoMac.update(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
-    }
+    cryptoMac.update(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
     additionalData.forEach((data) =>
       cryptoMac.update(data)
     );
@@ -170,131 +156,71 @@ export class CollectionItemRevisionBla<CM extends CollectionCryptoManager | Coll
     return cryptoMac.finalize();
   }
 
-  public decryptMeta(cryptoManager: CM): any | null {
-    if (this.meta) {
-      return JSON.parse(sodium.to_string(cryptoManager.decrypt(this.meta)));
-    } else {
-      return null;
-    }
+  public async decryptMeta(cryptoManager: CM, additionalData: Uint8Array[]): Promise<any> {
+    const additionalDataMerged = additionalData.reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array());
+    return JSON.parse(sodium.to_string(cryptoManager.decrypt(this.meta, additionalDataMerged)));
+  }
+
+  public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
+    return this.chunksData?.map((x) => cryptoManager.decrypt(x))
+      .reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array()) ?? new Uint8Array(0);
   }
 }
 
-class CollectionItemRevision<M extends {}> {
-  public deleted = false;
-
-  private _decrypted: {
-    meta?: M;
-    content?: ContentType;
-  } = {};
-  private _changed = {
-    meta: false,
-    content: false,
-  };
-
-  constructor(
-    data: {
-      meta?: M;
-      content?: ContentType;
-    }
-  ) {
-
-    if (data.meta) {
-      this.setMeta(data.meta);
-    }
-    if (data.content) {
-      this.setContent(data.content);
-    }
-  }
-
-  protected setMeta(meta: M) {
-    this._decrypted.meta = meta;
-
-    this._changed.meta = true;
-  }
-
-  public getMeta(_collectionManager: CollectionManager) {
-    return this._decrypted.meta;
-  }
-
-  protected setContent(content: ContentType) {
-    this._decrypted.content = content;
-
-    this._changed.content = true;
-  }
-
-  public getContent(_collectionManager: CollectionManager) {
-    return this._decrypted.content;
-  }
-
-  public get changed(): boolean {
-    return this._changed.content || this._changed.meta;
-  }
-
-  public set changed(changed: boolean) {
-    this._changed.content = changed;
-    this._changed.meta = changed;
-  }
-
-  public remove() {
-    this.deleted = true;
-
-    return this;
-  }
-}
-
-export class Collection<M extends CollectionMetadata> {
-  protected encryptedEncryptionKey: Uint8Array;
+export class EncryptedCollection {
+  public readonly uid: base62;
+  public readonly version: number;
+  private readonly encryptionKey: Uint8Array;
+  private readonly content: EncryptedRevision<CollectionCryptoManager>;
 
   public readonly accessLevel: CollectionAccessLevel;
-  public ctag: string | null = null;
+  public readonly ctag: string | null;
 
-  private content: CollectionItemRevision<M>;
-  private remoteContent: CollectionItemRevisionJsonRead; // This is how we got it when we deserailezd so we can hold data needed for comparison of content
+  constructor(json: CollectionJsonRead) {
+    const { uid, ctag, version, accessLevel, encryptionKey, content } = json;
+    this.uid = uid;
+    this.version = version;
+    this.encryptionKey = sodium.from_base64(encryptionKey);
 
-  constructor(
-    readonly uid = Collection.genUid(),
-    readonly version = Constants.CURRENT_VERSION,
-    data: {
-      meta?: M;
-      content?: ContentType;
-      accessLevel?: CollectionAccessLevel;
-    }
-  ) {
-    this.accessLevel = data.accessLevel ?? CollectionAccessLevel.Admin;
+    this.accessLevel = accessLevel;
+    this.ctag = ctag;
 
-    this.content = new CollectionItemRevision(data);
+    this.content = new EncryptedRevision(content);
   }
 
-  public static genUid() {
-    const rand = sodium.randombytes_buf(24);
-    // We only want alphanumeric and we don't care about the bias
-    return sodium.to_base64(rand).replace('-', 'a').replace('_', 'b');
-  }
-
-  public static deserialize(json: CollectionJsonRead) {
-    const ret = new this(json.uid, json.version, {
-      accessLevel: json.accessLevel,
-    });
-    ret.content.deserializeInner(json);
-    ret.encryptedEncryptionKey = sodium.from_base64(json.encryptionKey);
-
-
-    ret.ctag = json.ctag;
-
-    return ret;
-  }
-
-  public serialize(collectionManager: CollectionManager) {
+  public serialize() {
     const ret: CollectionJsonWrite = {
       uid: this.uid,
       version: this.version,
+      encryptionKey: sodium.to_base64(this.encryptionKey),
 
-      encryptionKey: sodium.to_base64(this.encryptedEncryptionKey),
       content: this.content.serialize(),
     };
+
     return ret;
   }
 
+  public async verify(cryptoManager: CollectionCryptoManager) {
+    return this.content.verify(cryptoManager, this.getAdditionalMacData());
+  }
+
+  public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
+    return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
+  }
+
+  public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
+    return this.content.decryptContent(cryptoManager);
+  }
+
+  public getCryptoManager(parentCryptoManager: MainCryptoManager) {
+    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
+
+    return new CollectionCryptoManager(encryptionKey, this.version);
+  }
+
+  protected getAdditionalMacData() {
+    return [sodium.from_string(this.uid)];
+  }
 }
 
 export class EteSync {
@@ -329,22 +255,19 @@ export class CollectionManager {
     this.etesync = etesync;
   }
 
-  public verify(cryptoManager: CollectionCryptoManager) {
-    return this.content.verify(cryptoManager, this.getAdditionalMacData());
+  public async verify(col: EncryptedCollection) {
+    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
+    return col.verify(cryptoManager);
   }
 
-  public decryptMeta(cryptoManager: CollectionCryptoManager): CollectionMetadata | null {
-    return this.content.decryptMeta(cryptoManager);
+  public async decryptMeta(col: EncryptedCollection): Promise<CollectionMetadata> {
+    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
+    return col.decryptMeta(cryptoManager);
   }
 
-  public getCryptoManager(parentCryptoManager: MainCryptoManager, col: Collection<any>) {
-    const encryptionKey = parentCryptoManager.decrypt(col.encryptedEncryptionKey);
-
-    return new CollectionCryptoManager(encryptionKey, col.version);
-  }
-
-  protected getAdditionalMacData(col: Collection) {
-    return [sodium.from_string(col.uid)];
+  public async decryptContent(col: EncryptedCollection): Promise<Uint8Array> {
+    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
+    return col.decryptContent(cryptoManager);
   }
 }
 
@@ -476,10 +399,10 @@ export class CollectionManagerOnline extends BaseManager {
     super(credentials, apiBase, ['collection']);
   }
 
-  public fetch(colUid: string, syncToken: string | null): Promise<Collection> {
+  public fetch(colUid: string, syncToken: string | null): Promise<EncryptedCollection> {
     return new Promise((resolve, reject) => {
       this.newCall<CollectionJsonRead>([colUid]).then((json) => {
-        const collection = Collection.deserialize(json);
+        const collection = new EncryptedCollection(json);
         resolve(collection);
       }).catch((error: Error) => {
         reject(error);
@@ -487,7 +410,7 @@ export class CollectionManagerOnline extends BaseManager {
     });
   }
 
-  public list(syncToken: string | null, limit = 0): Promise<Collection[]> {
+  public list(syncToken: string | null, limit = 0): Promise<EncryptedCollection[]> {
     const apiBase = this.apiBase.clone().search({
       syncToken: (syncToken !== null) ? syncToken : undefined,
       limit: (limit > 0) ? limit : undefined,
@@ -496,7 +419,7 @@ export class CollectionManagerOnline extends BaseManager {
     return new Promise((resolve, reject) => {
       this.newCall<CollectionJsonRead[]>(undefined, undefined, apiBase).then((json) => {
         resolve(json.map((val) => {
-          const collection = Collection.deserialize(val);
+          const collection = new EncryptedCollection(val);
           return collection;
         }));
       }).catch((error: Error) => {
@@ -505,7 +428,7 @@ export class CollectionManagerOnline extends BaseManager {
     });
   }
 
-  public create(collection: Collection): Promise<{}> {
+  public create(collection: EncryptedCollection): Promise<{}> {
     const extra = {
       method: 'post',
       body: JSON.stringify(collection.serialize()),
@@ -514,145 +437,20 @@ export class CollectionManagerOnline extends BaseManager {
     return this.newCall(undefined, extra);
   }
 
-  public update(collection: Collection, syncToken: string | null): Promise<{}> {
+  public update(collection: EncryptedCollection, syncToken: string | null): Promise<{}> {
     const extra = {
       method: 'put',
       body: JSON.stringify(collection.serialize()),
     };
 
-    return this.newCall<Collection>([collection.uid], extra);
+    return this.newCall([collection.uid], extra);
   }
 
-  public delete(collection: Collection, syncToken: string | null): Promise<{}> {
+  public delete(collection: EncryptedCollection, syncToken: string | null): Promise<{}> {
     const extra = {
       method: 'delete',
     };
 
     return this.newCall([collection.uid], extra);
-  }
-}
-
-export class EntryManager extends BaseManager {
-  constructor(credentials: Credentials, apiBase: string, journalId: string) {
-    super(credentials, apiBase, ['journals', journalId, 'entries']);
-  }
-
-  public list(lastUid: string | null, limit = 0): Promise<Entry[]> {
-    let apiBase = this.apiBase.clone();
-    apiBase = apiBase.search({
-      last: (lastUid !== null) ? lastUid : undefined,
-      limit: (limit > 0) ? limit : undefined,
-    });
-
-    return new Promise((resolve, reject) => {
-      this.newCall<EntryJson[]>(undefined, undefined, apiBase).then((json) => {
-        resolve(json.map((val) => {
-          const entry = new Entry();
-          entry.deserialize(val);
-          return entry;
-        }));
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
-  }
-
-  public create(entries: Entry[], lastUid: string | null): Promise<{}> {
-    let apiBase = this.apiBase.clone();
-    apiBase = apiBase.search({
-      last: (lastUid !== null) ? lastUid : undefined,
-    });
-
-    const extra = {
-      method: 'post',
-      body: JSON.stringify(entries.map((x) => x.serialize())),
-    };
-
-    return this.newCall(undefined, extra, apiBase);
-  }
-}
-
-export interface JournalMemberJson {
-  user: string;
-  key: base64url;
-  readOnly?: boolean;
-}
-
-export class JournalMembersManager extends BaseManager {
-  constructor(credentials: Credentials, apiBase: string, journalId: string) {
-    super(credentials, apiBase, ['journals', journalId, 'members']);
-  }
-
-  public list(): Promise<JournalMemberJson[]> {
-    return new Promise((resolve, reject) => {
-      this.newCall<JournalMemberJson[]>().then((json) => {
-        resolve(json.map((val) => {
-          return val;
-        }));
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
-  }
-
-  public create(journalMember: JournalMemberJson): Promise<{}> {
-    const extra = {
-      method: 'post',
-      body: JSON.stringify(journalMember),
-    };
-
-    return this.newCall(undefined, extra);
-  }
-
-  public delete(journalMember: JournalMemberJson): Promise<{}> {
-    const extra = {
-      method: 'delete',
-    };
-
-    return this.newCall([journalMember.user], extra);
-  }
-}
-
-export class UserInfoManager extends BaseManager {
-  constructor(credentials: Credentials, apiBase: string) {
-    super(credentials, apiBase, ['user']);
-  }
-
-  public fetch(owner: string): Promise<UserInfo> {
-    return new Promise((resolve, reject) => {
-      this.newCall<UserInfoJson>([owner]).then((json) => {
-        const userInfo = new UserInfo(owner, json.version);
-        userInfo.deserialize(json);
-        resolve(userInfo);
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
-  }
-
-  public create(userInfo: UserInfo): Promise<{}> {
-    const extra = {
-      method: 'post',
-      body: JSON.stringify(userInfo.serialize()),
-    };
-
-    return this.newCall(undefined, extra);
-  }
-
-  public update(userInfo: UserInfo): Promise<{}> {
-    const extra = {
-      method: 'put',
-      body: JSON.stringify(userInfo.serialize()),
-    };
-
-    return this.newCall([userInfo.owner], extra);
-  }
-
-  public delete(userInfo: UserInfo): Promise<{}> {
-    const extra = {
-      method: 'delete',
-    };
-
-    return this.newCall([userInfo.owner], extra);
   }
 }
