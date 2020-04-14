@@ -278,6 +278,7 @@ export class EncryptedCollection {
 export class Account {
   private mainEncryptionKey: Uint8Array;
   private version: number;
+  public serverUrl: string;
   public authToken: string | null;
 
   private constructor(mainEncryptionKey: Uint8Array, version: number) {
@@ -287,7 +288,8 @@ export class Account {
   }
 
   public static async login(username: string, password: string, serverUrl?: string) {
-    const authenticator = new Authenticator(serverUrl ?? Constants.SERVER_URL);
+    serverUrl = serverUrl ?? Constants.SERVER_URL;
+    const authenticator = new Authenticator(serverUrl);
 
     // in reality these will be fetched:
     const salt = sodium.randombytes_buf(32);
@@ -296,7 +298,8 @@ export class Account {
 
     // FIXME: in reality, password would be derived from the encryption key
     const authToken = await authenticator.getAuthToken(username, password);
-    ret.authToken = authToken
+    ret.authToken = authToken;
+    ret.serverUrl = serverUrl;
 
     return ret;
   }
@@ -449,11 +452,10 @@ export class Authenticator extends BaseNetwork {
 }
 
 export class BaseManager extends BaseNetwork {
-  protected credentials: Credentials;
+  protected etesync: Account;
 
-  constructor(credentials: Credentials, apiBase: string, segments: string[]) {
-    super(apiBase);
-    this.credentials = credentials;
+  constructor(etesync: Account, segments: string[]) {
+    super(etesync.serverUrl);
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v2'].concat(segments));
   }
 
@@ -462,7 +464,7 @@ export class BaseManager extends BaseNetwork {
       ...extra,
       headers: {
         'Content-Type': 'application/json;charset=UTF-8',
-        'Authorization': 'Token ' + this.credentials.authToken,
+        'Authorization': 'Token ' + this.etesync.authToken,
         ...extra.headers,
       },
     };
@@ -472,8 +474,8 @@ export class BaseManager extends BaseNetwork {
 }
 
 export class CollectionManagerOnline extends BaseManager {
-  constructor(credentials: Credentials, apiBase: string) {
-    super(credentials, apiBase, ['collection']);
+  constructor(etesync: Account) {
+    super(etesync, ['collection']);
   }
 
   public fetch(colUid: string, syncToken: string | null): Promise<EncryptedCollection> {
