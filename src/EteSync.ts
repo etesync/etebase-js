@@ -275,7 +275,7 @@ export class EncryptedCollection {
   }
 }
 
-export class EteSync {
+export class Account {
   private mainEncryptionKey: Uint8Array;
   private version: number;
   public authToken: string | null;
@@ -317,9 +317,9 @@ export class EteSync {
 }
 
 export class CollectionManager {
-  private readonly etesync: EteSync;
+  private readonly etesync: Account;
 
-  constructor(etesync: EteSync) {
+  constructor(etesync: Account) {
     this.etesync = etesync;
   }
 

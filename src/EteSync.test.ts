@@ -6,7 +6,7 @@ import { USER, PASSWORD } from './TestConstants';
 
 const testApiBase = 'http://localhost:12345';
 
-let etesync: EteSync.EteSync;
+let etesync: EteSync.Account;
 
 async function verifyCollection(collectionManager: EteSync.CollectionManager, col: EteSync.EncryptedCollection, meta: EteSync.CollectionMetadata, content: Uint8Array) {
   collectionManager.verify(col);
@@ -18,7 +18,7 @@ async function verifyCollection(collectionManager: EteSync.CollectionManager, co
 
 beforeEach(async () => {
   await EteSync.ready;
-  etesync = await EteSync.EteSync.login(USER, PASSWORD, testApiBase);
+  etesync = await EteSync.Account.login(USER, PASSWORD, testApiBase);
 
   await fetch(testApiBase + '/reset/', {
     method: 'post',
