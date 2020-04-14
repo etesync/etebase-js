@@ -31,6 +31,8 @@ export class CryptoManager {
   protected macKey: Uint8Array;
 
   constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
+    keyContext = keyContext.padEnd(8);
+
     this.version = version;
 
     this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
