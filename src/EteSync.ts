@@ -162,7 +162,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
   }
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
-    return this.chunksData?.map((x) => cryptoManager.decrypt(x))
+    return this.chunksData?.map((x, i) => cryptoManager.decryptDetached(x, sodium.from_base64(this.chunks[i])))
       .reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array()) ?? new Uint8Array(0);
   }
 }

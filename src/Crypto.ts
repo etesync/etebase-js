@@ -50,6 +50,19 @@ export class CryptoManager {
     return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, additionalData, nonce, this.cipherKey);
   }
 
+  public encryptDetached(message: Uint8Array, additionalData: Uint8Array | null = null): [Uint8Array, Uint8Array] {
+    const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+    const ret = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt_detached(message, additionalData, null, nonce, this.cipherKey);
+    return [ret.mac, concatArrayBuffers(nonce, ret.ciphertext)];
+  }
+
+  public decryptDetached(nonceCiphertext: Uint8Array, mac: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
+    const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
+    const nonce = nonceCiphertext.subarray(0, nonceSize);
+    const ciphertext = nonceCiphertext.subarray(nonceSize);
+    return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(null, ciphertext, mac, additionalData, nonce, this.cipherKey);
+  }
+
   public getCryptoMac() {
     return new CryptoMac(this.hmacKey);
   }
