@@ -278,10 +278,12 @@ export class EncryptedCollection {
 export class EteSync {
   private mainEncryptionKey: Uint8Array;
   private version: number;
+  public authToken: string;
 
   private constructor(mainEncryptionKey: Uint8Array, version: number) {
     this.mainEncryptionKey = mainEncryptionKey;
     this.version = version;
+    this.authToken = 'someToken';
   }
 
   public static login(_username: string, _password: string, _serverUrl?: string) {
@@ -289,6 +291,12 @@ export class EteSync {
     const salt = sodium.randombytes_buf(32);
     const version = 1;
     return new this(salt, version);
+  }
+
+  public logout() {
+    this.version = -1;
+    this.mainEncryptionKey = new Uint8Array();
+    this.authToken = '';
   }
 
   public getCollectionManager() {
@@ -305,6 +313,15 @@ export class CollectionManager {
 
   constructor(etesync: EteSync) {
     this.etesync = etesync;
+  }
+
+  public async create(meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
+    return EncryptedCollection.create(this.etesync.getCryptoManager(), meta, content);
+  }
+
+  public async update(col: EncryptedCollection, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
+    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
+    return col.update(cryptoManager, meta, content);
   }
 
   public async verify(col: EncryptedCollection) {
