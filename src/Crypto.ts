@@ -28,13 +28,13 @@ export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
 export class CryptoManager {
   protected version: number;
   protected cipherKey: Uint8Array;
-  protected hmacKey: Uint8Array;
+  protected macKey: Uint8Array;
 
   constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
     this.version = version;
 
     this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
-    this.hmacKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
+    this.macKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
   }
 
   public encrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
@@ -64,7 +64,7 @@ export class CryptoManager {
   }
 
   public getCryptoMac() {
-    return new CryptoMac(this.hmacKey);
+    return new CryptoMac(this.macKey);
   }
 }
 
