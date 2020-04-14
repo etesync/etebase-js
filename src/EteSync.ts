@@ -278,25 +278,33 @@ export class EncryptedCollection {
 export class EteSync {
   private mainEncryptionKey: Uint8Array;
   private version: number;
-  public authToken: string;
+  public authToken: string | null;
 
   private constructor(mainEncryptionKey: Uint8Array, version: number) {
     this.mainEncryptionKey = mainEncryptionKey;
     this.version = version;
-    this.authToken = 'someToken';
+    this.authToken = null;
   }
 
-  public static login(_username: string, _password: string, _serverUrl?: string) {
+  public static async login(username: string, password: string, serverUrl?: string) {
+    const authenticator = new Authenticator(serverUrl ?? Constants.SERVER_URL);
+
     // in reality these will be fetched:
     const salt = sodium.randombytes_buf(32);
     const version = 1;
-    return new this(salt, version);
+    const ret = new this(salt, version);
+
+    // FIXME: in reality, password would be derived from the encryption key
+    const authToken = await authenticator.getAuthToken(username, password);
+    ret.authToken = authToken
+
+    return ret;
   }
 
   public logout() {
     this.version = -1;
     this.mainEncryptionKey = new Uint8Array();
-    this.authToken = '';
+    this.authToken = null;
   }
 
   public getCollectionManager() {

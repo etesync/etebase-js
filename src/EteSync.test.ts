@@ -18,13 +18,11 @@ async function verifyCollection(collectionManager: EteSync.CollectionManager, co
 
 beforeEach(async () => {
   await EteSync.ready;
-  etesync = EteSync.EteSync.login(USER, PASSWORD, testApiBase);
+  etesync = await EteSync.EteSync.login(USER, PASSWORD, testApiBase);
 
-  return;
-  // FIXME: add this back once we actually test the server
   await fetch(testApiBase + '/reset/', {
     method: 'post',
-    headers: { Authorization: 'Token ' + etesync.authToken },
+    headers: { Authorization: 'Token ' + etesync.authToken! },
   });
 });
 
