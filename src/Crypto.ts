@@ -13,7 +13,7 @@ export function concatArrayBuffers(buffer1: Uint8Array, buffer2: Uint8Array): Ui
 }
 
 export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
-  // XXX should probably move to scrypt or at least change parameters.
+  // XXX should probably move to scrypt or at least change parameters. - we need it fast in JS most likely
 
   return sodium.crypto_pwhash(
     32,
