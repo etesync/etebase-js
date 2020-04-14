@@ -99,22 +99,44 @@ export interface CollectionItemRevisionContent<M extends {}> {
 }
 
 class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
-  public readonly uid: base64url;
-  public readonly meta: Uint8Array;
-  public readonly deleted: boolean;
+  public uid: base64url;
+  public meta: Uint8Array;
+  public deleted: boolean;
 
-  public readonly chunks: base64url[];
-  public readonly chunksData?: Uint8Array[];
-  public readonly chunksUrls?: string[];
+  public chunks: base64url[];
+  public chunksData?: Uint8Array[];
+  public chunksUrls?: string[];
 
-  constructor(json: CollectionItemRevisionJsonRead) {
+  constructor() {
+    this.deleted = false;
+  }
+
+  public static async create<CM extends CollectionCryptoManager | CollectionItemCryptoManager>(cryptoManager: CM, additionalData: Uint8Array[] = [], meta: any, content: Uint8Array): Promise<EncryptedRevision<CM>> {
+    const ret = new EncryptedRevision<CM>();
+    const additionalDataMerged = additionalData.reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array());
+    ret.meta = cryptoManager.encrypt(sodium.from_string(JSON.stringify(meta)), additionalDataMerged);
+    // FIXME: need to actually chunkify
+    const encContent = cryptoManager.encryptDetached(content);
+    ret.chunks = [sodium.to_base64(encContent[0])];
+    ret.chunksData = [encContent[1]];
+
+    const mac = await ret.calculateMac(cryptoManager, additionalData);
+    ret.uid = sodium.to_base64(mac);
+
+    return ret;
+  }
+
+  public static deserialize<CM extends CollectionCryptoManager | CollectionItemCryptoManager>(json: CollectionItemRevisionJsonRead) {
     const { uid, meta, chunks, deleted, chunksData, chunksUrls } = json;
-    this.uid = uid;
-    this.meta = sodium.from_base64(meta);
-    this.deleted = deleted; // FIXME: this should also be part of the meta additional data too. Probably can remove from the major verification everything that's verified by meta.
-    this.chunks = chunks;
-    this.chunksData = chunksData?.map((x) => sodium.from_base64(x));
-    this.chunksUrls = chunksUrls;
+    const ret = new EncryptedRevision<CM>();
+    ret.uid = uid;
+    ret.meta = sodium.from_base64(meta);
+    ret.deleted = deleted; // FIXME: this should also be part of the meta additional data too. Probably can remove from the major verification everything that's verified by meta.
+    ret.chunks = chunks;
+    ret.chunksData = chunksData?.map((x) => sodium.from_base64(x));
+    ret.chunksUrls = chunksUrls;
+
+    return ret;
   }
 
   public serialize() {
@@ -185,7 +207,7 @@ export class EncryptedCollection {
     this.accessLevel = accessLevel;
     this.ctag = ctag;
 
-    this.content = new EncryptedRevision(content);
+    this.content = EncryptedRevision.deserialize(content);
   }
 
   public serialize() {
