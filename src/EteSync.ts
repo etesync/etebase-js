@@ -70,6 +70,12 @@ export interface CollectionJsonRead extends CollectionJsonWrite {
   content: CollectionItemRevisionJsonRead;
 }
 
+function genUidBase62(): base62 {
+  const uid = sodium.to_base64(sodium.randombytes_buf(32)).substr(0, 24);
+  // FIXME: not the best function, but we don't care about the bias for now
+  return uid.replace('-', 'a').replace('_', 'b');
+}
+
 export class MainCryptoManager extends CryptoManager {
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, 'Main', version);
@@ -191,24 +197,43 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
 }
 
 export class EncryptedCollection {
-  public readonly uid: base62;
-  public readonly version: number;
-  private readonly encryptionKey: Uint8Array;
-  private readonly content: EncryptedRevision<CollectionCryptoManager>;
+  public uid: base62;
+  public version: number;
+  private encryptionKey: Uint8Array;
+  private content: EncryptedRevision<CollectionCryptoManager>;
 
-  public readonly accessLevel: CollectionAccessLevel;
-  public readonly ctag: string | null;
+  public accessLevel: CollectionAccessLevel;
+  public ctag: string | null;
 
-  constructor(json: CollectionJsonRead) {
+  public static async create(parentCryptoManager: MainCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
+    const ret = new EncryptedCollection();
+    ret.uid = genUidBase62();
+    ret.version = Constants.CURRENT_VERSION;
+    ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
+
+    ret.accessLevel = CollectionAccessLevel.Admin;
+    ret.ctag = null;
+
+    const cryptoManager = ret.getCryptoManager(parentCryptoManager);
+
+    ret.content = await EncryptedRevision.create(cryptoManager, ret.getAdditionalMacData(), meta, content);
+
+    return ret;
+  }
+
+  public static deserialize(json: CollectionJsonRead): EncryptedCollection {
     const { uid, ctag, version, accessLevel, encryptionKey, content } = json;
-    this.uid = uid;
-    this.version = version;
-    this.encryptionKey = sodium.from_base64(encryptionKey);
+    const ret = new EncryptedCollection();
+    ret.uid = uid;
+    ret.version = version;
+    ret.encryptionKey = sodium.from_base64(encryptionKey);
 
-    this.accessLevel = accessLevel;
-    this.ctag = ctag;
+    ret.accessLevel = accessLevel;
+    ret.ctag = ctag;
 
-    this.content = EncryptedRevision.deserialize(content);
+    ret.content = EncryptedRevision.deserialize(content);
+
+    return ret;
   }
 
   public serialize() {
@@ -221,6 +246,10 @@ export class EncryptedCollection {
     };
 
     return ret;
+  }
+
+  public async update(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
+    this.content = await EncryptedRevision.create(cryptoManager, this.getAdditionalMacData(), meta, content);
   }
 
   public async verify(cryptoManager: CollectionCryptoManager) {
@@ -425,7 +454,7 @@ export class CollectionManagerOnline extends BaseManager {
   public fetch(colUid: string, syncToken: string | null): Promise<EncryptedCollection> {
     return new Promise((resolve, reject) => {
       this.newCall<CollectionJsonRead>([colUid]).then((json) => {
-        const collection = new EncryptedCollection(json);
+        const collection = EncryptedCollection.deserialize(json);
         resolve(collection);
       }).catch((error: Error) => {
         reject(error);
@@ -442,7 +471,7 @@ export class CollectionManagerOnline extends BaseManager {
     return new Promise((resolve, reject) => {
       this.newCall<CollectionJsonRead[]>(undefined, undefined, apiBase).then((json) => {
         resolve(json.map((val) => {
-          const collection = new EncryptedCollection(val);
+          const collection = EncryptedCollection.deserialize(val);
           return collection;
         }));
       }).catch((error: Error) => {
