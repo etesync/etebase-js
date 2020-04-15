@@ -27,18 +27,18 @@ export interface CollectionMetadata {
   color: string;
 }
 
+export type ChunkJson = [base64url, base64url?];
+
 export interface CollectionItemRevisionJsonWrite {
   uid: base64url;
   meta: base64url;
 
-  chunks: base64url[];
+  chunks: ChunkJson[];
   deleted: boolean;
-
-  chunksData?: base64url[];
 }
 
 export interface CollectionItemRevisionJsonRead extends CollectionItemRevisionJsonWrite {
-  chunksUrls?: string[];
+  chunks: ChunkJson[];
 }
 
 export interface CollectionItemJson {
@@ -100,7 +100,7 @@ export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: num
 
 export interface CollectionItemRevisionContent<M extends {}> {
   meta?: M;
-  chunks?: base64url[];
+  chunks?: ChunkJson[];
   deleted?: boolean;
 }
 
@@ -109,9 +109,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
   public meta: Uint8Array;
   public deleted: boolean;
 
-  public chunks: base64url[];
-  public chunksData?: Uint8Array[];
-  public chunksUrls?: string[];
+  public chunks: [base64url, Uint8Array?][];
 
   constructor() {
     this.deleted = false;
@@ -123,8 +121,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
     ret.meta = cryptoManager.encrypt(sodium.from_string(JSON.stringify(meta)), additionalDataMerged);
     // FIXME: need to actually chunkify
     const encContent = cryptoManager.encryptDetached(content);
-    ret.chunks = [sodium.to_base64(encContent[0])];
-    ret.chunksData = [encContent[1]];
+    ret.chunks = [[sodium.to_base64(encContent[0]), encContent[1]]];
 
     const mac = await ret.calculateMac(cryptoManager, additionalData);
     ret.uid = sodium.to_base64(mac);
@@ -133,14 +130,12 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
   }
 
   public static deserialize<CM extends CollectionCryptoManager | CollectionItemCryptoManager>(json: CollectionItemRevisionJsonRead) {
-    const { uid, meta, chunks, deleted, chunksData, chunksUrls } = json;
+    const { uid, meta, chunks, deleted } = json;
     const ret = new EncryptedRevision<CM>();
     ret.uid = uid;
     ret.meta = sodium.from_base64(meta);
     ret.deleted = deleted; // FIXME: this should also be part of the meta additional data too. Probably can remove from the major verification everything that's verified by meta.
-    ret.chunks = chunks;
-    ret.chunksData = chunksData?.map((x) => sodium.from_base64(x));
-    ret.chunksUrls = chunksUrls;
+    ret.chunks = chunks.map((chunk) => [chunk[0], (chunk[1]) ? sodium.from_base64(chunk[1]) : undefined]);
 
     return ret;
   }
@@ -151,8 +146,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
       meta: sodium.to_base64(this.meta),
       deleted: this.deleted,
 
-      chunks: this.chunks,
-      chunksData: this.chunksData?.map((x) => sodium.to_base64(x)),
+      chunks: this.chunks.map((chunk) => [chunk[0], (chunk[1]) ? sodium.to_base64(chunk[1]) : undefined]),
     };
 
     return ret;
@@ -179,7 +173,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
     // FIXME: we are using the meta's mac here. Make sure we are doing it correctly.
     cryptoMac.update(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
     this.chunks.forEach((chunk) =>
-      cryptoMac.update(sodium.from_base64(chunk))
+      cryptoMac.update(sodium.from_base64(chunk[0]))
     );
 
     return cryptoMac.finalize();
@@ -191,7 +185,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
   }
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
-    return this.chunksData?.map((x, i) => cryptoManager.decryptDetached(x, sodium.from_base64(this.chunks[i])))
+    return this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, sodium.from_base64(chunk[0])))
       .reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array()) ?? new Uint8Array(0);
   }
 }
@@ -246,6 +240,10 @@ export class EncryptedCollection {
     };
 
     return ret;
+  }
+
+  public __markSaved() {
+    this.ctag = this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
@@ -321,9 +319,11 @@ export class Account {
 
 export class CollectionManager {
   private readonly etesync: Account;
+  private readonly onlineManager: CollectionManagerOnline;
 
   constructor(etesync: Account) {
     this.etesync = etesync;
+    this.onlineManager = new CollectionManagerOnline(this.etesync);
   }
 
   public async create(meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
@@ -349,8 +349,33 @@ export class CollectionManager {
     const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
     return col.decryptContent(cryptoManager);
   }
+
+
+  public async fetch(colUid: base62, options: FetchOptions) {
+    return this.onlineManager.fetch(colUid, options);
+  }
+
+  public async list(options: FetchOptions) {
+    return this.onlineManager.list(options);
+  }
+
+  public async upload(col: EncryptedCollection) {
+    // If we have a ctag, it means we previously fetched it.
+    if (col.ctag) {
+      await this.onlineManager.update(col);
+      col.__markSaved();
+    } else {
+      await this.onlineManager.create(col);
+      col.__markSaved();
+    }
+  }
 }
 
+export interface FetchOptions {
+  syncToken?: string;
+  inline?: boolean;
+  limit?: number;
+}
 
 class BaseNetwork {
 
@@ -456,7 +481,8 @@ export class BaseManager extends BaseNetwork {
 
   constructor(etesync: Account, segments: string[]) {
     super(etesync.serverUrl);
-    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v2'].concat(segments));
+    this.etesync = etesync;
+    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1'].concat(segments));
   }
 
   public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBase: URI = this.apiBase): Promise<T> {
@@ -478,7 +504,7 @@ export class CollectionManagerOnline extends BaseManager {
     super(etesync, ['collection']);
   }
 
-  public fetch(colUid: string, syncToken: string | null): Promise<EncryptedCollection> {
+  public fetch(colUid: string, options: FetchOptions): Promise<EncryptedCollection> {
     return new Promise((resolve, reject) => {
       this.newCall<CollectionJsonRead>([colUid]).then((json) => {
         const collection = EncryptedCollection.deserialize(json);
@@ -489,10 +515,12 @@ export class CollectionManagerOnline extends BaseManager {
     });
   }
 
-  public list(syncToken: string | null, limit = 0): Promise<EncryptedCollection[]> {
+  public list(options: FetchOptions): Promise<EncryptedCollection[]> {
+    const { syncToken, inline, limit } = options;
     const apiBase = this.apiBase.clone().search({
       syncToken: (syncToken !== null) ? syncToken : undefined,
-      limit: (limit > 0) ? limit : undefined,
+      limit: (limit && (limit > 0)) ? limit : undefined,
+      inline: inline,
     });
 
     return new Promise((resolve, reject) => {
@@ -516,18 +544,10 @@ export class CollectionManagerOnline extends BaseManager {
     return this.newCall(undefined, extra);
   }
 
-  public update(collection: EncryptedCollection, syncToken: string | null): Promise<{}> {
+  public update(collection: EncryptedCollection): Promise<{}> {
     const extra = {
       method: 'put',
       body: JSON.stringify(collection.serialize()),
-    };
-
-    return this.newCall([collection.uid], extra);
-  }
-
-  public delete(collection: EncryptedCollection, syncToken: string | null): Promise<{}> {
-    const extra = {
-      method: 'delete',
     };
 
     return this.newCall([collection.uid], extra);
