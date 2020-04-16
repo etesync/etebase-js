@@ -28,6 +28,10 @@ export interface CollectionItemMetadata {
 
 export type ChunkJson = [base64url, base64url?];
 
+export interface ListResponse<T> {
+  data: T;
+}
+
 export interface CollectionItemRevisionJsonWrite {
   uid: base64url;
   meta: base64url;
@@ -673,8 +677,8 @@ class CollectionManagerOnline extends BaseManager {
     });
 
     return new Promise((resolve, reject) => {
-      this.newCall<CollectionJsonRead[]>(undefined, undefined, apiBase).then((json) => {
-        resolve(json.map((val) => {
+      this.newCall<ListResponse<CollectionJsonRead[]>>(undefined, undefined, apiBase).then((json) => {
+        resolve(json.data.map((val) => {
           const collection = EncryptedCollection.deserialize(val);
           return collection;
         }));
@@ -728,11 +732,12 @@ class CollectionItemManagerOnline extends BaseManager {
     });
 
     return new Promise((resolve, reject) => {
-      this.newCall<CollectionItemJsonRead[]>(undefined, undefined, apiBase).then((json) => {
+      this.newCall<ListResponse<CollectionItemJsonRead[]>>(undefined, undefined, apiBase).then((json) => {
+        let data = json.data;
         if (!withMainItem) {
-          json = json.filter((x) => x.uid !== null);
+          data = data.filter((x) => x.uid !== null);
         }
-        resolve(json.map((val) => {
+        resolve(data.map((val) => {
           const collection = EncryptedCollectionItem.deserialize(val);
           return collection;
         }));
