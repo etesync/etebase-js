@@ -11,11 +11,6 @@ export { base62, base64url, fromBase64, toBase64 } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
 
-export interface Credentials {
-  username: string;
-  authToken: string;
-}
-
 export type CollectionType = string;
 
 export type ContentType = File | Blob | Uint8Array | string | null;
