@@ -16,6 +16,14 @@ async function verifyCollection(collectionManager: EteSync.CollectionManager, co
   expect(decryptedContent).toEqual(content);
 }
 
+async function verifyItem(itemManager: EteSync.CollectionItemManager, item: EteSync.EncryptedCollectionItem, meta: EteSync.CollectionItemMetadata, content: Uint8Array) {
+  itemManager.verify(item);
+  const decryptedMeta = await itemManager.decryptMeta(item);
+  expect(decryptedMeta).toEqual(meta);
+  const decryptedContent = await itemManager.decryptContent(item);
+  expect(decryptedContent).toEqual(content);
+}
+
 beforeEach(async () => {
   await EteSync.ready;
   etesync = await EteSync.Account.login(USER, PASSWORD, testApiBase);
@@ -52,6 +60,38 @@ it('Simple collection handling', async () => {
   await collectionManager.update(col, meta2, content);
 
   await verifyCollection(collectionManager, col, meta2, content);
+  expect(meta).not.toEqual(await collectionManager.decryptMeta(col));
+});
+
+it('Simple item handling', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: EteSync.CollectionItemMetadata = {
+    type: 'ITEMTYPE',
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+  await verifyItem(itemManager, item, meta, content);
+
+  const meta2 = {
+    type: 'ITEMTYPE',
+    someval: 'someval',
+  };
+  await itemManager.update(item, meta2, content);
+
+  await verifyItem(itemManager, item, meta2, content);
   expect(meta).not.toEqual(await collectionManager.decryptMeta(col));
 });
 
@@ -106,5 +146,68 @@ it('Simple collection sync', async () => {
     const collections = await collectionManager.list({ inline: true });
     expect(collections.length).toBe(1);
     await verifyCollection(collectionManager, collections[0], meta2, content2);
+  }
+});
+
+it('Simple item sync', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.length).toBe(1);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: EteSync.CollectionItemMetadata = {
+    type: 'ITEMTYPE',
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+  await verifyItem(itemManager, item, meta, content);
+
+  await itemManager.upload([item]);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(1);
+    await verifyItem(itemManager, items[0], meta, content);
+  }
+
+  const meta2 = {
+    type: 'ITEMTYPE',
+    someval: 'someval',
+  };
+  await itemManager.update(item, meta2, content);
+
+  await itemManager.upload([item]);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(1);
+    await verifyItem(itemManager, items[0], meta2, content);
+  }
+
+  const content2 = Uint8Array.from([7, 2, 3, 5]);
+  await itemManager.update(item, meta2, content2);
+
+  await itemManager.upload([item]);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(1);
+    await verifyItem(itemManager, items[0], meta2, content2);
   }
 });

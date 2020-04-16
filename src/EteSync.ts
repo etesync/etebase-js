@@ -27,6 +27,10 @@ export interface CollectionMetadata {
   color: string;
 }
 
+export interface CollectionItemMetadata {
+  type: string;
+}
+
 export type ChunkJson = [base64url, base64url?];
 
 export interface CollectionItemRevisionJsonWrite {
@@ -41,11 +45,15 @@ export interface CollectionItemRevisionJsonRead extends CollectionItemRevisionJs
   chunks: ChunkJson[];
 }
 
-export interface CollectionItemJson {
+export interface CollectionItemJsonWrite {
   uid: base62;
   version: number;
-  encryptionKey: base64url;
 
+  encryptionKey: base64url;
+  content: CollectionItemRevisionJsonWrite;
+}
+
+export interface CollectionItemJsonRead extends CollectionItemJsonWrite {
   content: CollectionItemRevisionJsonRead;
 }
 
@@ -273,6 +281,86 @@ export class EncryptedCollection {
   }
 }
 
+export class EncryptedCollectionItem {
+  public uid: base62;
+  public version: number;
+  private encryptionKey: Uint8Array;
+  private content: EncryptedRevision<CollectionItemCryptoManager>;
+
+  public ctag: string | null;
+
+  public static async create(parentCryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
+    const ret = new EncryptedCollectionItem();
+    ret.uid = genUidBase62();
+    ret.version = Constants.CURRENT_VERSION;
+    ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
+
+    ret.ctag = null;
+
+    const cryptoManager = ret.getCryptoManager(parentCryptoManager);
+
+    ret.content = await EncryptedRevision.create(cryptoManager, ret.getAdditionalMacData(), meta, content);
+
+    return ret;
+  }
+
+  public static deserialize(json: CollectionItemJsonRead): EncryptedCollectionItem {
+    const { uid, version, encryptionKey, content } = json;
+    const ret = new EncryptedCollectionItem();
+    ret.uid = uid;
+    ret.version = version;
+    ret.encryptionKey = sodium.from_base64(encryptionKey);
+
+    ret.ctag = null;
+
+    ret.content = EncryptedRevision.deserialize(content);
+
+    return ret;
+  }
+
+  public serialize() {
+    const ret: CollectionItemJsonWrite = {
+      uid: this.uid,
+      version: this.version,
+      encryptionKey: sodium.to_base64(this.encryptionKey),
+
+      content: this.content.serialize(),
+    };
+
+    return ret;
+  }
+
+  public __markSaved() {
+    this.ctag = this.content.uid;
+  }
+
+  public async update(cryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
+    this.content = await EncryptedRevision.create(cryptoManager, this.getAdditionalMacData(), meta, content);
+  }
+
+  public async verify(cryptoManager: CollectionCryptoManager) {
+    return this.content.verify(cryptoManager, this.getAdditionalMacData());
+  }
+
+  public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionItemMetadata> {
+    return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
+  }
+
+  public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
+    return this.content.decryptContent(cryptoManager);
+  }
+
+  public getCryptoManager(parentCryptoManager: MainCryptoManager) {
+    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
+
+    return new CollectionItemCryptoManager(encryptionKey, this.version);
+  }
+
+  protected getAdditionalMacData() {
+    return [sodium.from_string(this.uid)];
+  }
+}
+
 export class Account {
   private mainEncryptionKey: Uint8Array;
   private version: number;
@@ -369,12 +457,78 @@ export class CollectionManager {
       col.__markSaved();
     }
   }
+
+  public getItemManager(col: EncryptedCollection) {
+    return new CollectionItemManager(this.etesync, this, col);
+  }
+}
+
+export class CollectionItemManager {
+  private readonly etesync: Account;
+  private readonly collectionCryptoManager: CollectionCryptoManager;
+  private readonly onlineManager: CollectionItemManagerOnline;
+
+  constructor(etesync: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
+    this.etesync = etesync;
+    this.collectionCryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
+    this.onlineManager = new CollectionItemManagerOnline(this.etesync, col);
+  }
+
+  public async create(meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
+    return EncryptedCollectionItem.create(this.collectionCryptoManager, meta, content);
+  }
+
+  public async update(item: EncryptedCollectionItem, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
+    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
+    return item.update(cryptoManager, meta, content);
+  }
+
+  public async verify(item: EncryptedCollectionItem) {
+    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
+    return item.verify(cryptoManager);
+  }
+
+  public async decryptMeta(item: EncryptedCollectionItem): Promise<CollectionItemMetadata> {
+    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
+    return item.decryptMeta(cryptoManager);
+  }
+
+  public async decryptContent(item: EncryptedCollectionItem): Promise<Uint8Array> {
+    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
+    return item.decryptContent(cryptoManager);
+  }
+
+
+  public async fetch(itemUid: base62, options: ItemFetchOptions) {
+    return this.onlineManager.fetch(itemUid, options);
+  }
+
+  public async list(options: ItemFetchOptions) {
+    return this.onlineManager.list(options);
+  }
+
+  public async upload(items: EncryptedCollectionItem[]) {
+    for (const item of items) {
+      // If we have a ctag, it means we previously fetched it.
+      if (item.ctag) {
+        await this.onlineManager.update(item);
+        item.__markSaved();
+      } else {
+        await this.onlineManager.create(item);
+        item.__markSaved();
+      }
+    }
+  }
 }
 
 export interface FetchOptions {
   syncToken?: string;
   inline?: boolean;
   limit?: number;
+}
+
+export interface ItemFetchOptions extends FetchOptions {
+  withMainItem?: boolean;
 }
 
 class BaseNetwork {
@@ -435,7 +589,7 @@ class BaseNetwork {
   }
 }
 
-export class Authenticator extends BaseNetwork {
+class Authenticator extends BaseNetwork {
   public getAuthToken(username: string, password: string): Promise<string> {
     return new Promise((resolve, reject) => {
       // FIXME: should be FormData but doesn't work for whatever reason
@@ -476,7 +630,7 @@ export class Authenticator extends BaseNetwork {
   }
 }
 
-export class BaseManager extends BaseNetwork {
+class BaseManager extends BaseNetwork {
   protected etesync: Account;
 
   constructor(etesync: Account, segments: string[]) {
@@ -499,7 +653,7 @@ export class BaseManager extends BaseNetwork {
   }
 }
 
-export class CollectionManagerOnline extends BaseManager {
+class CollectionManagerOnline extends BaseManager {
   constructor(etesync: Account) {
     super(etesync, ['collection']);
   }
@@ -545,6 +699,64 @@ export class CollectionManagerOnline extends BaseManager {
   }
 
   public update(collection: EncryptedCollection): Promise<{}> {
+    const extra = {
+      method: 'put',
+      body: JSON.stringify(collection.serialize()),
+    };
+
+    return this.newCall([collection.uid], extra);
+  }
+}
+
+class CollectionItemManagerOnline extends BaseManager {
+  constructor(etesync: Account, col: EncryptedCollection) {
+    super(etesync, ['collection', col.uid, 'item']);
+  }
+
+  public fetch(colUid: string, options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
+    return new Promise((resolve, reject) => {
+      this.newCall<CollectionItemJsonRead>([colUid]).then((json) => {
+        const collection = EncryptedCollectionItem.deserialize(json);
+        resolve(collection);
+      }).catch((error: Error) => {
+        reject(error);
+      });
+    });
+  }
+
+  public list(options: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
+    const { syncToken, inline, limit, withMainItem } = options;
+    const apiBase = this.apiBase.clone().search({
+      syncToken: (syncToken !== null) ? syncToken : undefined,
+      limit: (limit && (limit > 0)) ? limit : undefined,
+      inline: inline,
+    });
+
+    return new Promise((resolve, reject) => {
+      this.newCall<CollectionItemJsonRead[]>(undefined, undefined, apiBase).then((json) => {
+        if (!withMainItem) {
+          json = json.filter((x) => x.uid !== null);
+        }
+        resolve(json.map((val) => {
+          const collection = EncryptedCollectionItem.deserialize(val);
+          return collection;
+        }));
+      }).catch((error: Error) => {
+        reject(error);
+      });
+    });
+  }
+
+  public create(collection: EncryptedCollectionItem): Promise<{}> {
+    const extra = {
+      method: 'post',
+      body: JSON.stringify(collection.serialize()),
+    };
+
+    return this.newCall(undefined, extra);
+  }
+
+  public update(collection: EncryptedCollectionItem): Promise<{}> {
     const extra = {
       method: 'put',
       body: JSON.stringify(collection.serialize()),
