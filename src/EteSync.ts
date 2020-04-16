@@ -7,7 +7,7 @@ export { deriveKey, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
 import { base62, base64url } from './Helpers';
-export { base62, base64url, from_base64, to_base64 } from './Helpers';
+export { base62, base64url, fromBase64, toBase64 } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
 
