@@ -68,7 +68,7 @@ export interface CollectionJsonWrite {
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
   accessLevel: CollectionAccessLevel;
-  ctag: string;
+  stoken: string;
 
   content: CollectionItemRevisionJsonRead;
 }
@@ -200,7 +200,7 @@ export class EncryptedCollection {
   private content: EncryptedRevision<CollectionCryptoManager>;
 
   public accessLevel: CollectionAccessLevel;
-  public ctag: string | null;
+  public stoken: string | null;
 
   public static async create(parentCryptoManager: MainCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
@@ -209,7 +209,7 @@ export class EncryptedCollection {
     ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
 
     ret.accessLevel = CollectionAccessLevel.Admin;
-    ret.ctag = null;
+    ret.stoken = null;
 
     const cryptoManager = ret.getCryptoManager(parentCryptoManager);
 
@@ -219,14 +219,14 @@ export class EncryptedCollection {
   }
 
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
-    const { uid, ctag, version, accessLevel, encryptionKey, content } = json;
+    const { uid, stoken, version, accessLevel, encryptionKey, content } = json;
     const ret = new EncryptedCollection();
     ret.uid = uid;
     ret.version = version;
     ret.encryptionKey = sodium.from_base64(encryptionKey);
 
     ret.accessLevel = accessLevel;
-    ret.ctag = ctag;
+    ret.stoken = stoken;
 
     ret.content = EncryptedRevision.deserialize(content);
 
@@ -246,7 +246,7 @@ export class EncryptedCollection {
   }
 
   public __markSaved() {
-    this.ctag = this.content.uid;
+    this.stoken = this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
@@ -282,7 +282,7 @@ export class EncryptedCollectionItem {
   private encryptionKey: Uint8Array;
   private content: EncryptedRevision<CollectionItemCryptoManager>;
 
-  public ctag: string | null;
+  public stoken: string | null;
 
   public static async create(parentCryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
@@ -290,7 +290,7 @@ export class EncryptedCollectionItem {
     ret.version = Constants.CURRENT_VERSION;
     ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
 
-    ret.ctag = null;
+    ret.stoken = null;
 
     const cryptoManager = ret.getCryptoManager(parentCryptoManager);
 
@@ -306,7 +306,7 @@ export class EncryptedCollectionItem {
     ret.version = version;
     ret.encryptionKey = sodium.from_base64(encryptionKey);
 
-    ret.ctag = null;
+    ret.stoken = null;
 
     ret.content = EncryptedRevision.deserialize(content);
 
@@ -326,7 +326,7 @@ export class EncryptedCollectionItem {
   }
 
   public __markSaved() {
-    this.ctag = this.content.uid;
+    this.stoken = this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
@@ -443,8 +443,8 @@ export class CollectionManager {
   }
 
   public async upload(col: EncryptedCollection) {
-    // If we have a ctag, it means we previously fetched it.
-    if (col.ctag) {
+    // If we have a stoken, it means we previously fetched it.
+    if (col.stoken) {
       await this.onlineManager.update(col);
       col.__markSaved();
     } else {
@@ -504,8 +504,8 @@ export class CollectionItemManager {
 
   public async upload(items: EncryptedCollectionItem[]) {
     for (const item of items) {
-      // If we have a ctag, it means we previously fetched it.
-      if (item.ctag) {
+      // If we have a stoken, it means we previously fetched it.
+      if (item.stoken) {
         await this.onlineManager.update(item);
         item.__markSaved();
       } else {
