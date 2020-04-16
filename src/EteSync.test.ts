@@ -78,6 +78,7 @@ it('Simple collection sync', async () => {
   {
     const collections = await collectionManager.list({ inline: true });
     expect(collections.length).toBe(1);
+    await verifyCollection(collectionManager, collections[0], meta, content);
   }
 
   const meta2 = {
@@ -93,5 +94,17 @@ it('Simple collection sync', async () => {
   {
     const collections = await collectionManager.list({ inline: true });
     expect(collections.length).toBe(1);
+    await verifyCollection(collectionManager, collections[0], meta2, content);
+  }
+
+  const content2 = Uint8Array.from([7, 2, 3, 5]);
+  await collectionManager.update(col, meta2, content2);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.length).toBe(1);
+    await verifyCollection(collectionManager, collections[0], meta2, content2);
   }
 });
