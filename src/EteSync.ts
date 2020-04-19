@@ -715,8 +715,8 @@ class CollectionItemManagerOnline extends BaseManager {
   public fetch(colUid: string, options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
     return new Promise((resolve, reject) => {
       this.newCall<CollectionItemJsonRead>([colUid]).then((json) => {
-        const collection = EncryptedCollectionItem.deserialize(json);
-        resolve(collection);
+        const item = EncryptedCollectionItem.deserialize(json);
+        resolve(item);
       }).catch((error: Error) => {
         reject(error);
       });
@@ -738,8 +738,8 @@ class CollectionItemManagerOnline extends BaseManager {
           data = data.filter((x) => x.uid !== null);
         }
         resolve(data.map((val) => {
-          const collection = EncryptedCollectionItem.deserialize(val);
-          return collection;
+          const item = EncryptedCollectionItem.deserialize(val);
+          return item;
         }));
       }).catch((error: Error) => {
         reject(error);
@@ -747,21 +747,21 @@ class CollectionItemManagerOnline extends BaseManager {
     });
   }
 
-  public create(collection: EncryptedCollectionItem): Promise<{}> {
+  public create(item: EncryptedCollectionItem): Promise<{}> {
     const extra = {
       method: 'post',
-      body: JSON.stringify(collection.serialize()),
+      body: JSON.stringify(item.serialize()),
     };
 
     return this.newCall(undefined, extra);
   }
 
-  public update(collection: EncryptedCollectionItem): Promise<{}> {
+  public update(item: EncryptedCollectionItem): Promise<{}> {
     const extra = {
       method: 'put',
-      body: JSON.stringify(collection.serialize()),
+      body: JSON.stringify(item.serialize()),
     };
 
-    return this.newCall([collection.uid], extra);
+    return this.newCall([item.uid], extra);
   }
 }
