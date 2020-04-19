@@ -450,11 +450,10 @@ export class CollectionManager {
     // If we have a stoken, it means we previously fetched it.
     if (col.stoken) {
       await this.onlineManager.update(col);
-      col.__markSaved();
     } else {
       await this.onlineManager.create(col);
-      col.__markSaved();
     }
+    col.__markSaved();
   }
 
   public getItemManager(col: EncryptedCollection) {
@@ -511,11 +510,10 @@ export class CollectionItemManager {
       // If we have a stoken, it means we previously fetched it.
       if (item.stoken) {
         await this.onlineManager.update(item);
-        item.__markSaved();
       } else {
         await this.onlineManager.create(item);
-        item.__markSaved();
       }
+      item.__markSaved();
     }
   }
 }
