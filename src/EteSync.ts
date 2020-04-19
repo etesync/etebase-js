@@ -249,8 +249,8 @@ export class EncryptedCollection {
     return ret;
   }
 
-  public __markSaved() {
-    this.stoken = this.content.uid;
+  public __markSaved(stoken: string | null = null) {
+    this.stoken = stoken ?? this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
@@ -329,8 +329,8 @@ export class EncryptedCollectionItem {
     return ret;
   }
 
-  public __markSaved() {
-    this.stoken = this.content.uid;
+  public __markSaved(stoken: string | null = null) {
+    this.stoken = stoken ?? this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
@@ -515,6 +515,13 @@ export class CollectionItemManager {
       }
       item.__markSaved();
     }
+  }
+
+  public async transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[]) {
+    const stokens = await this.onlineManager.transaction(items, deps);
+    items.forEach((item, i) => {
+      item.__markSaved(stokens[i]);
+    });
   }
 }
 
@@ -761,5 +768,17 @@ class CollectionItemManagerOnline extends BaseManager {
     };
 
     return this.newCall([item.uid], extra);
+  }
+
+  public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[]): Promise<{ data: [base64url] }> {
+    const extra = {
+      method: 'post',
+      body: JSON.stringify({
+        items: items.map((x) => x.serialize()),
+        deps,
+      }),
+    };
+
+    return this.newCall(['transaction'], extra);
   }
 }

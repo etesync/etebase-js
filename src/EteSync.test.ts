@@ -211,3 +211,54 @@ it('Simple item sync', async () => {
     await verifyItem(itemManager, items[0], meta2, content2);
   }
 });
+
+it('Item transactions', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.length).toBe(1);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: EteSync.CollectionItemMetadata = {
+    type: 'ITEMTYPE',
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+
+  const items: EteSync.EncryptedCollectionItem[] = [item];
+
+  for (let i = 0 ; i < 5 ; i++) {
+    const meta2 = {
+      type: 'ITEMTYPE',
+      someval: 'someval',
+      i,
+    };
+    const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
+    const item2 = await itemManager.create(meta2, content2);
+    items.push(item2);
+  }
+
+  await itemManager.transaction(items);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(6);
+  }
+
+  // FIXME: add some cases where a transaction failes.
+});
