@@ -2,7 +2,7 @@ import 'whatwg-fetch';
 
 import * as EteSync from './EteSync';
 
-import { USER, PASSWORD } from './TestConstants';
+import { USER, EMAIL, PASSWORD } from './TestConstants';
 
 const testApiBase = 'http://localhost:12345';
 
@@ -26,11 +26,20 @@ async function verifyItem(itemManager: EteSync.CollectionItemManager, item: EteS
 
 beforeEach(async () => {
   await EteSync.ready;
-  etesync = await EteSync.Account.login(USER, PASSWORD, testApiBase);
 
-  await fetch(testApiBase + '/reset/', {
+  const user = {
+    username: USER,
+    email: EMAIL,
+  };
+
+  etesync = await EteSync.Account.login(user, PASSWORD, testApiBase);
+
+  await fetch(testApiBase + '/api/v1/test/authentication/reset/', {
     method: 'post',
-    headers: { Authorization: 'Token ' + etesync.authToken! },
+    headers: {
+      'Content-Type': 'application/json;charset=UTF-8',
+      'Authorization': 'Token ' + etesync.authToken,
+    },
   });
 });
 

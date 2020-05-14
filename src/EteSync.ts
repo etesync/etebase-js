@@ -2,11 +2,11 @@ import URI from 'urijs';
 
 import * as Constants from './Constants';
 
-import { CryptoManager, sodium, concatArrayBuffers } from './Crypto';
+import { deriveKey, CryptoManager, sodium, concatArrayBuffers } from './Crypto';
 export { deriveKey, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
-import { base62, base64url } from './Helpers';
+import { base62, base64url, fromBase64, toBase64 } from './Helpers';
 export { base62, base64url, fromBase64, toBase64 } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
@@ -360,39 +360,104 @@ export class EncryptedCollectionItem {
   }
 }
 
+export interface AccountData {
+  version: number;
+  key: base64url;
+  user: User;
+  serverUrl: string;
+  authToken: string;
+}
+
 export class Account {
-  private mainEncryptionKey: Uint8Array;
+  private static readonly CURRENT_VERSION = 1;
+
+  private mainKey: Uint8Array;
   private version: number;
+  public user: User;
   public serverUrl: string;
   public authToken: string | null;
 
   private constructor(mainEncryptionKey: Uint8Array, version: number) {
-    this.mainEncryptionKey = mainEncryptionKey;
+    this.mainKey = mainEncryptionKey;
     this.version = version;
     this.authToken = null;
   }
 
-  public static async login(username: string, password: string, serverUrl?: string) {
+  public static async signup(user: User, password: string, serverUrl?: string) {
     serverUrl = serverUrl ?? Constants.SERVER_URL;
     const authenticator = new Authenticator(serverUrl);
-
-    // in reality these will be fetched:
+    const version = this.CURRENT_VERSION;
     const salt = sodium.randombytes_buf(32);
-    const version = 1;
-    const ret = new this(salt, version);
 
-    // FIXME: in reality, password would be derived from the encryption key
-    const authToken = await authenticator.getAuthToken(username, password);
-    ret.authToken = authToken;
+    const mainKey = deriveKey(salt, password);
+    const mainCryptoManager = getMainCryptoManager(mainKey, version);
+    const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
+
+    const loginResponse = await authenticator.signup(user, salt, asymCryptoManager.publicKey);
+
+    const ret = new this(mainKey, version);
+
+    ret.user = loginResponse.user;
+    ret.authToken = loginResponse.token;
+    ret.serverUrl = serverUrl;
+
+    return ret;
+  }
+
+  public static async login(userQuery: UsernameOrEmail, password: string, serverUrl?: string) {
+    serverUrl = serverUrl ?? Constants.SERVER_URL;
+    const authenticator = new Authenticator(serverUrl);
+    const loginChallenge = await authenticator.getLoginChallenge(userQuery);
+
+    const mainKey = deriveKey(fromBase64(loginChallenge.salt), password);
+    const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
+    const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
+
+    const response = JSON.stringify({
+      ...userQuery,
+      challenge: loginChallenge.challenge,
+      host: URI(serverUrl).host(),
+    });
+
+    const loginResponse = await authenticator.login(response, asymCryptoManager.signDetached(sodium.from_string(response)));
+
+    const ret = new this(mainKey, loginChallenge.version);
+
+    ret.user = loginResponse.user;
+    ret.authToken = loginResponse.token;
     ret.serverUrl = serverUrl;
 
     return ret;
   }
 
   public logout() {
+    const authenticator = new Authenticator(this.serverUrl);
+
+    authenticator.logout(this.authToken!);
     this.version = -1;
-    this.mainEncryptionKey = new Uint8Array();
+    this.mainKey = new Uint8Array();
     this.authToken = null;
+  }
+
+  public save(): AccountData {
+    const ret: AccountData = {
+      user: this.user,
+      authToken: this.authToken!!,
+      serverUrl: this.serverUrl,
+      version: this.version,
+      key: toBase64(this.mainKey),
+    };
+
+    return ret;
+  }
+
+  public static load(accountData: AccountData) {
+    const ret = new this(fromBase64(accountData.key), accountData.version);
+    ret.user = accountData.user;
+    ret.authToken = accountData.authToken;
+    ret.serverUrl = accountData.serverUrl;
+
+    return ret;
   }
 
   public getCollectionManager() {
@@ -400,7 +465,7 @@ export class Account {
   }
 
   public getCryptoManager() {
-    return new MainCryptoManager(this.mainEncryptionKey, this.version);
+    return new MainCryptoManager(this.mainKey, this.version);
   }
 }
 
@@ -593,29 +658,97 @@ class BaseNetwork {
   }
 }
 
+export interface User {
+  username: string;
+  email: string;
+}
+
+export type UsernameOrEmail = Pick<User, 'username'> | Pick<User, 'email'>;
+
+export type LoginChallange = {
+  challenge: string;
+  salt: base64url;
+  version: number;
+};
+
+export type LoginChallangeResponse = {
+  challenge: string;
+  host: string;
+} & UsernameOrEmail;
+
+export type LoginResponse = {
+  token: string;
+  user: User;
+};
+
 class Authenticator extends BaseNetwork {
-  public getAuthToken(username: string, password: string): Promise<string> {
+  constructor(apiBase: string) {
+    super(apiBase);
+    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1', 'authentication']);
+  }
+
+  public signup(user: User, salt: Uint8Array, pubkey: Uint8Array): Promise<LoginResponse> {
     return new Promise((resolve, reject) => {
-      // FIXME: should be FormData but doesn't work for whatever reason
-      const form = 'username=' + encodeURIComponent(username) +
-        '&password=' + encodeURIComponent(password);
       const extra = {
         method: 'post',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          'Content-Type': 'application/json;charset=UTF-8',
         },
-        body: form,
+        body: JSON.stringify({
+          user,
+          salt: toBase64(salt),
+          pubkey: toBase64(pubkey),
+        }),
       };
 
-      this.newCall<{token: string}>(['api-token-auth'], extra).then((json) => {
-        resolve(json.token);
+      this.newCall<LoginResponse>(['signup'], extra).then(() => {
+        resolve();
       }).catch((error: Error) => {
         reject(error);
       });
     });
   }
 
-  public invalidateToken(authToken: string): Promise<void> {
+  public getLoginChallenge(userQuery: UsernameOrEmail): Promise<LoginChallange> {
+    return new Promise((resolve, reject) => {
+      const extra = {
+        method: 'post',
+        headers: {
+          'Content-Type': 'application/json;charset=UTF-8',
+        },
+        body: JSON.stringify(userQuery),
+      };
+
+      this.newCall<LoginChallange>(['login_challenge'], extra).then((json) => {
+        resolve(json);
+      }).catch((error: Error) => {
+        reject(error);
+      });
+    });
+  }
+
+  public login(response: string, signature: Uint8Array): Promise<LoginResponse> {
+    return new Promise((resolve, reject) => {
+      const extra = {
+        method: 'post',
+        headers: {
+          'Content-Type': 'application/json;charset=UTF-8',
+        },
+        body: JSON.stringify({
+          response: toBase64(response),
+          signature: toBase64(signature),
+        }),
+      };
+
+      this.newCall<LoginResponse>(['login'], extra).then((json) => {
+        resolve(json);
+      }).catch((error: Error) => {
+        reject(error);
+      });
+    });
+  }
+
+  public logout(authToken: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const extra = {
         method: 'post',
@@ -625,7 +758,7 @@ class Authenticator extends BaseNetwork {
         },
       };
 
-      this.newCall<{token: string}>(['api', 'logout'], extra).then(() => {
+      this.newCall(['logout'], extra).then(() => {
         resolve();
       }).catch((error: Error) => {
         reject(error);

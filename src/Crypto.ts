@@ -15,6 +15,9 @@ export function concatArrayBuffers(buffer1: Uint8Array, buffer2: Uint8Array): Ui
 export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
   // XXX should probably move to scrypt or at least change parameters. - we need it fast in JS most likely
 
+  // FIXME: is just trimming the salt sufficient?
+  salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+
   return sodium.crypto_pwhash(
     32,
     Buffer.from(password),
@@ -29,6 +32,7 @@ export class CryptoManager {
   protected version: number;
   protected cipherKey: Uint8Array;
   protected macKey: Uint8Array;
+  protected asymKey: Uint8Array;
 
   constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
     keyContext = keyContext.padEnd(8);
@@ -37,6 +41,7 @@ export class CryptoManager {
 
     this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
     this.macKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
+    this.asymKey = sodium.crypto_kdf_derive_from_key(32, 3, keyContext, key);
   }
 
   public encrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
@@ -67,6 +72,38 @@ export class CryptoManager {
 
   public getCryptoMac() {
     return new CryptoMac(this.macKey);
+  }
+
+  public getAsymmetricCryptoManager(): AsymmetricCryptoManager {
+    return AsymmetricCryptoManager.keygen(this.asymKey);
+  }
+}
+
+export class AsymmetricCryptoManager {
+  private keypair: _sodium.KeyPair;
+
+  private constructor(keypair: _sodium.KeyPair) {
+    this.keypair = keypair;
+  }
+
+  public static keygen(seed?: Uint8Array) {
+    if (seed) {
+      return new this(sodium.crypto_sign_seed_keypair(seed));
+    } else {
+      return new this(sodium.crypto_sign_keypair());
+    }
+  }
+
+  public signDetached(message: Uint8Array): Uint8Array {
+    return sodium.crypto_sign_detached(message, this.keypair.privateKey);
+  }
+
+  public static verifyDetached(message: Uint8Array, signature: Uint8Array, publicKey: Uint8Array): boolean {
+    return sodium.crypto_sign_verify_detached(signature, message, publicKey);
+  }
+
+  public get publicKey() {
+    return this.keypair.publicKey;
   }
 }
 
