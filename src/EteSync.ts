@@ -365,7 +365,7 @@ export interface AccountData {
   key: base64url;
   user: User;
   serverUrl: string;
-  authToken: string;
+  authToken?: string;
 }
 
 export class Account {
@@ -430,7 +430,30 @@ export class Account {
     return ret;
   }
 
-  public logout() {
+  public async fetchToken() {
+    const serverUrl = this.serverUrl;
+    const authenticator = new Authenticator(serverUrl);
+    const userQuery: UsernameOrEmail = {
+      username: this.user.username,
+    };
+    const loginChallenge = await authenticator.getLoginChallenge(userQuery);
+
+    const mainKey = this.mainKey;
+    const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
+    const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
+
+    const response = JSON.stringify({
+      ...userQuery,
+      challenge: loginChallenge.challenge,
+      host: URI(serverUrl).host(),
+    });
+
+    const loginResponse = await authenticator.login(response, asymCryptoManager.signDetached(sodium.from_string(response)));
+
+    this.authToken = loginResponse.token;
+  }
+
+  public async logout() {
     const authenticator = new Authenticator(this.serverUrl);
 
     authenticator.logout(this.authToken!);
@@ -454,7 +477,7 @@ export class Account {
   public static load(accountData: AccountData) {
     const ret = new this(fromBase64(accountData.key), accountData.version);
     ret.user = accountData.user;
-    ret.authToken = accountData.authToken;
+    ret.authToken = accountData.authToken ?? null;
     ret.serverUrl = accountData.serverUrl;
 
     return ret;

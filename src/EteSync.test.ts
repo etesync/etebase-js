@@ -2,7 +2,7 @@ import 'whatwg-fetch';
 
 import * as EteSync from './EteSync';
 
-import { USER, EMAIL, PASSWORD } from './TestConstants';
+import { USER, EMAIL, KEY_B64 } from './TestConstants';
 
 const testApiBase = 'http://localhost:12345';
 
@@ -32,7 +32,14 @@ beforeEach(async () => {
     email: EMAIL,
   };
 
-  etesync = await EteSync.Account.login(user, PASSWORD, testApiBase);
+  const accountData: EteSync.AccountData = {
+    version: 1,
+    key: KEY_B64,
+    user,
+    serverUrl: testApiBase,
+  };
+  etesync = EteSync.Account.load(accountData);
+  await etesync.fetchToken();
 
   await fetch(testApiBase + '/api/v1/test/authentication/reset/', {
     method: 'post',
