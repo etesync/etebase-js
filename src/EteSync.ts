@@ -598,16 +598,11 @@ export class CollectionItemManager {
     return this.onlineManager.list(options);
   }
 
-  public async upload(items: EncryptedCollectionItem[]) {
-    for (const item of items) {
-      // If we have a stoken, it means we previously fetched it.
-      if (item.stoken) {
-        await this.onlineManager.update(item);
-      } else {
-        await this.onlineManager.create(item);
-      }
-      item.__markSaved();
-    }
+  public async batch(items: EncryptedCollectionItem[]) {
+    const stokens = await this.onlineManager.batch(items);
+    items.forEach((item, i) => {
+      item.__markSaved(stokens[i]);
+    });
   }
 
   public async transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[]) {
@@ -922,13 +917,15 @@ class CollectionItemManagerOnline extends BaseManager {
     return this.newCall(undefined, extra);
   }
 
-  public update(item: EncryptedCollectionItem): Promise<{}> {
+  public batch(items: EncryptedCollectionItem[]): Promise<{ data: [base64url] }> {
     const extra = {
-      method: 'put',
-      body: JSON.stringify(item.serialize()),
+      method: 'post',
+      body: JSON.stringify({
+        items: items.map((x) => x.serialize()),
+      }),
     };
 
-    return this.newCall([item.uid], extra);
+    return this.newCall(['batch'], extra);
   }
 
   public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[]): Promise<{ data: [base64url] }> {

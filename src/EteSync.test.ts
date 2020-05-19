@@ -194,7 +194,7 @@ it('Simple item sync', async () => {
   const item = await itemManager.create(meta, content);
   await verifyItem(itemManager, item, meta, content);
 
-  await itemManager.upload([item]);
+  await itemManager.batch([item]);
 
   {
     const items = await itemManager.list({ inline: true });
@@ -208,7 +208,7 @@ it('Simple item sync', async () => {
   };
   await itemManager.update(item, meta2, content);
 
-  await itemManager.upload([item]);
+  await itemManager.batch([item]);
 
   {
     const items = await itemManager.list({ inline: true });
@@ -219,7 +219,7 @@ it('Simple item sync', async () => {
   const content2 = Uint8Array.from([7, 2, 3, 5]);
   await itemManager.update(item, meta2, content2);
 
-  await itemManager.upload([item]);
+  await itemManager.batch([item]);
 
   {
     const items = await itemManager.list({ inline: true });
@@ -284,6 +284,19 @@ it('Item transactions', async () => {
     const items = await itemManager.list({ inline: true });
     expect(items.length).toBe(6);
   }
+
+  {
+    const meta3 = { ...meta, someval: 'some' };
+    await itemManager.update(item, meta3, content);
+  }
+
+  await itemManager.transaction([item], items);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(6);
+  }
+
 
   // FIXME: add some cases where a transaction failes.
 });
