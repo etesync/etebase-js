@@ -76,6 +76,7 @@ export interface CollectionJsonWrite {
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
   accessLevel: CollectionAccessLevel;
+  cstoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
   content: CollectionItemRevisionJsonRead;
 }
@@ -208,6 +209,7 @@ export class EncryptedCollection {
 
   public accessLevel: CollectionAccessLevel;
   public stoken: string | null;
+  public cstoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
   public static async create(parentCryptoManager: MainCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
@@ -217,6 +219,7 @@ export class EncryptedCollection {
 
     ret.accessLevel = CollectionAccessLevel.Admin;
     ret.stoken = null;
+    ret.cstoken = null;
 
     const cryptoManager = ret.getCryptoManager(parentCryptoManager);
 
@@ -226,7 +229,7 @@ export class EncryptedCollection {
   }
 
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
-    const { uid, stoken, version, accessLevel, encryptionKey, content } = json;
+    const { uid, cstoken, stoken, version, accessLevel, encryptionKey, content } = json;
     const ret = new EncryptedCollection();
     ret.uid = uid;
     ret.version = version;
@@ -234,6 +237,7 @@ export class EncryptedCollection {
 
     ret.accessLevel = accessLevel;
     ret.stoken = stoken;
+    ret.cstoken = cstoken;
 
     ret.content = EncryptedRevision.deserialize(content);
 

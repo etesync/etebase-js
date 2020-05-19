@@ -259,6 +259,7 @@ it('Item transactions', async () => {
   const deps: EteSync.EncryptedCollectionItem[] = [item];
 
   await itemManager.transaction(deps);
+  const itemOld = await itemManager.fetch(item.uid, { inline: true });
 
   const items: EteSync.EncryptedCollectionItem[] = [];
 
@@ -297,6 +298,50 @@ it('Item transactions', async () => {
     expect(items.length).toBe(6);
   }
 
+  {
+    const meta3 = { ...meta, someval: 'some2' };
+    await itemManager.update(item, meta3, content);
 
-  // FIXME: add some cases where a transaction failes.
+    // Old in the deps
+    await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(EteSync.HTTPError);
+
+    const itemOld2 = EteSync.EncryptedCollectionItem.deserialize(itemOld.serialize());
+
+    await itemManager.transaction([item]);
+
+    await itemManager.update(itemOld2, meta3, content);
+
+    // Old stoken in the item itself
+    await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
+  }
+
+  {
+    const meta3 = { ...meta, someval: 'some2' };
+    const item2 = await itemManager.fetch(items[0].uid, { inline: true });
+    await itemManager.update(item2, meta3, content);
+
+    const itemOld2 = EteSync.EncryptedCollectionItem.deserialize(itemOld.serialize());
+    await itemManager.update(itemOld2, meta3, content);
+
+    // Part of the transaction is bad, and part is good
+    await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
+
+    // Verify it hasn't changed after the transaction above failed
+    const item2Fetch = await itemManager.fetch(item2.uid, { inline: true });
+    expect(item2Fetch.serialize()).not.toEqual(item2.serialize());
+  }
+
+  {
+    // Global stoken test
+    const meta3 = { ...meta, someval: 'some2' };
+    await itemManager.update(item, meta3, content);
+
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const cstoken = newCol.cstoken;
+    const badCstoken = col.stoken;
+
+    await expect(itemManager.transaction([item], undefined, { cstoken: badCstoken })).rejects.toBeInstanceOf(EteSync.HTTPError);
+
+    await itemManager.transaction([item], undefined, { cstoken });
+  }
 });
