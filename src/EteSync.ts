@@ -614,7 +614,7 @@ export class CollectionItemManager {
 }
 
 export interface FetchOptions {
-  syncToken?: string;
+  cstoken?: string | null;
   inline?: boolean;
   limit?: number;
 }
@@ -811,6 +811,19 @@ class BaseManager extends BaseNetwork {
 
     return super.newCall(segments, extra, apiBase);
   }
+
+  protected urlFromFetchOptions(options?: FetchOptions) {
+    if (!options) {
+      return this.apiBase;
+    }
+
+    const { cstoken, inline, limit } = options;
+    return this.apiBase.clone().search({
+      cstoken: (cstoken !== null) ? cstoken : undefined,
+      limit: (limit && (limit > 0)) ? limit : undefined,
+      inline: inline,
+    });
+  }
 }
 
 class CollectionManagerOnline extends BaseManager {
@@ -830,12 +843,7 @@ class CollectionManagerOnline extends BaseManager {
   }
 
   public list(options: FetchOptions): Promise<EncryptedCollection[]> {
-    const { syncToken, inline, limit } = options;
-    const apiBase = this.apiBase.clone().search({
-      syncToken: (syncToken !== null) ? syncToken : undefined,
-      limit: (limit && (limit > 0)) ? limit : undefined,
-      inline: inline,
-    });
+    const apiBase = this.urlFromFetchOptions(options);
 
     return new Promise((resolve, reject) => {
       this.newCall<ListResponse<CollectionJsonRead[]>>(undefined, undefined, apiBase).then((json) => {
@@ -885,12 +893,8 @@ class CollectionItemManagerOnline extends BaseManager {
   }
 
   public list(options: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
-    const { syncToken, inline, limit, withMainItem } = options;
-    const apiBase = this.apiBase.clone().search({
-      syncToken: (syncToken !== null) ? syncToken : undefined,
-      limit: (limit && (limit > 0)) ? limit : undefined,
-      inline: inline,
-    });
+    const { withMainItem } = options;
+    const apiBase = this.urlFromFetchOptions(options);
 
     return new Promise((resolve, reject) => {
       this.newCall<ListResponse<CollectionItemJsonRead[]>>(undefined, undefined, apiBase).then((json) => {
@@ -917,7 +921,9 @@ class CollectionItemManagerOnline extends BaseManager {
     return this.newCall(undefined, extra);
   }
 
-  public batch(items: EncryptedCollectionItem[]): Promise<{ data: [base64url] }> {
+  public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: [base64url] }> {
+    const apiBase = this.urlFromFetchOptions(options);
+
     const extra = {
       method: 'post',
       body: JSON.stringify({
@@ -925,10 +931,12 @@ class CollectionItemManagerOnline extends BaseManager {
       }),
     };
 
-    return this.newCall(['batch'], extra);
+    return this.newCall(['batch'], extra, apiBase);
   }
 
-  public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[]): Promise<{ data: [base64url] }> {
+  public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: [base64url] }> {
+    const apiBase = this.urlFromFetchOptions(options);
+
     const extra = {
       method: 'post',
       body: JSON.stringify({
@@ -937,6 +945,6 @@ class CollectionItemManagerOnline extends BaseManager {
       }),
     };
 
-    return this.newCall(['transaction'], extra);
+    return this.newCall(['transaction'], extra, apiBase);
   }
 }
