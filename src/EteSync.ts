@@ -598,15 +598,15 @@ export class CollectionItemManager {
     return this.onlineManager.list(options);
   }
 
-  public async batch(items: EncryptedCollectionItem[]) {
-    const stokens = await this.onlineManager.batch(items);
+  public async batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions) {
+    const stokens = await this.onlineManager.batch(items, options);
     items.forEach((item, i) => {
       item.__markSaved(stokens[i]);
     });
   }
 
-  public async transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[]) {
-    const stokens = await this.onlineManager.transaction(items, deps);
+  public async transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions) {
+    const stokens = await this.onlineManager.transaction(items, deps, options);
     items.forEach((item, i) => {
       item.__markSaved(stokens[i]);
     });
