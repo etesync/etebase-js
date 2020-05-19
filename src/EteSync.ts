@@ -314,7 +314,7 @@ export class EncryptedCollectionItem {
     ret.version = version;
     ret.encryptionKey = sodium.from_base64(encryptionKey);
 
-    ret.stoken = null;
+    ret.stoken = json.stoken;
 
     ret.content = EncryptedRevision.deserialize(content);
 
