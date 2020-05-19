@@ -714,83 +714,59 @@ class Authenticator extends BaseNetwork {
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1', 'authentication']);
   }
 
-  public signup(user: User, salt: Uint8Array, pubkey: Uint8Array): Promise<LoginResponse> {
-    return new Promise((resolve, reject) => {
-      const extra = {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-        },
-        body: JSON.stringify({
-          user,
-          salt: toBase64(salt),
-          pubkey: toBase64(pubkey),
-        }),
-      };
+  public async signup(user: User, salt: Uint8Array, pubkey: Uint8Array): Promise<LoginResponse> {
+    const extra = {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+      },
+      body: JSON.stringify({
+        user,
+        salt: toBase64(salt),
+        pubkey: toBase64(pubkey),
+      }),
+    };
 
-      this.newCall<LoginResponse>(['signup'], extra).then(() => {
-        resolve();
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+    return this.newCall<LoginResponse>(['signup'], extra);
   }
 
   public getLoginChallenge(userQuery: UsernameOrEmail): Promise<LoginChallange> {
-    return new Promise((resolve, reject) => {
-      const extra = {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-        },
-        body: JSON.stringify(userQuery),
-      };
+    const extra = {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+      },
+      body: JSON.stringify(userQuery),
+    };
 
-      this.newCall<LoginChallange>(['login_challenge'], extra).then((json) => {
-        resolve(json);
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+    return this.newCall<LoginChallange>(['login_challenge'], extra);
   }
 
   public login(response: string, signature: Uint8Array): Promise<LoginResponse> {
-    return new Promise((resolve, reject) => {
-      const extra = {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-        },
-        body: JSON.stringify({
-          response: toBase64(response),
-          signature: toBase64(signature),
-        }),
-      };
+    const extra = {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+      },
+      body: JSON.stringify({
+        response: toBase64(response),
+        signature: toBase64(signature),
+      }),
+    };
 
-      this.newCall<LoginResponse>(['login'], extra).then((json) => {
-        resolve(json);
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+    return this.newCall<LoginResponse>(['login'], extra);
   }
 
   public logout(authToken: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const extra = {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Authorization': 'Token ' + authToken,
-        },
-      };
+    const extra = {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Authorization': 'Token ' + authToken,
+      },
+    };
 
-      this.newCall(['logout'], extra).then(() => {
-        resolve();
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+    return this.newCall(['logout'], extra);
   }
 }
 
@@ -835,30 +811,16 @@ class CollectionManagerOnline extends BaseManager {
     super(etesync, ['collection']);
   }
 
-  public fetch(colUid: string, options: FetchOptions): Promise<EncryptedCollection> {
-    return new Promise((resolve, reject) => {
-      this.newCall<CollectionJsonRead>([colUid]).then((json) => {
-        const collection = EncryptedCollection.deserialize(json);
-        resolve(collection);
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+  public async fetch(colUid: string, options: FetchOptions): Promise<EncryptedCollection> {
+    const json = await this.newCall<CollectionJsonRead>([colUid]);
+    return EncryptedCollection.deserialize(json);
   }
 
-  public list(options: FetchOptions): Promise<EncryptedCollection[]> {
+  public async list(options: FetchOptions): Promise<EncryptedCollection[]> {
     const apiBase = this.urlFromFetchOptions(options);
 
-    return new Promise((resolve, reject) => {
-      this.newCall<ListResponse<CollectionJsonRead[]>>(undefined, undefined, apiBase).then((json) => {
-        resolve(json.data.map((val) => {
-          const collection = EncryptedCollection.deserialize(val);
-          return collection;
-        }));
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+    const json = await this.newCall<ListResponse<CollectionJsonRead[]>>(undefined, undefined, apiBase);
+    return json.data.map((val) => EncryptedCollection.deserialize(val));
   }
 
   public create(collection: EncryptedCollection): Promise<{}> {
@@ -885,35 +847,21 @@ class CollectionItemManagerOnline extends BaseManager {
     super(etesync, ['collection', col.uid, 'item']);
   }
 
-  public fetch(colUid: string, options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
-    return new Promise((resolve, reject) => {
-      this.newCall<CollectionItemJsonRead>([colUid]).then((json) => {
-        const item = EncryptedCollectionItem.deserialize(json);
-        resolve(item);
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+  public async fetch(colUid: string, options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
+    const json = await this.newCall<CollectionItemJsonRead>([colUid]);
+    return EncryptedCollectionItem.deserialize(json);
   }
 
-  public list(options: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
+  public async list(options: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
     const { withMainItem } = options;
     const apiBase = this.urlFromFetchOptions(options);
 
-    return new Promise((resolve, reject) => {
-      this.newCall<ListResponse<CollectionItemJsonRead[]>>(undefined, undefined, apiBase).then((json) => {
-        let data = json.data;
-        if (!withMainItem) {
-          data = data.filter((x) => x.uid !== null);
-        }
-        resolve(data.map((val) => {
-          const item = EncryptedCollectionItem.deserialize(val);
-          return item;
-        }));
-      }).catch((error: Error) => {
-        reject(error);
-      });
-    });
+    const json = await this.newCall<ListResponse<CollectionItemJsonRead[]>>(undefined, undefined, apiBase);
+    let data = json.data;
+    if (!withMainItem) {
+      data = data.filter((x) => x.uid !== null);
+    }
+    return data.map((val) => EncryptedCollectionItem.deserialize(val));
   }
 
   public create(item: EncryptedCollectionItem): Promise<{}> {
