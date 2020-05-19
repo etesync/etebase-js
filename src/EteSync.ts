@@ -936,7 +936,7 @@ class CollectionItemManagerOnline extends BaseManager {
       method: 'post',
       body: JSON.stringify({
         items: items.map((x) => x.serialize()),
-        deps,
+        deps: deps?.map((x) => ({ uid: x.uid, stoken: x.stoken })),
       }),
     };
 
