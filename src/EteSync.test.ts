@@ -425,3 +425,110 @@ it('Item batch cstoken', async () => {
     await itemManager.batch([item], { cstoken });
   }
 });
+
+it('Item fetch updates', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.length).toBe(1);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: EteSync.CollectionItemMetadata = {
+    type: 'ITEMTYPE',
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+
+  await itemManager.batch([item]);
+
+  const items: EteSync.EncryptedCollectionItem[] = [];
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(1);
+  }
+
+  for (let i = 0 ; i < 5 ; i++) {
+    const meta2 = {
+      type: 'ITEMTYPE',
+      someval: 'someval',
+      i,
+    };
+    const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
+    const item2 = await itemManager.create(meta2, content2);
+    items.push(item2);
+  }
+
+  await itemManager.batch(items);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(6);
+  }
+
+
+  let cstoken: string | null = null;
+
+  {
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    cstoken = newCol.cstoken;
+  }
+
+  {
+    let updates = await itemManager.fetchUpdates(items);
+    expect(updates.length).toBe(0);
+
+    updates = await itemManager.fetchUpdates(items, { cstoken });
+    expect(updates.length).toBe(0);
+  }
+
+  {
+    const meta3 = { ...meta, someval: 'some2' };
+    const item2 = EteSync.EncryptedCollectionItem.deserialize(items[0].serialize());
+
+    await itemManager.update(item2, meta3, content);
+    await itemManager.batch([item2]);
+  }
+
+  {
+    let updates = await itemManager.fetchUpdates(items);
+    expect(updates.length).toBe(1);
+
+    updates = await itemManager.fetchUpdates(items, { cstoken });
+    expect(updates.length).toBe(1);
+  }
+
+  {
+    const item2 = await itemManager.fetch(items[0].uid, { inline: true });
+    let updates = await itemManager.fetchUpdates([item2]);
+    expect(updates.length).toBe(0);
+
+    updates = await itemManager.fetchUpdates([item2], { cstoken });
+    expect(updates.length).toBe(1);
+  }
+
+  {
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    cstoken = newCol.cstoken;
+  }
+
+  {
+    const updates = await itemManager.fetchUpdates(items, { cstoken });
+    expect(updates.length).toBe(0);
+  }
+});

@@ -602,6 +602,10 @@ export class CollectionItemManager {
     return this.onlineManager.list(options);
   }
 
+  public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions) {
+    return this.onlineManager.fetchUpdates(items, options);
+  }
+
   public async batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions) {
     const stokens = await this.onlineManager.batch(items, options);
     items.forEach((item, i) => {
@@ -871,6 +875,21 @@ class CollectionItemManagerOnline extends BaseManager {
     };
 
     return this.newCall(undefined, extra);
+  }
+
+  public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
+    const apiBase = this.urlFromFetchOptions(options);
+    // We only use cstoken if available
+    const wantStoken = !options?.cstoken;
+
+    const extra = {
+      method: 'post',
+      body: JSON.stringify(items?.map((x) => ({ uid: x.uid, stoken: ((wantStoken) ? x.stoken : undefined) }))),
+    };
+
+    const json = await this.newCall<ListResponse<CollectionItemJsonRead[]>>(['fetch_updates'], extra, apiBase);
+    const data = json.data;
+    return data.map((val) => EncryptedCollectionItem.deserialize(val));
   }
 
   public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: [base64url] }> {
