@@ -345,3 +345,83 @@ it('Item transactions', async () => {
     await itemManager.transaction([item], undefined, { cstoken });
   }
 });
+
+it('Item batch cstoken', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.length).toBe(1);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: EteSync.CollectionItemMetadata = {
+    type: 'ITEMTYPE',
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+
+  await itemManager.batch([item]);
+
+  const items: EteSync.EncryptedCollectionItem[] = [];
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(1);
+  }
+
+  for (let i = 0 ; i < 5 ; i++) {
+    const meta2 = {
+      type: 'ITEMTYPE',
+      someval: 'someval',
+      i,
+    };
+    const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
+    const item2 = await itemManager.create(meta2, content2);
+    items.push(item2);
+  }
+
+  await itemManager.batch(items);
+
+  {
+    const meta3 = { ...meta, someval: 'some2' };
+    const item2 = EteSync.EncryptedCollectionItem.deserialize(item.serialize());
+
+    await itemManager.update(item2, meta3, content);
+    await itemManager.batch([item2]);
+
+    meta3.someval = 'some3';
+    await itemManager.update(item, meta3, content);
+
+    // Old stoken in the item itself should work for batch and fail for transaction
+    await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await itemManager.batch([item]);
+  }
+
+  {
+    // Global stoken test
+    const meta3 = { ...meta, someval: 'some2' };
+    await itemManager.update(item, meta3, content);
+
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const cstoken = newCol.cstoken;
+    const badCstoken = col.stoken;
+
+    await expect(itemManager.batch([item], { cstoken: badCstoken })).rejects.toBeInstanceOf(EteSync.HTTPError);
+
+    await itemManager.batch([item], { cstoken });
+  }
+});
