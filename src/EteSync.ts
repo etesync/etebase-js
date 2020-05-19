@@ -50,6 +50,8 @@ export interface CollectionItemJsonWrite {
 
   encryptionKey: base64url;
   content: CollectionItemRevisionJsonWrite;
+
+  stoken: string | null;
 }
 
 export interface CollectionItemJsonRead extends CollectionItemJsonWrite {
@@ -68,11 +70,12 @@ export interface CollectionJsonWrite {
 
   encryptionKey: base64url;
   content: CollectionItemRevisionJsonWrite;
+
+  stoken: string | null;
 }
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
   accessLevel: CollectionAccessLevel;
-  stoken: string;
 
   content: CollectionItemRevisionJsonRead;
 }
@@ -242,6 +245,7 @@ export class EncryptedCollection {
       uid: this.uid,
       version: this.version,
       encryptionKey: sodium.to_base64(this.encryptionKey),
+      stoken: this.stoken,
 
       content: this.content.serialize(),
     };
@@ -322,6 +326,7 @@ export class EncryptedCollectionItem {
       uid: this.uid,
       version: this.version,
       encryptionKey: sodium.to_base64(this.encryptionKey),
+      stoken: this.stoken,
 
       content: this.content.serialize(),
     };
