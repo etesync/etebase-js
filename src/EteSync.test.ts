@@ -256,7 +256,16 @@ it('Item transactions', async () => {
 
   const item = await itemManager.create(meta, content);
 
-  const items: EteSync.EncryptedCollectionItem[] = [item];
+  const deps: EteSync.EncryptedCollectionItem[] = [item];
+
+  await itemManager.transaction(deps);
+
+  const items: EteSync.EncryptedCollectionItem[] = [];
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.length).toBe(1);
+  }
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
@@ -269,7 +278,7 @@ it('Item transactions', async () => {
     items.push(item2);
   }
 
-  await itemManager.transaction(items);
+  await itemManager.transaction(items, deps);
 
   {
     const items = await itemManager.list({ inline: true });
