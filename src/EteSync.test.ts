@@ -3,6 +3,7 @@ import 'whatwg-fetch';
 import * as EteSync from './EteSync';
 
 import { USER, USER2 } from './TestConstants';
+import { CURRENT_VERSION } from './Constants';
 
 const testApiBase = 'http://localhost:12345';
 
@@ -26,7 +27,7 @@ async function verifyItem(itemManager: EteSync.CollectionItemManager, item: EteS
 
 async function prepareUserForTest(user: typeof USER) {
   const accountData: EteSync.AccountData = {
-    version: 1,
+    version: CURRENT_VERSION,
     key: user.keyB64,
     user,
     serverUrl: testApiBase,
