@@ -579,17 +579,6 @@ export class CollectionManager {
     return this.onlineManager.list(options);
   }
 
-  public async invite(col: EncryptedCollection, username: string, publicKey: base64url, accessLevel: CollectionAccessLevel): Promise<void> {
-    const mainCryptoManager = this.etesync.getCryptoManager();
-    const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
-    const invitation = await col.createInvitation(mainCryptoManager, asymCryptoManager, username, fromBase64(publicKey), accessLevel);
-    await this.onlineManager.invite(col, invitation);
-  }
-
-  public async fetchUserProfile(col: EncryptedCollection, username: string): Promise<UserProfile> {
-    return this.onlineManager.fetchUserProfile(col, username);
-  }
-
   // FIXME: Accept fetchOptions so stoken can be passed as well as inline for errors and etc
   // It's bad that what we call stoken for item it's just for the item and here it's for the whole collection
   public async upload(col: EncryptedCollection) {
@@ -697,6 +686,17 @@ export class CollectionInvitationManager {
 
   public async reject(invitation: SignedInvitationRead) {
     return this.onlineManager.reject(invitation);
+  }
+
+  public async fetchUserProfile(username: string): Promise<UserProfile> {
+    return this.onlineManager.fetchUserProfile(username);
+  }
+
+  public async invite(col: EncryptedCollection, username: string, publicKey: base64url, accessLevel: CollectionAccessLevel): Promise<void> {
+    const mainCryptoManager = this.etesync.getCryptoManager();
+    const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
+    const invitation = await col.createInvitation(mainCryptoManager, asymCryptoManager, username, fromBase64(publicKey), accessLevel);
+    await this.onlineManager.invite(invitation);
   }
 }
 
@@ -928,24 +928,6 @@ class CollectionManagerOnline extends BaseManager {
 
     return this.newCall([collection.uid], extra);
   }
-
-  // FIXME: invitation stuff should move to their own class
-  public async fetchUserProfile(collection: EncryptedCollection, username: string): Promise<UserProfile> {
-    const apiBase = this.apiBase.clone().search({
-      username: username,
-    });
-
-    return this.newCall([collection.uid, 'invitation', 'fetch_user_profile'], undefined, apiBase);
-  }
-
-  public async invite(collection: EncryptedCollection, invitation: SignedInvitationWrite): Promise<{}> {
-    const extra = {
-      method: 'post',
-      body: JSON.stringify(invitation),
-    };
-
-    return this.newCall([collection.uid, 'invitation'], extra);
-  }
 }
 
 class CollectionItemManagerOnline extends BaseManager {
@@ -1025,16 +1007,16 @@ class CollectionItemManagerOnline extends BaseManager {
 
 class CollectionInvitationManagerOnline extends BaseManager {
   constructor(etesync: Account) {
-    super(etesync, ['invitation', 'incoming']);
+    super(etesync, ['invitation']);
   }
 
   public async fetch(invitationUid: string): Promise<SignedInvitationRead> {
-    const json = await this.newCall<SignedInvitationRead>([invitationUid]);
+    const json = await this.newCall<SignedInvitationRead>(['incoming', invitationUid]);
     return json;
   }
 
   public async list(): Promise<SignedInvitationRead[]> {
-    const json = await this.newCall<SignedInvitationRead[]>();
+    const json = await this.newCall<SignedInvitationRead[]>(['incoming']);
     return json.map((val) => val);
   }
 
@@ -1046,7 +1028,7 @@ class CollectionInvitationManagerOnline extends BaseManager {
       }),
     };
 
-    return this.newCall([invitation.uid, 'accept'], extra);
+    return this.newCall(['incoming', invitation.uid, 'accept'], extra);
   }
 
   public async reject(invitation: SignedInvitationRead): Promise<{}> {
@@ -1054,6 +1036,23 @@ class CollectionInvitationManagerOnline extends BaseManager {
       method: 'delete',
     };
 
-    return this.newCall([invitation.uid], extra);
+    return this.newCall(['incoming', invitation.uid], extra);
+  }
+
+  public async fetchUserProfile(username: string): Promise<UserProfile> {
+    const apiBase = this.apiBase.clone().search({
+      username: username,
+    });
+
+    return this.newCall(['outgoing', 'fetch_user_profile'], undefined, apiBase);
+  }
+
+  public async invite(invitation: SignedInvitationWrite): Promise<{}> {
+    const extra = {
+      method: 'post',
+      body: JSON.stringify(invitation),
+    };
+
+    return this.newCall(['outgoing'], extra);
   }
 }

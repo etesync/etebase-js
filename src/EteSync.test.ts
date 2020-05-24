@@ -570,20 +570,21 @@ it('Collection invitations', async () => {
 
   await itemManager.batch(items);
 
+  const collectionInvitationManager = new EteSync.CollectionInvitationManager(etesync);
 
   const etesync2 = await prepareUserForTest(USER2);
   const collectionManager2 = etesync2.getCollectionManager();
 
-  const user2Profile = await collectionManager.fetchUserProfile(col, USER2.username);
+  const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
-  await collectionManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
 
-  const collectionInvitationManager = new EteSync.CollectionInvitationManager(etesync2);
+  const collectionInvitationManager2 = new EteSync.CollectionInvitationManager(etesync2);
 
-  let invitations = await collectionInvitationManager.list();
+  let invitations = await collectionInvitationManager2.list();
   expect(invitations.length).toBe(1);
 
-  await collectionInvitationManager.reject(invitations[0]);
+  await collectionInvitationManager2.reject(invitations[0]);
 
   {
     const collections = await collectionManager2.list({ inline: true });
@@ -591,17 +592,17 @@ it('Collection invitations', async () => {
   }
 
   {
-    const invitations = await collectionInvitationManager.list();
+    const invitations = await collectionInvitationManager2.list();
     expect(invitations.length).toBe(0);
   }
 
   // Invite again, this time accept
-  await collectionManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
 
-  invitations = await collectionInvitationManager.list();
+  invitations = await collectionInvitationManager2.list();
   expect(invitations.length).toBe(1);
 
-  await collectionInvitationManager.accept(invitations[0]);
+  await collectionInvitationManager2.accept(invitations[0]);
 
   {
     const collections = await collectionManager2.list({ inline: true });
@@ -611,7 +612,7 @@ it('Collection invitations', async () => {
   }
 
   {
-    const invitations = await collectionInvitationManager.list();
+    const invitations = await collectionInvitationManager2.list();
     expect(invitations.length).toBe(0);
   }
 
