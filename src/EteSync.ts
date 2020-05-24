@@ -815,7 +815,8 @@ class CollectionManagerOnline extends BaseManager {
     super(etesync, ['collection']);
   }
 
-  public async fetch(colUid: string, options: FetchOptions): Promise<EncryptedCollection> {
+  // FIXME: do something with fetch options or remove?
+  public async fetch(colUid: string, _options: FetchOptions): Promise<EncryptedCollection> {
     const json = await this.newCall<CollectionJsonRead>([colUid]);
     return EncryptedCollection.deserialize(json);
   }
@@ -851,7 +852,8 @@ class CollectionItemManagerOnline extends BaseManager {
     super(etesync, ['collection', col.uid, 'item']);
   }
 
-  public async fetch(colUid: string, options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
+  // FIXME: do something with fetch options or remove?
+  public async fetch(colUid: string, _options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
     const json = await this.newCall<CollectionItemJsonRead>([colUid]);
     return EncryptedCollectionItem.deserialize(json);
   }
