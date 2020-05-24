@@ -98,31 +98,31 @@ export class AsymmetricCryptoManager {
     return sodium.crypto_sign_detached(message, this.keypair.privateKey);
   }
 
-  public static verifyDetached(message: Uint8Array, signature: Uint8Array, publicKey: Uint8Array): boolean {
-    return sodium.crypto_sign_verify_detached(signature, message, publicKey);
+  public static verifyDetached(message: Uint8Array, signature: Uint8Array, pubkey: Uint8Array): boolean {
+    return sodium.crypto_sign_verify_detached(signature, message, pubkey);
   }
 
-  public encryptSign(message: Uint8Array, publicKey: Uint8Array): Uint8Array {
+  public encryptSign(message: Uint8Array, pubkey: Uint8Array): Uint8Array {
     const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
     const sk = sodium.crypto_sign_ed25519_sk_to_curve25519(this.keypair.privateKey);
-    const pk = sodium.crypto_sign_ed25519_pk_to_curve25519(publicKey);
+    const pk = sodium.crypto_sign_ed25519_pk_to_curve25519(pubkey);
     const ret = sodium.crypto_box_easy(message, nonce, pk, sk);
 
     return concatArrayBuffers(nonce, ret);
   }
 
-  public decryptVerify(nonceCiphertext: Uint8Array, publicKey: Uint8Array): Uint8Array {
+  public decryptVerify(nonceCiphertext: Uint8Array, pubkey: Uint8Array): Uint8Array {
     const nonceSize = sodium.crypto_box_NONCEBYTES;
     const nonce = nonceCiphertext.subarray(0, nonceSize);
     const ciphertext = nonceCiphertext.subarray(nonceSize);
 
     const sk = sodium.crypto_sign_ed25519_sk_to_curve25519(this.keypair.privateKey);
-    const pk = sodium.crypto_sign_ed25519_pk_to_curve25519(publicKey);
+    const pk = sodium.crypto_sign_ed25519_pk_to_curve25519(pubkey);
 
     return sodium.crypto_box_open_easy(ciphertext, nonce, pk, sk);
   }
 
-  public get publicKey() {
+  public get pubkey() {
     return this.keypair.publicKey;
   }
 }

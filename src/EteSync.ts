@@ -277,10 +277,10 @@ export class EncryptedCollection {
     return this.content.decryptContent(cryptoManager);
   }
 
-  public async createInvitation(parentCryptoManager: MainCryptoManager, asymCryptoManager: AsymmetricCryptoManager, username: string, publicKey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
+  public async createInvitation(parentCryptoManager: MainCryptoManager, asymCryptoManager: AsymmetricCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = sodium.randombytes_buf(32);
     const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
-    const signedEncryptionKey = asymCryptoManager.encryptSign(encryptionKey, publicKey);
+    const signedEncryptionKey = asymCryptoManager.encryptSign(encryptionKey, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
       uid: toBase64(uid),
@@ -438,7 +438,7 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, version);
     const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
 
-    const loginResponse = await authenticator.signup(user, salt, asymCryptoManager.publicKey);
+    const loginResponse = await authenticator.signup(user, salt, asymCryptoManager.pubkey);
 
     const ret = new this(mainKey, version);
 
@@ -692,10 +692,10 @@ export class CollectionInvitationManager {
     return this.onlineManager.fetchUserProfile(username);
   }
 
-  public async invite(col: EncryptedCollection, username: string, publicKey: base64url, accessLevel: CollectionAccessLevel): Promise<void> {
+  public async invite(col: EncryptedCollection, username: string, pubkey: base64url, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etesync.getCryptoManager();
     const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
-    const invitation = await col.createInvitation(mainCryptoManager, asymCryptoManager, username, fromBase64(publicKey), accessLevel);
+    const invitation = await col.createInvitation(mainCryptoManager, asymCryptoManager, username, fromBase64(pubkey), accessLevel);
     await this.onlineManager.invite(invitation);
   }
 }
