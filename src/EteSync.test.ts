@@ -2,7 +2,7 @@ import 'whatwg-fetch';
 
 import * as EteSync from './EteSync';
 
-import { USER } from './TestConstants';
+import { USER, USER2 } from './TestConstants';
 
 const testApiBase = 'http://localhost:12345';
 
@@ -24,18 +24,14 @@ async function verifyItem(itemManager: EteSync.CollectionItemManager, item: EteS
   expect(decryptedContent).toEqual(content);
 }
 
-beforeEach(async () => {
-  await EteSync.ready;
-
-  const user = USER;
-
+async function prepareUserForTest(user: typeof USER) {
   const accountData: EteSync.AccountData = {
     version: 1,
     key: user.keyB64,
     user,
     serverUrl: testApiBase,
   };
-  etesync = EteSync.Account.load(accountData);
+  const etesync = EteSync.Account.load(accountData);
   await etesync.fetchToken();
 
   await fetch(testApiBase + '/api/v1/test/authentication/reset/', {
@@ -45,6 +41,14 @@ beforeEach(async () => {
       'Authorization': 'Token ' + etesync.authToken,
     },
   });
+
+  return etesync;
+}
+
+beforeEach(async () => {
+  await EteSync.ready;
+
+  etesync = await prepareUserForTest(USER);
 });
 
 afterEach(async () => {
@@ -528,4 +532,88 @@ it('Item fetch updates', async () => {
     const updates = await itemManager.fetchUpdates(items, { cstoken });
     expect(updates.length).toBe(0);
   }
+});
+
+it('Collection invitations', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.length).toBe(1);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const items: EteSync.EncryptedCollectionItem[] = [];
+
+  for (let i = 0 ; i < 5 ; i++) {
+    const meta2 = {
+      type: 'ITEMTYPE',
+      someval: 'someval',
+      i,
+    };
+    const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
+    const item2 = await itemManager.create(meta2, content2);
+    items.push(item2);
+  }
+
+  await itemManager.batch(items);
+
+
+  const etesync2 = await prepareUserForTest(USER2);
+  const collectionManager2 = etesync2.getCollectionManager();
+
+  const user2Profile = await collectionManager.fetchUserProfile(col, USER2.username);
+
+  await collectionManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+
+  const collectionInvitationManager = new EteSync.CollectionInvitationManager(etesync2);
+
+  let invitations = await collectionInvitationManager.list();
+  expect(invitations.length).toBe(1);
+
+  await collectionInvitationManager.reject(invitations[0]);
+
+  {
+    const collections = await collectionManager2.list({ inline: true });
+    expect(collections.length).toBe(0);
+  }
+
+  {
+    const invitations = await collectionInvitationManager.list();
+    expect(invitations.length).toBe(0);
+  }
+
+  // Invite again, this time accept
+  await collectionManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+
+  invitations = await collectionInvitationManager.list();
+  expect(invitations.length).toBe(1);
+
+  await collectionInvitationManager.accept(invitations[0]);
+
+  {
+    const collections = await collectionManager2.list({ inline: true });
+    expect(collections.length).toBe(1);
+
+    await collectionManager2.decryptMeta(collections[0]);
+  }
+
+  {
+    const invitations = await collectionInvitationManager.list();
+    expect(invitations.length).toBe(0);
+  }
+
+  etesync2.logout();
 });

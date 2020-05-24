@@ -2,7 +2,7 @@ import URI from 'urijs';
 
 import * as Constants from './Constants';
 
-import { deriveKey, CryptoManager, sodium, concatArrayBuffers } from './Crypto';
+import { deriveKey, CryptoManager, sodium, concatArrayBuffers, AsymmetricCryptoManager } from './Crypto';
 export { deriveKey, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
@@ -277,6 +277,23 @@ export class EncryptedCollection {
     return this.content.decryptContent(cryptoManager);
   }
 
+  public async createInvitation(parentCryptoManager: MainCryptoManager, asymCryptoManager: AsymmetricCryptoManager, username: string, publicKey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
+    const uid = sodium.randombytes_buf(32);
+    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
+    const signedEncryptionKey = asymCryptoManager.encryptSign(encryptionKey, publicKey);
+    const ret: SignedInvitationWrite = {
+      version: Constants.CURRENT_VERSION,
+      uid: toBase64(uid),
+      username,
+      collection: this.uid,
+      accessLevel,
+
+      signedEncryptionKey: toBase64(signedEncryptionKey),
+    };
+
+    return ret;
+  }
+
   public getCryptoManager(parentCryptoManager: MainCryptoManager) {
     const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
 
@@ -367,6 +384,25 @@ export class EncryptedCollectionItem {
   protected getAdditionalMacData() {
     return [sodium.from_string(this.uid)];
   }
+}
+
+export interface SignedInvitationWrite {
+  uid: base64url;
+  version: number;
+  username: string;
+
+  collection: base62;
+  accessLevel: CollectionAccessLevel;
+
+  signedEncryptionKey: base64url;
+}
+
+export interface SignedInvitationRead extends SignedInvitationWrite {
+  fromPubkey: base64url;
+}
+
+export interface AcceptedInvitation {
+  encryptionKey: base64url;
 }
 
 export interface AccountData {
@@ -543,6 +579,19 @@ export class CollectionManager {
     return this.onlineManager.list(options);
   }
 
+  public async invite(col: EncryptedCollection, username: string, publicKey: base64url, accessLevel: CollectionAccessLevel): Promise<void> {
+    const mainCryptoManager = this.etesync.getCryptoManager();
+    const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
+    const invitation = await col.createInvitation(mainCryptoManager, asymCryptoManager, username, fromBase64(publicKey), accessLevel);
+    await this.onlineManager.invite(col, invitation);
+  }
+
+  public async fetchUserProfile(col: EncryptedCollection, username: string): Promise<UserProfile> {
+    return this.onlineManager.fetchUserProfile(col, username);
+  }
+
+  // FIXME: Accept fetchOptions so stoken can be passed as well as inline for errors and etc
+  // It's bad that what we call stoken for item it's just for the item and here it's for the whole collection
   public async upload(col: EncryptedCollection) {
     // If we have a stoken, it means we previously fetched it.
     if (col.stoken) {
@@ -621,6 +670,36 @@ export class CollectionItemManager {
   }
 }
 
+export class CollectionInvitationManager {
+  private readonly etesync: Account;
+  private readonly onlineManager: CollectionInvitationManagerOnline;
+
+  constructor(etesync: Account) {
+    this.etesync = etesync;
+    this.onlineManager = new CollectionInvitationManagerOnline(this.etesync);
+  }
+
+  public async fetch(invitationUid: string) {
+    return this.onlineManager.fetch(invitationUid);
+  }
+
+  public async list() {
+    return this.onlineManager.list();
+  }
+
+  public async accept(invitation: SignedInvitationRead) {
+    const mainCryptoManager = this.etesync.getCryptoManager();
+    const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
+    const encryptionKey = asymCryptoManager.decryptVerify(fromBase64(invitation.signedEncryptionKey), fromBase64(invitation.fromPubkey));
+    const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
+    return this.onlineManager.accept(invitation, encryptedEncryptionKey);
+  }
+
+  public async reject(invitation: SignedInvitationRead) {
+    return this.onlineManager.reject(invitation);
+  }
+}
+
 export interface FetchOptions {
   cstoken?: string | null;
   inline?: boolean;
@@ -692,6 +771,10 @@ class BaseNetwork {
 export interface User {
   username: string;
   email: string;
+}
+
+export interface UserProfile {
+  pubkey: base64url;
 }
 
 export type UsernameOrEmail = Pick<User, 'username'> | Pick<User, 'email'>;
@@ -845,6 +928,24 @@ class CollectionManagerOnline extends BaseManager {
 
     return this.newCall([collection.uid], extra);
   }
+
+  // FIXME: invitation stuff should move to their own class
+  public async fetchUserProfile(collection: EncryptedCollection, username: string): Promise<UserProfile> {
+    const apiBase = this.apiBase.clone().search({
+      username: username,
+    });
+
+    return this.newCall([collection.uid, 'invitation', 'fetch_user_profile'], undefined, apiBase);
+  }
+
+  public async invite(collection: EncryptedCollection, invitation: SignedInvitationWrite): Promise<{}> {
+    const extra = {
+      method: 'post',
+      body: JSON.stringify(invitation),
+    };
+
+    return this.newCall([collection.uid, 'invitation'], extra);
+  }
 }
 
 class CollectionItemManagerOnline extends BaseManager {
@@ -919,5 +1020,40 @@ class CollectionItemManagerOnline extends BaseManager {
     };
 
     return this.newCall(['transaction'], extra, apiBase);
+  }
+}
+
+class CollectionInvitationManagerOnline extends BaseManager {
+  constructor(etesync: Account) {
+    super(etesync, ['invitation', 'incoming']);
+  }
+
+  public async fetch(invitationUid: string): Promise<SignedInvitationRead> {
+    const json = await this.newCall<SignedInvitationRead>([invitationUid]);
+    return json;
+  }
+
+  public async list(): Promise<SignedInvitationRead[]> {
+    const json = await this.newCall<SignedInvitationRead[]>();
+    return json.map((val) => val);
+  }
+
+  public async accept(invitation: SignedInvitationRead, encryptionKey: Uint8Array): Promise<{}> {
+    const extra = {
+      method: 'post',
+      body: JSON.stringify({
+        encryptionKey: toBase64(encryptionKey),
+      }),
+    };
+
+    return this.newCall([invitation.uid, 'accept'], extra);
+  }
+
+  public async reject(invitation: SignedInvitationRead): Promise<{}> {
+    const extra = {
+      method: 'delete',
+    };
+
+    return this.newCall([invitation.uid], extra);
   }
 }
