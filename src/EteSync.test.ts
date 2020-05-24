@@ -597,6 +597,25 @@ it('Collection invitations', async () => {
     expect(invitations.length).toBe(0);
   }
 
+  // Invite and then disinvite
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+
+  invitations = await collectionInvitationManager2.list();
+  expect(invitations.length).toBe(1);
+
+  await collectionInvitationManager2.reject(invitations[0]);
+
+  {
+    const collections = await collectionManager2.list({ inline: true });
+    expect(collections.length).toBe(0);
+  }
+
+  {
+    const invitations = await collectionInvitationManager2.list();
+    expect(invitations.length).toBe(0);
+  }
+
+
   // Invite again, this time accept
   await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
 

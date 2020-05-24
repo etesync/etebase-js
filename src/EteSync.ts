@@ -1055,4 +1055,12 @@ class CollectionInvitationManagerOnline extends BaseManager {
 
     return this.newCall(['outgoing'], extra);
   }
+
+  public async disinvite(invitation: SignedInvitationRead): Promise<{}> {
+    const extra = {
+      method: 'delete',
+    };
+
+    return this.newCall(['outgoing', invitation.uid], extra);
+  }
 }
