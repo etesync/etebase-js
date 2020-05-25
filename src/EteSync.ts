@@ -6,8 +6,8 @@ import { deriveKey, CryptoManager, sodium, concatArrayBuffers, AsymmetricCryptoM
 export { deriveKey, ready } from './Crypto';
 import { HTTPError, NetworkError, IntegrityError } from './Exceptions';
 export * from './Exceptions';
-import { base62, base64url, fromBase64, toBase64 } from './Helpers';
-export { base62, base64url, fromBase64, toBase64 } from './Helpers';
+import { base62, base64, fromBase64, toBase64 } from './Helpers';
+export { base62, base64, fromBase64, toBase64 } from './Helpers';
 
 export { CURRENT_VERSION } from './Constants';
 
@@ -26,15 +26,15 @@ export interface CollectionItemMetadata {
   type: string;
 }
 
-export type ChunkJson = [base64url, base64url?];
+export type ChunkJson = [base64, base64?];
 
 export interface ListResponse<T> {
   data: T;
 }
 
 export interface CollectionItemRevisionJsonWrite {
-  uid: base64url;
-  meta: base64url;
+  uid: base64;
+  meta: base64;
 
   chunks: ChunkJson[];
   deleted: boolean;
@@ -48,7 +48,7 @@ export interface CollectionItemJsonWrite {
   uid: base62;
   version: number;
 
-  encryptionKey: base64url;
+  encryptionKey: base64;
   content: CollectionItemRevisionJsonWrite;
 
   stoken: string | null;
@@ -68,7 +68,7 @@ export interface CollectionJsonWrite {
   uid: base62;
   version: number;
 
-  encryptionKey: base64url;
+  encryptionKey: base64;
   content: CollectionItemRevisionJsonWrite;
 
   stoken: string | null;
@@ -116,11 +116,11 @@ export interface CollectionItemRevisionContent<M extends {}> {
 }
 
 class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
-  public uid: base64url;
+  public uid: base64;
   public meta: Uint8Array;
   public deleted: boolean;
 
-  public chunks: [base64url, Uint8Array?][];
+  public chunks: [base64, Uint8Array?][];
 
   constructor() {
     this.deleted = false;
@@ -387,27 +387,27 @@ export class EncryptedCollectionItem {
 }
 
 export interface SignedInvitationWrite {
-  uid: base64url;
+  uid: base64;
   version: number;
   username: string;
 
   collection: base62;
   accessLevel: CollectionAccessLevel;
 
-  signedEncryptionKey: base64url;
+  signedEncryptionKey: base64;
 }
 
 export interface SignedInvitationRead extends SignedInvitationWrite {
-  fromPubkey: base64url;
+  fromPubkey: base64;
 }
 
 export interface AcceptedInvitation {
-  encryptionKey: base64url;
+  encryptionKey: base64;
 }
 
 export interface AccountData {
   version: number;
-  key: base64url;
+  key: base64;
   user: User;
   serverUrl: string;
   authToken?: string;
@@ -692,7 +692,7 @@ export class CollectionInvitationManager {
     return this.onlineManager.fetchUserProfile(username);
   }
 
-  public async invite(col: EncryptedCollection, username: string, pubkey: base64url, accessLevel: CollectionAccessLevel): Promise<void> {
+  public async invite(col: EncryptedCollection, username: string, pubkey: base64, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etesync.getCryptoManager();
     const asymCryptoManager = mainCryptoManager.getAsymmetricCryptoManager();
     const invitation = await col.createInvitation(mainCryptoManager, asymCryptoManager, username, fromBase64(pubkey), accessLevel);
@@ -774,14 +774,14 @@ export interface User {
 }
 
 export interface UserProfile {
-  pubkey: base64url;
+  pubkey: base64;
 }
 
 export type UsernameOrEmail = Pick<User, 'username'> | Pick<User, 'email'>;
 
 export type LoginChallange = {
   challenge: string;
-  salt: base64url;
+  salt: base64;
   version: number;
 };
 
@@ -977,7 +977,7 @@ class CollectionItemManagerOnline extends BaseManager {
     return data.map((val) => EncryptedCollectionItem.deserialize(val));
   }
 
-  public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: [base64url] }> {
+  public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: [base64] }> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
@@ -990,7 +990,7 @@ class CollectionItemManagerOnline extends BaseManager {
     return this.newCall(['batch'], extra, apiBase);
   }
 
-  public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: [base64url] }> {
+  public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: [base64] }> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
