@@ -729,7 +729,7 @@ class BaseNetwork {
     this.apiBase = URI(apiBase).normalize();
   }
 
-  public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBaseIn: URI = this.apiBase): Promise<T> {
+  public async newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBaseIn: URI = this.apiBase): Promise<T> {
     const apiBase = BaseNetwork.urlExtend(apiBaseIn, segments);
 
     extra = {
@@ -740,34 +740,32 @@ class BaseNetwork {
       },
     };
 
-    return new Promise((resolve, reject) => {
-      fetch(apiBase.toString(), extra).then((response) => {
-        response.text().then((text) => {
-          let json: any;
-          let body: any = text;
-          try {
-            json = JSON.parse(text);
-            body = json;
-          } catch (e) {
-            body = text;
-          }
+    let response;
+    try {
+      response = await fetch(apiBase.toString(), extra);
+    } catch (e) {
+      throw new NetworkError(e.message);
+    }
 
-          if (response.ok) {
-            resolve(body);
-          } else {
-            if (json) {
-              reject(new HTTPError(response.status, json.detail || json.non_field_errors || JSON.stringify(json)));
-            } else {
-              reject(new HTTPError(response.status, body));
-            }
-          }
-        }).catch((error) => {
-          reject(error);
-        });
-      }).catch((error) => {
-        reject(new NetworkError(error.message));
-      });
-    });
+    const text = await response.text();
+    let json: any;
+    let body: any = text;
+    try {
+      json = JSON.parse(text);
+      body = json;
+    } catch (e) {
+      body = text;
+    }
+
+    if (response.ok) {
+      return body;
+    } else {
+      if (json) {
+        throw new HTTPError(response.status, json.detail || json.non_field_errors || JSON.stringify(json));
+      } else {
+        throw new HTTPError(response.status, body);
+      }
+    }
   }
 }
 
