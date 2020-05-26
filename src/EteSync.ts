@@ -84,7 +84,7 @@ export interface CollectionJsonRead extends CollectionJsonWrite {
 function genUidBase62(): base62 {
   const uid = sodium.to_base64(sodium.randombytes_buf(32)).substr(0, 24);
   // FIXME: not the best function, but we don't care about the bias for now
-  return uid.replace('-', 'a').replace('_', 'b');
+  return uid.replace(/-/g, 'a').replace(/_/g, 'b');
 }
 
 export class MainCryptoManager extends CryptoManager {
