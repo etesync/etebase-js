@@ -32,7 +32,7 @@ export class CryptoManager {
   protected version: number;
   protected cipherKey: Uint8Array;
   protected macKey: Uint8Array;
-  protected asymKey: Uint8Array;
+  protected asymKeySeed: Uint8Array;
 
   constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
     keyContext = keyContext.padEnd(8);
@@ -41,7 +41,7 @@ export class CryptoManager {
 
     this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
     this.macKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
-    this.asymKey = sodium.crypto_kdf_derive_from_key(32, 3, keyContext, key);
+    this.asymKeySeed = sodium.crypto_kdf_derive_from_key(32, 3, keyContext, key);
   }
 
   public encrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
@@ -75,7 +75,7 @@ export class CryptoManager {
   }
 
   public getAsymmetricCryptoManager(): AsymmetricCryptoManager {
-    return AsymmetricCryptoManager.keygen(this.asymKey);
+    return AsymmetricCryptoManager.keygen(this.asymKeySeed);
   }
 }
 
