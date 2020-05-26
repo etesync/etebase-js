@@ -74,8 +74,13 @@ export class CryptoManager {
     return new CryptoMac(this.macKey);
   }
 
-  public getAsymmetricCryptoManager(): AsymmetricCryptoManager {
+  public getLoginCryptoManager(): AsymmetricCryptoManager {
     return AsymmetricCryptoManager.keygen(this.asymKeySeed);
+  }
+
+  public getIdentityCryptoManager(encryptedSeckey: Uint8Array): AsymmetricCryptoManager {
+    const seckey = this.decrypt(encryptedSeckey);
+    return AsymmetricCryptoManager.fromSeckey(seckey);
   }
 }
 
@@ -92,6 +97,15 @@ export class AsymmetricCryptoManager {
     } else {
       return new this(sodium.crypto_sign_keypair());
     }
+  }
+
+  public static fromSeckey(seckey: Uint8Array) {
+    return new this({
+      keyType: 'ed25519',
+      privateKey: seckey,
+      // The public key is embedded in the secret key and the function to extract it is not exposed in libsodium-wrappers.
+      publicKey: seckey.subarray(sodium.crypto_sign_SEEDBYTES, sodium.crypto_sign_SEEDBYTES + sodium.crypto_sign_PUBLICKEYBYTES),
+    });
   }
 
   public signDetached(message: Uint8Array): Uint8Array {
@@ -124,6 +138,10 @@ export class AsymmetricCryptoManager {
 
   public get pubkey() {
     return this.keypair.publicKey;
+  }
+
+  public get seckey() {
+    return this.keypair.privateKey;
   }
 }
 
