@@ -339,16 +339,16 @@ it('Item transactions', async () => {
     await itemManager.update(item, meta3, content);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
-    const cstoken = newCol.cstoken;
-    const badCstoken = col.stoken;
+    const stoken = newCol.stoken;
+    const badEtag = col.etag;
 
-    await expect(itemManager.transaction([item], undefined, { cstoken: badCstoken })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.transaction([item], undefined, { stoken: badEtag })).rejects.toBeInstanceOf(EteSync.HTTPError);
 
-    await itemManager.transaction([item], undefined, { cstoken });
+    await itemManager.transaction([item], undefined, { stoken });
   }
 });
 
-it('Item batch cstoken', async () => {
+it('Item batch stoken', async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
     type: 'COLTYPE',
@@ -419,12 +419,12 @@ it('Item batch cstoken', async () => {
     await itemManager.update(item, meta3, content);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
-    const cstoken = newCol.cstoken;
-    const badCstoken = col.stoken;
+    const stoken = newCol.stoken;
+    const badEtag = col.etag;
 
-    await expect(itemManager.batch([item], { cstoken: badCstoken })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.batch([item], { stoken: badEtag })).rejects.toBeInstanceOf(EteSync.HTTPError);
 
-    await itemManager.batch([item], { cstoken });
+    await itemManager.batch([item], { stoken });
   }
 });
 
@@ -484,18 +484,18 @@ it('Item fetch updates', async () => {
   }
 
 
-  let cstoken: string | null = null;
+  let stoken: string | null = null;
 
   {
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
-    cstoken = newCol.cstoken;
+    stoken = newCol.stoken;
   }
 
   {
     let updates = await itemManager.fetchUpdates(items);
     expect(updates.length).toBe(0);
 
-    updates = await itemManager.fetchUpdates(items, { cstoken });
+    updates = await itemManager.fetchUpdates(items, { stoken });
     expect(updates.length).toBe(0);
   }
 
@@ -511,7 +511,7 @@ it('Item fetch updates', async () => {
     let updates = await itemManager.fetchUpdates(items);
     expect(updates.length).toBe(1);
 
-    updates = await itemManager.fetchUpdates(items, { cstoken });
+    updates = await itemManager.fetchUpdates(items, { stoken });
     expect(updates.length).toBe(1);
   }
 
@@ -520,17 +520,17 @@ it('Item fetch updates', async () => {
     let updates = await itemManager.fetchUpdates([item2]);
     expect(updates.length).toBe(0);
 
-    updates = await itemManager.fetchUpdates([item2], { cstoken });
+    updates = await itemManager.fetchUpdates([item2], { stoken });
     expect(updates.length).toBe(1);
   }
 
   {
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
-    cstoken = newCol.cstoken;
+    stoken = newCol.stoken;
   }
 
   {
-    const updates = await itemManager.fetchUpdates(items, { cstoken });
+    const updates = await itemManager.fetchUpdates(items, { stoken });
     expect(updates.length).toBe(0);
   }
 });

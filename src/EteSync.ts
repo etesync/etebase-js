@@ -51,7 +51,7 @@ export interface CollectionItemJsonWrite {
   encryptionKey: base64;
   content: CollectionItemRevisionJsonWrite;
 
-  stoken: string | null;
+  etag: string | null;
 }
 
 export interface CollectionItemJsonRead extends CollectionItemJsonWrite {
@@ -71,12 +71,12 @@ export interface CollectionJsonWrite {
   encryptionKey: base64;
   content: CollectionItemRevisionJsonWrite;
 
-  stoken: string | null;
+  etag: string | null;
 }
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
   accessLevel: CollectionAccessLevel;
-  cstoken: string | null; // FIXME: hack, we shouldn't expose it here...
+  stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
   content: CollectionItemRevisionJsonRead;
 }
@@ -208,8 +208,8 @@ export class EncryptedCollection {
   private content: EncryptedRevision<CollectionCryptoManager>;
 
   public accessLevel: CollectionAccessLevel;
-  public stoken: string | null;
-  public cstoken: string | null; // FIXME: hack, we shouldn't expose it here...
+  public etag: string | null;
+  public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
   public static async create(parentCryptoManager: MainCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
@@ -218,8 +218,8 @@ export class EncryptedCollection {
     ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
 
     ret.accessLevel = CollectionAccessLevel.Admin;
+    ret.etag = null;
     ret.stoken = null;
-    ret.cstoken = null;
 
     const cryptoManager = ret.getCryptoManager(parentCryptoManager);
 
@@ -229,15 +229,15 @@ export class EncryptedCollection {
   }
 
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
-    const { uid, cstoken, stoken, version, accessLevel, encryptionKey, content } = json;
+    const { uid, stoken, etag, version, accessLevel, encryptionKey, content } = json;
     const ret = new EncryptedCollection();
     ret.uid = uid;
     ret.version = version;
     ret.encryptionKey = sodium.from_base64(encryptionKey);
 
     ret.accessLevel = accessLevel;
+    ret.etag = etag;
     ret.stoken = stoken;
-    ret.cstoken = cstoken;
 
     ret.content = EncryptedRevision.deserialize(content);
 
@@ -249,7 +249,7 @@ export class EncryptedCollection {
       uid: this.uid,
       version: this.version,
       encryptionKey: sodium.to_base64(this.encryptionKey),
-      stoken: this.stoken,
+      etag: this.etag,
 
       content: this.content.serialize(),
     };
@@ -258,7 +258,7 @@ export class EncryptedCollection {
   }
 
   public __markSaved() {
-    this.stoken = this.content.uid;
+    this.etag = this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
@@ -311,7 +311,7 @@ export class EncryptedCollectionItem {
   private encryptionKey: Uint8Array;
   private content: EncryptedRevision<CollectionItemCryptoManager>;
 
-  public stoken: string | null;
+  public etag: string | null;
 
   public static async create(parentCryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
@@ -319,7 +319,7 @@ export class EncryptedCollectionItem {
     ret.version = Constants.CURRENT_VERSION;
     ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
 
-    ret.stoken = null;
+    ret.etag = null;
 
     const cryptoManager = ret.getCryptoManager(parentCryptoManager);
 
@@ -335,7 +335,7 @@ export class EncryptedCollectionItem {
     ret.version = version;
     ret.encryptionKey = sodium.from_base64(encryptionKey);
 
-    ret.stoken = json.stoken;
+    ret.etag = json.etag;
 
     ret.content = EncryptedRevision.deserialize(content);
 
@@ -347,7 +347,7 @@ export class EncryptedCollectionItem {
       uid: this.uid,
       version: this.version,
       encryptionKey: sodium.to_base64(this.encryptionKey),
-      stoken: this.stoken,
+      etag: this.etag,
 
       content: this.content.serialize(),
     };
@@ -356,7 +356,7 @@ export class EncryptedCollectionItem {
   }
 
   public __markSaved() {
-    this.stoken = this.content.uid;
+    this.etag = this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
@@ -585,8 +585,8 @@ export class CollectionManager {
   // FIXME: Accept fetchOptions so stoken can be passed as well as inline for errors and etc
   // It's bad that what we call stoken for item it's just for the item and here it's for the whole collection
   public async upload(col: EncryptedCollection) {
-    // If we have a stoken, it means we previously fetched it.
-    if (col.stoken) {
+    // If we have a etag, it means we previously fetched it.
+    if (col.etag) {
       await this.onlineManager.update(col);
     } else {
       await this.onlineManager.create(col);
@@ -704,7 +704,7 @@ export class CollectionInvitationManager {
 }
 
 export interface FetchOptions {
-  cstoken?: string | null;
+  stoken?: string | null;
   inline?: boolean;
   limit?: number;
 }
@@ -889,9 +889,9 @@ class BaseManager extends BaseNetwork {
       return this.apiBase;
     }
 
-    const { cstoken, inline, limit } = options;
+    const { stoken, inline, limit } = options;
     return this.apiBase.clone().search({
-      cstoken: (cstoken !== null) ? cstoken : undefined,
+      stoken: (stoken !== null) ? stoken : undefined,
       limit: (limit && (limit > 0)) ? limit : undefined,
       inline: inline,
     });
@@ -969,12 +969,12 @@ class CollectionItemManagerOnline extends BaseManager {
 
   public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
     const apiBase = this.urlFromFetchOptions(options);
-    // We only use cstoken if available
-    const wantStoken = !options?.cstoken;
+    // We only use stoken if available
+    const wantEtag = !options?.stoken;
 
     const extra = {
       method: 'post',
-      body: JSON.stringify(items?.map((x) => ({ uid: x.uid, stoken: ((wantStoken) ? x.stoken : undefined) }))),
+      body: JSON.stringify(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.etag : undefined) }))),
     };
 
     const json = await this.newCall<ListResponse<CollectionItemJsonRead[]>>(['fetch_updates'], extra, apiBase);
@@ -1002,7 +1002,7 @@ class CollectionItemManagerOnline extends BaseManager {
       method: 'post',
       body: JSON.stringify({
         items: items.map((x) => x.serialize()),
-        deps: deps?.map((x) => ({ uid: x.uid, stoken: x.stoken })),
+        deps: deps?.map((x) => ({ uid: x.uid, etag: x.etag })),
       }),
     };
 
