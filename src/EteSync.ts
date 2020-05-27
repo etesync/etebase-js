@@ -693,8 +693,8 @@ export class CollectionInvitationManager {
     return this.onlineManager.fetch(invitationUid);
   }
 
-  public async list() {
-    return this.onlineManager.list();
+  public async listIncoming() {
+    return this.onlineManager.listIncoming();
   }
 
   public async accept(invitation: SignedInvitationRead) {
@@ -1073,7 +1073,7 @@ class CollectionInvitationManagerOnline extends BaseManager {
     return json;
   }
 
-  public async list(): Promise<ListResponse<SignedInvitationRead>> {
+  public async listIncoming(): Promise<ListResponse<SignedInvitationRead>> {
     const json = await this.newCall<ListResponse<SignedInvitationRead>>(['incoming']);
     return {
       ...json,

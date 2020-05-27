@@ -593,7 +593,7 @@ it('Collection invitations', async () => {
 
   const collectionInvitationManager2 = new EteSync.CollectionInvitationManager(etesync2);
 
-  let invitations = await collectionInvitationManager2.list();
+  let invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
 
   await collectionInvitationManager2.reject(invitations.data[0]);
@@ -604,14 +604,14 @@ it('Collection invitations', async () => {
   }
 
   {
-    const invitations = await collectionInvitationManager2.list();
+    const invitations = await collectionInvitationManager2.listIncoming();
     expect(invitations.data.length).toBe(0);
   }
 
   // Invite and then disinvite
   await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
 
-  invitations = await collectionInvitationManager2.list();
+  invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
 
   await collectionInvitationManager2.reject(invitations.data[0]);
@@ -622,7 +622,7 @@ it('Collection invitations', async () => {
   }
 
   {
-    const invitations = await collectionInvitationManager2.list();
+    const invitations = await collectionInvitationManager2.listIncoming();
     expect(invitations.data.length).toBe(0);
   }
 
@@ -630,7 +630,7 @@ it('Collection invitations', async () => {
   // Invite again, this time accept
   await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
 
-  invitations = await collectionInvitationManager2.list();
+  invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
 
   let stoken;
@@ -662,7 +662,7 @@ it('Collection invitations', async () => {
   }
 
   {
-    const invitations = await collectionInvitationManager2.list();
+    const invitations = await collectionInvitationManager2.listIncoming();
     expect(invitations.data.length).toBe(0);
   }
 
@@ -680,7 +680,7 @@ it('Collection invitations', async () => {
   // Add again
   await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
 
-  invitations = await collectionInvitationManager2.list();
+  invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
   await collectionInvitationManager2.accept(invitations.data[0]);
 
@@ -767,7 +767,7 @@ it('Collection access level', async () => {
 
   const collectionInvitationManager2 = new EteSync.CollectionInvitationManager(etesync2);
 
-  const invitations = await collectionInvitationManager2.list();
+  const invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
 
   await collectionInvitationManager2.accept(invitations.data[0]);
