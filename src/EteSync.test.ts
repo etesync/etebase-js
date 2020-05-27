@@ -633,7 +633,25 @@ it('Collection invitations', async () => {
   invitations = await collectionInvitationManager2.list();
   expect(invitations.length).toBe(1);
 
+  let stoken;
+  {
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    stoken = newCol.stoken;
+  }
+
   await collectionInvitationManager2.accept(invitations[0]);
+
+  {
+    // Verify stoken changes
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    expect(stoken).not.toEqual(newCol.stoken);
+
+    // Verify that filtering by stoken will return our changed collection even for the inviter (side-effect, but useful for testing)
+    const collections = await collectionManager.list({ inline: true, stoken: stoken });
+    expect(collections.length).toBe(1);
+    expect(collections[0].uid).toEqual(col.uid);
+    stoken = newCol.stoken;
+  }
 
   {
     const collections = await collectionManager2.list({ inline: true });
