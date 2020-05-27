@@ -717,3 +717,125 @@ it('Collection invitations', async () => {
 
   etesync2.logout();
 });
+
+it('Collection access level', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.data.length).toBe(1);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const items: EteSync.EncryptedCollectionItem[] = [];
+
+  for (let i = 0 ; i < 5 ; i++) {
+    const meta2 = {
+      type: 'ITEMTYPE',
+      someval: 'someval',
+      i,
+    };
+    const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
+    const item2 = await itemManager.create(meta2, content2);
+    items.push(item2);
+  }
+
+  await itemManager.batch(items);
+
+  const collectionMemberManager = new EteSync.CollectionMemberManager(etesync, collectionManager, col);
+  const collectionInvitationManager = new EteSync.CollectionInvitationManager(etesync);
+
+  const etesync2 = await prepareUserForTest(USER2);
+  const collectionManager2 = etesync2.getCollectionManager();
+
+  const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
+
+
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+
+  const collectionInvitationManager2 = new EteSync.CollectionInvitationManager(etesync2);
+
+  const invitations = await collectionInvitationManager2.list();
+  expect(invitations.length).toBe(1);
+
+  await collectionInvitationManager2.accept(invitations[0]);
+
+
+  const col2 = await collectionManager2.fetch(col.uid, { inline: true });
+  const itemManager2 = collectionManager2.getItemManager(col2);
+
+  // Item creation: success
+  {
+    const members = await collectionMemberManager.list();
+    expect(members.data.length).toBe(2);
+    for (const member of members.data) {
+      if (member.username === USER2.username) {
+        expect(member.accessLevel).toBe(EteSync.CollectionAccessLevel.ReadWrite);
+      }
+    }
+
+    const meta: EteSync.CollectionItemMetadata = {
+      type: 'ITEMTYPE2',
+    };
+    const content = Uint8Array.from([1, 2, 3, 6]);
+
+    const item = await itemManager2.create(meta, content);
+    await itemManager2.batch([item]);
+  }
+
+  await collectionMemberManager.modifyAccessLevel(USER2.username, EteSync.CollectionAccessLevel.ReadOnly);
+
+  // Item creation: fail
+  {
+    const members = await collectionMemberManager.list();
+    expect(members.data.length).toBe(2);
+    for (const member of members.data) {
+      if (member.username === USER2.username) {
+        expect(member.accessLevel).toBe(EteSync.CollectionAccessLevel.ReadOnly);
+      }
+    }
+
+    const meta: EteSync.CollectionItemMetadata = {
+      type: 'ITEMTYPE3',
+    };
+    const content = Uint8Array.from([1, 2, 3, 6]);
+
+    const item = await itemManager2.create(meta, content);
+    await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(EteSync.HTTPError);
+  }
+
+  await collectionMemberManager.modifyAccessLevel(USER2.username, EteSync.CollectionAccessLevel.Admin);
+
+  // Item creation: success
+  {
+    const members = await collectionMemberManager.list();
+    expect(members.data.length).toBe(2);
+    for (const member of members.data) {
+      if (member.username === USER2.username) {
+        expect(member.accessLevel).toBe(EteSync.CollectionAccessLevel.Admin);
+      }
+    }
+
+    const meta: EteSync.CollectionItemMetadata = {
+      type: 'ITEMTYPE3',
+    };
+    const content = Uint8Array.from([1, 2, 3, 6]);
+
+    const item = await itemManager2.create(meta, content);
+    await itemManager2.batch([item]);
+  }
+
+  etesync2.logout();
+});

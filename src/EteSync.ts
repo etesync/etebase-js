@@ -741,6 +741,10 @@ export class CollectionMemberManager {
   public async leave() {
     return this.onlineManager.leave();
   }
+
+  public async modifyAccessLevel(username: string, accessLevel: CollectionAccessLevel) {
+    return this.onlineManager.modifyAccessLevel(username, accessLevel);
+  }
 }
 
 export interface FetchOptions {
@@ -1142,5 +1146,16 @@ class CollectionMemberManagerOnline extends BaseManager {
     };
 
     return this.newCall(['leave'], extra);
+  }
+
+  public async modifyAccessLevel(username: string, accessLevel: CollectionAccessLevel): Promise<{}> {
+    const extra = {
+      method: 'patch',
+      body: JSON.stringify({
+        accessLevel,
+      }),
+    };
+
+    return this.newCall([username], extra);
   }
 }
