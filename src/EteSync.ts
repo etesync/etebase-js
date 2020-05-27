@@ -689,10 +689,6 @@ export class CollectionInvitationManager {
     this.onlineManager = new CollectionInvitationManagerOnline(this.etesync);
   }
 
-  public async fetch(invitationUid: string) {
-    return this.onlineManager.fetch(invitationUid);
-  }
-
   public async listIncoming() {
     return this.onlineManager.listIncoming();
   }
@@ -1066,11 +1062,6 @@ class CollectionItemManagerOnline extends BaseManager {
 class CollectionInvitationManagerOnline extends BaseManager {
   constructor(etesync: Account) {
     super(etesync, ['invitation']);
-  }
-
-  public async fetch(invitationUid: string): Promise<SignedInvitationRead> {
-    const json = await this.newCall<SignedInvitationRead>(['incoming', invitationUid]);
-    return json;
   }
 
   public async listIncoming(): Promise<ListResponse<SignedInvitationRead>> {
