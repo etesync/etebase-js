@@ -30,11 +30,14 @@ export type ChunkJson = [base64, base64?];
 
 export interface ListResponse<T> {
   data: T[];
+}
+
+export interface CollectionItemListResponse<T> extends ListResponse<T> {
   stoken: string;
 }
 
-export interface CollectionListResponse<T> extends ListResponse<T> {
-  removed?: RemovedCollection[];
+export interface CollectionListResponse<T> extends CollectionItemListResponse<T> {
+  removedMemberships?: RemovedCollection[];
 }
 
 export interface RemovedCollection {
@@ -959,11 +962,11 @@ class CollectionItemManagerOnline extends BaseManager {
     return EncryptedCollectionItem.deserialize(json);
   }
 
-  public async list(options: ItemFetchOptions): Promise<ListResponse<EncryptedCollectionItem>> {
+  public async list(options: ItemFetchOptions): Promise<CollectionItemListResponse<EncryptedCollectionItem>> {
     const { withMainItem } = options;
     const apiBase = this.urlFromFetchOptions(options);
 
-    const json = await this.newCall<ListResponse<CollectionItemJsonRead>>(undefined, undefined, apiBase);
+    const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(undefined, undefined, apiBase);
     let data = json.data;
     if (!withMainItem) {
       data = data.filter((x) => x.uid !== null);
@@ -983,7 +986,7 @@ class CollectionItemManagerOnline extends BaseManager {
     return this.newCall(undefined, extra);
   }
 
-  public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<ListResponse<EncryptedCollectionItem>> {
+  public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<CollectionItemListResponse<EncryptedCollectionItem>> {
     const apiBase = this.urlFromFetchOptions(options);
     // We only use stoken if available
     const wantEtag = !options?.stoken;
@@ -993,7 +996,7 @@ class CollectionItemManagerOnline extends BaseManager {
       body: JSON.stringify(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.etag : undefined) }))),
     };
 
-    const json = await this.newCall<ListResponse<CollectionItemJsonRead>>(['fetch_updates'], extra, apiBase);
+    const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(['fetch_updates'], extra, apiBase);
     const data = json.data;
     return {
       ...json,
