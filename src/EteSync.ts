@@ -1073,9 +1073,12 @@ class CollectionInvitationManagerOnline extends BaseManager {
     return json;
   }
 
-  public async list(): Promise<SignedInvitationRead[]> {
-    const json = await this.newCall<SignedInvitationRead[]>(['incoming']);
-    return json.map((val) => val);
+  public async list(): Promise<ListResponse<SignedInvitationRead>> {
+    const json = await this.newCall<ListResponse<SignedInvitationRead>>(['incoming']);
+    return {
+      ...json,
+      data: json.data.map((val) => val),
+    };
   }
 
   public async accept(invitation: SignedInvitationRead, encryptionKey: Uint8Array): Promise<{}> {
