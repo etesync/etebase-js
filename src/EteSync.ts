@@ -229,17 +229,18 @@ export class EncryptedCollection {
   }
 
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
-    const { uid, stoken, etag, version, accessLevel, encryptionKey, content } = json;
+    const { uid, stoken, version, accessLevel, encryptionKey, content } = json;
     const ret = new EncryptedCollection();
     ret.uid = uid;
     ret.version = version;
     ret.encryptionKey = sodium.from_base64(encryptionKey);
 
     ret.accessLevel = accessLevel;
-    ret.etag = etag;
     ret.stoken = stoken;
 
     ret.content = EncryptedRevision.deserialize(content);
+
+    ret.etag = ret.content.uid;
 
     return ret;
   }
@@ -335,9 +336,9 @@ export class EncryptedCollectionItem {
     ret.version = version;
     ret.encryptionKey = sodium.from_base64(encryptionKey);
 
-    ret.etag = json.etag;
-
     ret.content = EncryptedRevision.deserialize(content);
+
+    ret.etag = ret.content.uid;
 
     return ret;
   }
