@@ -29,7 +29,16 @@ export interface CollectionItemMetadata {
 export type ChunkJson = [base64, base64?];
 
 export interface ListResponse<T> {
-  data: T;
+  data: T[];
+  stoken: string;
+}
+
+export interface CollectionListResponse<T> extends ListResponse<T> {
+  removed?: RemovedCollection[];
+}
+
+export interface RemovedCollection {
+  uid: base62;
 }
 
 export interface CollectionItemRevisionJsonWrite {
@@ -910,11 +919,14 @@ class CollectionManagerOnline extends BaseManager {
     return EncryptedCollection.deserialize(json);
   }
 
-  public async list(options: FetchOptions): Promise<EncryptedCollection[]> {
+  public async list(options: FetchOptions): Promise<CollectionListResponse<EncryptedCollection>> {
     const apiBase = this.urlFromFetchOptions(options);
 
-    const json = await this.newCall<ListResponse<CollectionJsonRead[]>>(undefined, undefined, apiBase);
-    return json.data.map((val) => EncryptedCollection.deserialize(val));
+    const json = await this.newCall<CollectionListResponse<CollectionJsonRead>>(undefined, undefined, apiBase);
+    return {
+      ...json,
+      data: json.data.map((val) => EncryptedCollection.deserialize(val)),
+    };
   }
 
   public create(collection: EncryptedCollection): Promise<{}> {
@@ -947,16 +959,19 @@ class CollectionItemManagerOnline extends BaseManager {
     return EncryptedCollectionItem.deserialize(json);
   }
 
-  public async list(options: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
+  public async list(options: ItemFetchOptions): Promise<ListResponse<EncryptedCollectionItem>> {
     const { withMainItem } = options;
     const apiBase = this.urlFromFetchOptions(options);
 
-    const json = await this.newCall<ListResponse<CollectionItemJsonRead[]>>(undefined, undefined, apiBase);
+    const json = await this.newCall<ListResponse<CollectionItemJsonRead>>(undefined, undefined, apiBase);
     let data = json.data;
     if (!withMainItem) {
       data = data.filter((x) => x.uid !== null);
     }
-    return data.map((val) => EncryptedCollectionItem.deserialize(val));
+    return {
+      ...json,
+      data: data.map((val) => EncryptedCollectionItem.deserialize(val)),
+    };
   }
 
   public create(item: EncryptedCollectionItem): Promise<{}> {
@@ -968,7 +983,7 @@ class CollectionItemManagerOnline extends BaseManager {
     return this.newCall(undefined, extra);
   }
 
-  public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<EncryptedCollectionItem[]> {
+  public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<ListResponse<EncryptedCollectionItem>> {
     const apiBase = this.urlFromFetchOptions(options);
     // We only use stoken if available
     const wantEtag = !options?.stoken;
@@ -978,9 +993,12 @@ class CollectionItemManagerOnline extends BaseManager {
       body: JSON.stringify(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.etag : undefined) }))),
     };
 
-    const json = await this.newCall<ListResponse<CollectionItemJsonRead[]>>(['fetch_updates'], extra, apiBase);
+    const json = await this.newCall<ListResponse<CollectionItemJsonRead>>(['fetch_updates'], extra, apiBase);
     const data = json.data;
-    return data.map((val) => EncryptedCollectionItem.deserialize(val));
+    return {
+      ...json,
+      data: data.map((val) => EncryptedCollectionItem.deserialize(val)),
+    };
   }
 
   public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{}> {

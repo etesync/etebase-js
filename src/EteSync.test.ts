@@ -128,21 +128,21 @@ it('Simple collection sync', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(0);
+    expect(collections.data.length).toBe(0);
   }
 
   await collectionManager.upload(col);
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
-    await verifyCollection(collectionManager, collections[0], meta, content);
+    expect(collections.data.length).toBe(1);
+    await verifyCollection(collectionManager, collections.data[0], meta, content);
   }
 
   {
     col = await collectionManager.fetch(col.uid, { inline: true });
     const collections = await collectionManager.list({ inline: true, stoken: col.stoken });
-    expect(collections.length).toBe(0);
+    expect(collections.data.length).toBe(0);
   }
 
   const meta2 = {
@@ -157,13 +157,13 @@ it('Simple collection sync', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
-    await verifyCollection(collectionManager, collections[0], meta2, content);
+    expect(collections.data.length).toBe(1);
+    await verifyCollection(collectionManager, collections.data[0], meta2, content);
   }
 
   {
     const collections = await collectionManager.list({ inline: true, stoken: col.stoken });
-    expect(collections.length).toBe(1);
+    expect(collections.data.length).toBe(1);
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
@@ -173,8 +173,8 @@ it('Simple collection sync', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
-    await verifyCollection(collectionManager, collections[0], meta2, content2);
+    expect(collections.data.length).toBe(1);
+    await verifyCollection(collectionManager, collections.data[0], meta2, content2);
   }
 });
 
@@ -194,7 +194,7 @@ it('Simple item sync', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
+    expect(collections.data.length).toBe(1);
   }
 
   const itemManager = collectionManager.getItemManager(col);
@@ -211,8 +211,8 @@ it('Simple item sync', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(1);
-    await verifyItem(itemManager, items[0], meta, content);
+    expect(items.data.length).toBe(1);
+    await verifyItem(itemManager, items.data[0], meta, content);
   }
 
   const meta2 = {
@@ -225,8 +225,8 @@ it('Simple item sync', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(1);
-    await verifyItem(itemManager, items[0], meta2, content);
+    expect(items.data.length).toBe(1);
+    await verifyItem(itemManager, items.data[0], meta2, content);
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
@@ -236,8 +236,8 @@ it('Simple item sync', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(1);
-    await verifyItem(itemManager, items[0], meta2, content2);
+    expect(items.data.length).toBe(1);
+    await verifyItem(itemManager, items.data[0], meta2, content2);
   }
 });
 
@@ -257,7 +257,7 @@ it('Item transactions', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
+    expect(collections.data.length).toBe(1);
   }
 
   const itemManager = collectionManager.getItemManager(col);
@@ -278,7 +278,7 @@ it('Item transactions', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(1);
+    expect(items.data.length).toBe(1);
   }
 
   for (let i = 0 ; i < 5 ; i++) {
@@ -296,7 +296,7 @@ it('Item transactions', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(6);
+    expect(items.data.length).toBe(6);
   }
 
   {
@@ -308,7 +308,7 @@ it('Item transactions', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(6);
+    expect(items.data.length).toBe(6);
   }
 
   {
@@ -375,7 +375,7 @@ it('Item batch stoken', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
+    expect(collections.data.length).toBe(1);
   }
 
   const itemManager = collectionManager.getItemManager(col);
@@ -393,7 +393,7 @@ it('Item batch stoken', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(1);
+    expect(items.data.length).toBe(1);
   }
 
   for (let i = 0 ; i < 5 ; i++) {
@@ -455,7 +455,7 @@ it('Item fetch updates', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
+    expect(collections.data.length).toBe(1);
   }
 
   const itemManager = collectionManager.getItemManager(col);
@@ -473,7 +473,7 @@ it('Item fetch updates', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(1);
+    expect(items.data.length).toBe(1);
   }
 
   for (let i = 0 ; i < 5 ; i++) {
@@ -491,7 +491,7 @@ it('Item fetch updates', async () => {
 
   {
     const items = await itemManager.list({ inline: true });
-    expect(items.length).toBe(6);
+    expect(items.data.length).toBe(6);
   }
 
 
@@ -504,10 +504,10 @@ it('Item fetch updates', async () => {
 
   {
     let updates = await itemManager.fetchUpdates(items);
-    expect(updates.length).toBe(0);
+    expect(updates.data.length).toBe(0);
 
     updates = await itemManager.fetchUpdates(items, { stoken });
-    expect(updates.length).toBe(0);
+    expect(updates.data.length).toBe(0);
   }
 
   {
@@ -520,19 +520,19 @@ it('Item fetch updates', async () => {
 
   {
     let updates = await itemManager.fetchUpdates(items);
-    expect(updates.length).toBe(1);
+    expect(updates.data.length).toBe(1);
 
     updates = await itemManager.fetchUpdates(items, { stoken });
-    expect(updates.length).toBe(1);
+    expect(updates.data.length).toBe(1);
   }
 
   {
     const item2 = await itemManager.fetch(items[0].uid, { inline: true });
     let updates = await itemManager.fetchUpdates([item2]);
-    expect(updates.length).toBe(0);
+    expect(updates.data.length).toBe(0);
 
     updates = await itemManager.fetchUpdates([item2], { stoken });
-    expect(updates.length).toBe(1);
+    expect(updates.data.length).toBe(1);
   }
 
   {
@@ -542,7 +542,7 @@ it('Item fetch updates', async () => {
 
   {
     const updates = await itemManager.fetchUpdates(items, { stoken });
-    expect(updates.length).toBe(0);
+    expect(updates.data.length).toBe(0);
   }
 });
 
@@ -562,7 +562,7 @@ it('Collection invitations', async () => {
 
   {
     const collections = await collectionManager.list({ inline: true });
-    expect(collections.length).toBe(1);
+    expect(collections.data.length).toBe(1);
   }
 
   const itemManager = collectionManager.getItemManager(col);
@@ -600,7 +600,7 @@ it('Collection invitations', async () => {
 
   {
     const collections = await collectionManager2.list({ inline: true });
-    expect(collections.length).toBe(0);
+    expect(collections.data.length).toBe(0);
   }
 
   {
@@ -618,7 +618,7 @@ it('Collection invitations', async () => {
 
   {
     const collections = await collectionManager2.list({ inline: true });
-    expect(collections.length).toBe(0);
+    expect(collections.data.length).toBe(0);
   }
 
   {
@@ -648,16 +648,16 @@ it('Collection invitations', async () => {
 
     // Verify that filtering by stoken will return our changed collection even for the inviter (side-effect, but useful for testing)
     const collections = await collectionManager.list({ inline: true, stoken: stoken });
-    expect(collections.length).toBe(1);
-    expect(collections[0].uid).toEqual(col.uid);
+    expect(collections.data.length).toBe(1);
+    expect(collections.data[0].uid).toEqual(col.uid);
     stoken = newCol.stoken;
   }
 
   {
     const collections = await collectionManager2.list({ inline: true });
-    expect(collections.length).toBe(1);
+    expect(collections.data.length).toBe(1);
 
-    await collectionManager2.decryptMeta(collections[0]);
+    await collectionManager2.decryptMeta(collections.data[0]);
   }
 
   {
