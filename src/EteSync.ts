@@ -257,8 +257,8 @@ export class EncryptedCollection {
     return ret;
   }
 
-  public __markSaved(stoken: string | null) {
-    this.stoken = stoken;
+  public __markSaved() {
+    this.stoken = this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
@@ -355,8 +355,8 @@ export class EncryptedCollectionItem {
     return ret;
   }
 
-  public __markSaved(stoken: string | null) {
-    this.stoken = stoken;
+  public __markSaved() {
+    this.stoken = this.content.uid;
   }
 
   public async update(cryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
@@ -585,14 +585,13 @@ export class CollectionManager {
   // FIXME: Accept fetchOptions so stoken can be passed as well as inline for errors and etc
   // It's bad that what we call stoken for item it's just for the item and here it's for the whole collection
   public async upload(col: EncryptedCollection) {
-    let ret;
     // If we have a stoken, it means we previously fetched it.
     if (col.stoken) {
-      ret = await this.onlineManager.update(col);
+      await this.onlineManager.update(col);
     } else {
-      ret = await this.onlineManager.create(col);
+      await this.onlineManager.create(col);
     }
-    col.__markSaved(ret.stoken);
+    col.__markSaved();
   }
 
   public getItemManager(col: EncryptedCollection) {
@@ -649,16 +648,16 @@ export class CollectionItemManager {
   }
 
   public async batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions) {
-    const stokens = await this.onlineManager.batch(items, options);
-    items.forEach((item, i) => {
-      item.__markSaved(stokens.data[i]);
+    await this.onlineManager.batch(items, options);
+    items.forEach((item) => {
+      item.__markSaved();
     });
   }
 
   public async transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions) {
-    const stokens = await this.onlineManager.transaction(items, deps, options);
-    items.forEach((item, i) => {
-      item.__markSaved(stokens.data[i]);
+    await this.onlineManager.transaction(items, deps, options);
+    items.forEach((item) => {
+      item.__markSaved();
     });
   }
 }
@@ -917,7 +916,7 @@ class CollectionManagerOnline extends BaseManager {
     return json.data.map((val) => EncryptedCollection.deserialize(val));
   }
 
-  public create(collection: EncryptedCollection): Promise<Pick<CollectionJsonRead, 'stoken'>> {
+  public create(collection: EncryptedCollection): Promise<{}> {
     const extra = {
       method: 'post',
       body: JSON.stringify(collection.serialize()),
@@ -926,7 +925,7 @@ class CollectionManagerOnline extends BaseManager {
     return this.newCall(undefined, extra);
   }
 
-  public update(collection: EncryptedCollection): Promise<Pick<CollectionJsonRead, 'stoken'>> {
+  public update(collection: EncryptedCollection): Promise<{}> {
     const extra = {
       method: 'put',
       body: JSON.stringify(collection.serialize()),
@@ -983,7 +982,7 @@ class CollectionItemManagerOnline extends BaseManager {
     return data.map((val) => EncryptedCollectionItem.deserialize(val));
   }
 
-  public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: base64[] }> {
+  public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{}> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
@@ -996,7 +995,7 @@ class CollectionItemManagerOnline extends BaseManager {
     return this.newCall(['batch'], extra, apiBase);
   }
 
-  public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{ data: base64[] }> {
+  public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{}> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
