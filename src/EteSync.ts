@@ -93,6 +93,11 @@ export interface CollectionJsonRead extends CollectionJsonWrite {
   content: CollectionItemRevisionJsonRead;
 }
 
+export interface CollectionMember {
+  username: string;
+  accessLevel: CollectionAccessLevel;
+}
+
 function genUidBase62(): base62 {
   const uid = sodium.to_base64(sodium.randombytes_buf(32)).substr(0, 24);
   // FIXME: not the best function, but we don't care about the bias for now
@@ -716,6 +721,28 @@ export class CollectionInvitationManager {
   }
 }
 
+export class CollectionMemberManager {
+  private readonly etesync: Account;
+  private readonly onlineManager: CollectionMemberManagerOnline;
+
+  constructor(etesync: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
+    this.etesync = etesync;
+    this.onlineManager = new CollectionMemberManagerOnline(this.etesync, col);
+  }
+
+  public async list() {
+    return this.onlineManager.list();
+  }
+
+  public async remove(username: string) {
+    return this.onlineManager.remove(username);
+  }
+
+  public async leave() {
+    return this.onlineManager.leave();
+  }
+}
+
 export interface FetchOptions {
   stoken?: string | null;
   inline?: boolean;
@@ -1089,5 +1116,31 @@ class CollectionInvitationManagerOnline extends BaseManager {
     };
 
     return this.newCall(['outgoing', invitation.uid], extra);
+  }
+}
+
+class CollectionMemberManagerOnline extends BaseManager {
+  constructor(etesync: Account, col: EncryptedCollection) {
+    super(etesync, ['collection', col.uid, 'member']);
+  }
+
+  public async list(): Promise<ListResponse<CollectionMember>> {
+    return this.newCall<ListResponse<CollectionMember>>();
+  }
+
+  public async remove(username: string): Promise<{}> {
+    const extra = {
+      method: 'delete',
+    };
+
+    return this.newCall([username], extra);
+  }
+
+  public async leave(): Promise<{}> {
+    const extra = {
+      method: 'post',
+    };
+
+    return this.newCall(['leave'], extra);
   }
 }

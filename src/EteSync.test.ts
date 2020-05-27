@@ -647,9 +647,10 @@ it('Collection invitations', async () => {
     expect(stoken).not.toEqual(newCol.stoken);
 
     // Verify that filtering by stoken will return our changed collection even for the inviter (side-effect, but useful for testing)
-    const collections = await collectionManager.list({ inline: true, stoken: stoken });
+    const collections = await collectionManager.list({ inline: true, stoken });
     expect(collections.data.length).toBe(1);
     expect(collections.data[0].uid).toEqual(col.uid);
+
     stoken = newCol.stoken;
   }
 
@@ -663,6 +664,55 @@ it('Collection invitations', async () => {
   {
     const invitations = await collectionInvitationManager2.list();
     expect(invitations.length).toBe(0);
+  }
+
+  const col2 = await collectionManager2.fetch(col.uid, { inline: true });
+  const collectionMemberManager2 = new EteSync.CollectionMemberManager(etesync2, collectionManager2, col2);
+
+  await collectionMemberManager2.leave();
+
+  {
+    const collections = await collectionManager2.list({ inline: true, stoken });
+    expect(collections.data.length).toBe(0);
+    expect(collections.removedMemberships?.length).toBe(1);
+  }
+
+  // Add again
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+
+  invitations = await collectionInvitationManager2.list();
+  expect(invitations.length).toBe(1);
+  await collectionInvitationManager2.accept(invitations[0]);
+
+  {
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    expect(stoken).not.toEqual(newCol.stoken);
+
+    const collections = await collectionManager2.list({ inline: true, stoken });
+    expect(collections.data.length).toBe(1);
+    expect(collections.data[0].uid).toEqual(col.uid);
+    expect(collections.removedMemberships).not.toBeDefined();
+  }
+
+  // Remove
+  {
+    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    expect(stoken).not.toEqual(newCol.stoken);
+
+    const collectionMemberManager = new EteSync.CollectionMemberManager(etesync, collectionManager, col);
+    await collectionMemberManager.remove(USER2.username);
+
+    const collections = await collectionManager2.list({ inline: true, stoken });
+    expect(collections.data.length).toBe(0);
+    expect(collections.removedMemberships?.length).toBe(1);
+
+    stoken = newCol.stoken;
+  }
+
+  {
+    const collections = await collectionManager2.list({ inline: true, stoken });
+    expect(collections.data.length).toBe(0);
+    expect(collections.removedMemberships?.length).toBe(1);
   }
 
   etesync2.logout();
