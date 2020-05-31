@@ -478,17 +478,17 @@ export class Account {
     return ret;
   }
 
-  public static async login(userQuery: UsernameOrEmail, password: string, serverUrl?: string) {
+  public static async login(username: string, password: string, serverUrl?: string) {
     serverUrl = serverUrl ?? Constants.SERVER_URL;
     const authenticator = new Authenticator(serverUrl);
-    const loginChallenge = await authenticator.getLoginChallenge(userQuery);
+    const loginChallenge = await authenticator.getLoginChallenge(username);
 
     const mainKey = deriveKey(fromBase64(loginChallenge.salt), password);
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
     const response = JSON.stringify({
-      ...userQuery,
+      username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
     });
@@ -507,17 +507,15 @@ export class Account {
   public async fetchToken() {
     const serverUrl = this.serverUrl;
     const authenticator = new Authenticator(serverUrl);
-    const userQuery: UsernameOrEmail = {
-      username: this.user.username,
-    };
-    const loginChallenge = await authenticator.getLoginChallenge(userQuery);
+    const username = this.user.username;
+    const loginChallenge = await authenticator.getLoginChallenge(username);
 
     const mainKey = this.mainKey;
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
     const response = JSON.stringify({
-      ...userQuery,
+      username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
     });
@@ -839,9 +837,8 @@ export interface UserProfile {
   pubkey: base64;
 }
 
-export type UsernameOrEmail = Pick<User, 'username'> | Pick<User, 'email'>;
-
 export type LoginChallange = {
+  username: string;
   challenge: string;
   salt: base64;
   version: number;
@@ -850,7 +847,7 @@ export type LoginChallange = {
 export type LoginChallangeResponse = {
   challenge: string;
   host: string;
-} & UsernameOrEmail;
+};
 
 export type LoginResponse = {
   token: string;
@@ -886,13 +883,13 @@ class Authenticator extends BaseNetwork {
     return this.newCall<LoginResponse>(['signup'], extra);
   }
 
-  public getLoginChallenge(userQuery: UsernameOrEmail): Promise<LoginChallange> {
+  public getLoginChallenge(username: string): Promise<LoginChallange> {
     const extra = {
       method: 'post',
       headers: {
         'Content-Type': 'application/json;charset=UTF-8',
       },
-      body: JSON.stringify(userQuery),
+      body: JSON.stringify({ username }),
     };
 
     return this.newCall<LoginChallange>(['login_challenge'], extra);
