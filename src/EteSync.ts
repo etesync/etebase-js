@@ -861,6 +861,13 @@ class Authenticator extends BaseNetwork {
   }
 
   public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedSeckey: Uint8Array): Promise<LoginResponse> {
+    user = {
+      username: user.username,
+      email: user.email,
+      pubkey: user.pubkey,
+      encryptedSeckey: user.encryptedSeckey,
+    };
+
     const extra = {
       method: 'post',
       headers: {
