@@ -18,12 +18,16 @@ export type ContentType = File | Blob | Uint8Array | string | null;
 export interface CollectionMetadata {
   type: CollectionType;
   name: string;
-  description: string;
-  color: string;
+  description?: string;
+  color?: string;
+  extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
 }
 
 export interface CollectionItemMetadata {
   type: string;
+  name?: string; // The name of the item, e.g. filename in case of files
+  mtime?: number; // The modification time
+  extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
 }
 
 export type ChunkJson = [base64, base64?];
