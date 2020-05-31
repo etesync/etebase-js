@@ -353,7 +353,7 @@ it('Item transactions', async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.transaction([item], undefined, { stoken: badEtag })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.transaction([item], undefined, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(EteSync.HTTPError);
 
     await itemManager.transaction([item], undefined, { stoken });
   }
@@ -433,7 +433,7 @@ it('Item batch stoken', async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.batch([item], { stoken: badEtag })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.batch([item], { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(EteSync.HTTPError);
 
     await itemManager.batch([item], { stoken });
   }
@@ -506,7 +506,7 @@ it('Item fetch updates', async () => {
     let updates = await itemManager.fetchUpdates(items);
     expect(updates.data.length).toBe(0);
 
-    updates = await itemManager.fetchUpdates(items, { stoken });
+    updates = await itemManager.fetchUpdates(items, { stoken, inline: true });
     expect(updates.data.length).toBe(0);
   }
 
@@ -522,7 +522,7 @@ it('Item fetch updates', async () => {
     let updates = await itemManager.fetchUpdates(items);
     expect(updates.data.length).toBe(1);
 
-    updates = await itemManager.fetchUpdates(items, { stoken });
+    updates = await itemManager.fetchUpdates(items, { stoken, inline: true });
     expect(updates.data.length).toBe(1);
   }
 
@@ -531,7 +531,7 @@ it('Item fetch updates', async () => {
     let updates = await itemManager.fetchUpdates([item2]);
     expect(updates.data.length).toBe(0);
 
-    updates = await itemManager.fetchUpdates([item2], { stoken });
+    updates = await itemManager.fetchUpdates([item2], { stoken, inline: true });
     expect(updates.data.length).toBe(1);
   }
 
@@ -541,7 +541,7 @@ it('Item fetch updates', async () => {
   }
 
   {
-    const updates = await itemManager.fetchUpdates(items, { stoken });
+    const updates = await itemManager.fetchUpdates(items, { stoken, inline: true });
     expect(updates.data.length).toBe(0);
   }
 });

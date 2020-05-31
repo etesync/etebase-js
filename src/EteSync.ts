@@ -930,10 +930,15 @@ class BaseManager extends BaseNetwork {
     }
 
     const { stoken, inline, limit } = options;
+
+    if (!inline) {
+      console.warn('inline must be set as the non-inline variant is not yet implemented.');
+    }
+
     return this.apiBase.clone().search({
       stoken: (stoken !== null) ? stoken : undefined,
       limit: (limit && (limit > 0)) ? limit : undefined,
-      inline: inline,
+      inline: true,
     });
   }
 }
