@@ -5,7 +5,7 @@ import * as EteSync from './EteSync';
 import { USER, USER2 } from './TestConstants';
 import { CURRENT_VERSION } from './Constants';
 
-const testApiBase = 'http://localhost:12345';
+const testApiBase = 'http://localhost:8033';
 
 let etesync: EteSync.Account;
 
