@@ -288,10 +288,12 @@ export class EncryptedCollection {
   }
 
   public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
+    this.verify(cryptoManager);
     return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
   }
 
   public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
+    this.verify(cryptoManager);
     return this.content.decryptContent(cryptoManager);
   }
 
@@ -386,10 +388,12 @@ export class EncryptedCollectionItem {
   }
 
   public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionItemMetadata> {
+    this.verify(cryptoManager);
     return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
   }
 
   public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
+    this.verify(cryptoManager);
     return this.content.decryptContent(cryptoManager);
   }
 
