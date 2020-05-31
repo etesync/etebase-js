@@ -608,14 +608,22 @@ export class CollectionManager {
     return this.onlineManager.list(options);
   }
 
-  // FIXME: Accept fetchOptions so stoken can be passed as well as inline for errors and etc
-  // It's bad that what we call stoken for item it's just for the item and here it's for the whole collection
-  public async upload(col: EncryptedCollection) {
+  public async upload(col: EncryptedCollection, options?: FetchOptions) {
     // If we have a etag, it means we previously fetched it.
     if (col.etag) {
-      await this.onlineManager.update(col);
+      await this.onlineManager.update(col, options);
     } else {
-      await this.onlineManager.create(col);
+      await this.onlineManager.create(col, options);
+    }
+    col.__markSaved();
+  }
+
+  public async transaction(col: EncryptedCollection, options?: FetchOptions) {
+    // If we have a etag, it means we previously fetched it.
+    if (col.etag) {
+      await this.onlineManager.update(col, { ...options, stoken: col.stoken });
+    } else {
+      await this.onlineManager.create(col, { ...options, stoken: col.stoken });
     }
     col.__markSaved();
   }
@@ -972,22 +980,26 @@ class CollectionManagerOnline extends BaseManager {
     };
   }
 
-  public create(collection: EncryptedCollection): Promise<{}> {
+  public create(collection: EncryptedCollection, options?: FetchOptions): Promise<{}> {
+    const apiBase = this.urlFromFetchOptions(options);
+
     const extra = {
       method: 'post',
       body: JSON.stringify(collection.serialize()),
     };
 
-    return this.newCall(undefined, extra);
+    return this.newCall(undefined, extra, apiBase);
   }
 
-  public update(collection: EncryptedCollection): Promise<{}> {
+  public update(collection: EncryptedCollection, options?: FetchOptions): Promise<{}> {
+    const apiBase = this.urlFromFetchOptions(options);
+
     const extra = {
       method: 'put',
       body: JSON.stringify(collection.serialize()),
     };
 
-    return this.newCall([collection.uid], extra);
+    return this.newCall([collection.uid], extra, apiBase);
   }
 }
 

@@ -145,6 +145,8 @@ it('Simple collection sync', async () => {
     expect(collections.data.length).toBe(0);
   }
 
+  const colOld = await collectionManager.fetch(col.uid, { inline: true });
+
   const meta2 = {
     type: 'COLTYPE',
     name: 'Calendar2',
@@ -164,6 +166,16 @@ it('Simple collection sync', async () => {
   {
     const collections = await collectionManager.list({ inline: true, stoken: col.stoken });
     expect(collections.data.length).toBe(1);
+  }
+
+  // Fail uploading because of an old stoken/etag
+  {
+    const content2 = Uint8Array.from([7, 2, 3, 5]);
+    await collectionManager.update(colOld, meta2, content2);
+
+    await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(EteSync.HTTPError);
+
+    await expect(collectionManager.upload(colOld, { stoken: colOld.stoken })).rejects.toBeInstanceOf(EteSync.HTTPError);
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
