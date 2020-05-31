@@ -434,7 +434,7 @@ export interface AcceptedInvitation {
 export interface AccountData {
   version: number;
   key: base64;
-  user: User;
+  user: LoginResponseUser;
   serverUrl: string;
   authToken?: string;
 }
@@ -444,7 +444,7 @@ export class Account {
 
   private mainKey: Uint8Array;
   private version: number;
-  public user: User;
+  public user: LoginResponseUser;
   public serverUrl: string;
   public authToken: string | null;
 
@@ -828,6 +828,9 @@ class BaseNetwork {
 export interface User {
   username: string;
   email: string;
+}
+
+export interface LoginResponseUser extends User {
   pubkey: base64;
   encryptedSeckey: base64;
 }
@@ -851,7 +854,7 @@ export type LoginChallangeResponse = {
 
 export type LoginResponse = {
   token: string;
-  user: User;
+  user: LoginResponseUser;
 };
 
 class Authenticator extends BaseNetwork {
@@ -864,8 +867,6 @@ class Authenticator extends BaseNetwork {
     user = {
       username: user.username,
       email: user.email,
-      pubkey: user.pubkey,
-      encryptedSeckey: user.encryptedSeckey,
     };
 
     const extra = {
