@@ -772,9 +772,7 @@ export interface FetchOptions {
   limit?: number;
 }
 
-export interface ItemFetchOptions extends FetchOptions {
-  withMainItem?: boolean;
-}
+export type ItemFetchOptions = FetchOptions;
 
 class BaseNetwork {
 
@@ -1029,17 +1027,12 @@ class CollectionItemManagerOnline extends BaseManager {
   }
 
   public async list(options: ItemFetchOptions): Promise<CollectionItemListResponse<EncryptedCollectionItem>> {
-    const { withMainItem } = options;
     const apiBase = this.urlFromFetchOptions(options);
 
     const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(undefined, undefined, apiBase);
-    let data = json.data;
-    if (!withMainItem) {
-      data = data.filter((x) => x.uid !== null);
-    }
     return {
       ...json,
-      data: data.map((val) => EncryptedCollectionItem.deserialize(val)),
+      data: json.data.map((val) => EncryptedCollectionItem.deserialize(val)),
     };
   }
 
