@@ -109,6 +109,8 @@ function genUidBase62(): base62 {
 }
 
 export class MainCryptoManager extends CryptoManager {
+  protected Main = true; // So classes are different
+
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, 'Main', version);
   }
@@ -124,12 +126,16 @@ export class MainCryptoManager extends CryptoManager {
 }
 
 export class CollectionCryptoManager extends CryptoManager {
+  protected Collection = true; // So classes are different
+
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, 'Col', version);
   }
 }
 
 export class CollectionItemCryptoManager extends CryptoManager {
+  protected CollectionItem = true; // So classes are different
+
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, 'ColItem', version);
   }
@@ -392,20 +398,20 @@ export class EncryptedCollectionItem {
     this.etag = this.content.uid;
   }
 
-  public async update(cryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
+  public async update(cryptoManager: CollectionItemCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
     this.content = await EncryptedRevision.create(cryptoManager, this.getAdditionalMacData(), meta, content);
   }
 
-  public async verify(cryptoManager: CollectionCryptoManager) {
+  public async verify(cryptoManager: CollectionItemCryptoManager) {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
-  public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionItemMetadata> {
+  public async decryptMeta(cryptoManager: CollectionItemCryptoManager): Promise<CollectionItemMetadata> {
     this.verify(cryptoManager);
     return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
   }
 
-  public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
+  public async decryptContent(cryptoManager: CollectionItemCryptoManager): Promise<Uint8Array> {
     this.verify(cryptoManager);
     return this.content.decryptContent(cryptoManager);
   }
