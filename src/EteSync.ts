@@ -410,7 +410,7 @@ export class EncryptedCollectionItem {
     return this.content.decryptContent(cryptoManager);
   }
 
-  public getCryptoManager(parentCryptoManager: MainCryptoManager) {
+  public getCryptoManager(parentCryptoManager: CollectionCryptoManager) {
     const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
 
     return new CollectionItemCryptoManager(encryptionKey, this.version);
