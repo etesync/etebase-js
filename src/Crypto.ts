@@ -73,15 +73,6 @@ export class CryptoManager {
   public getCryptoMac() {
     return new CryptoMac(this.macKey);
   }
-
-  public getLoginCryptoManager(): AsymmetricCryptoManager {
-    return AsymmetricCryptoManager.keygen(this.asymKeySeed);
-  }
-
-  public getIdentityCryptoManager(encryptedSeckey: Uint8Array): AsymmetricCryptoManager {
-    const seckey = this.decrypt(encryptedSeckey);
-    return AsymmetricCryptoManager.fromSeckey(seckey);
-  }
 }
 
 export class AsymmetricCryptoManager {

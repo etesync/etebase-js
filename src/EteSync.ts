@@ -112,6 +112,15 @@ export class MainCryptoManager extends CryptoManager {
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, 'Main', version);
   }
+
+  public getLoginCryptoManager(): AsymmetricCryptoManager {
+    return AsymmetricCryptoManager.keygen(this.asymKeySeed);
+  }
+
+  public getIdentityCryptoManager(encryptedSeckey: Uint8Array): AsymmetricCryptoManager {
+    const seckey = this.decrypt(encryptedSeckey);
+    return AsymmetricCryptoManager.fromSeckey(seckey);
+  }
 }
 
 export class CollectionCryptoManager extends CryptoManager {
