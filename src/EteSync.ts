@@ -119,9 +119,20 @@ export class MainCryptoManager extends CryptoManager {
     return AsymmetricCryptoManager.keygen(this.asymKeySeed);
   }
 
-  public getIdentityCryptoManager(encryptedPrivkey: Uint8Array): AsymmetricCryptoManager {
-    const privkey = this.decrypt(encryptedPrivkey);
+  public getAccountCryptoManager(privkey: Uint8Array): AccountCryptoManager {
+    return new AccountCryptoManager(privkey, this.version);
+  }
+
+  public getIdentityCryptoManager(privkey: Uint8Array): AsymmetricCryptoManager {
     return AsymmetricCryptoManager.fromPrivkey(privkey);
+  }
+}
+
+export class AccountCryptoManager extends CryptoManager {
+  protected Account = true; // So classes are different
+
+  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+    super(key, 'Acct', version);
   }
 }
 
@@ -247,7 +258,7 @@ export class EncryptedCollection {
   public etag: string | null;
   public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
-  public static async create(parentCryptoManager: MainCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
+  public static async create(parentCryptoManager: AccountCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
     ret.uid = genUidBase62();
     ret.version = Constants.CURRENT_VERSION;
@@ -316,7 +327,7 @@ export class EncryptedCollection {
     return this.content.decryptContent(cryptoManager);
   }
 
-  public async createInvitation(parentCryptoManager: MainCryptoManager, identCryptoManager: AsymmetricCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
+  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: AsymmetricCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = sodium.randombytes_buf(32);
     const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
     const signedEncryptionKey = identCryptoManager.encryptSign(encryptionKey, pubkey);
@@ -333,7 +344,7 @@ export class EncryptedCollection {
     return ret;
   }
 
-  public getCryptoManager(parentCryptoManager: MainCryptoManager) {
+  public getCryptoManager(parentCryptoManager: AccountCryptoManager) {
     const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
 
     return new CollectionCryptoManager(encryptionKey, this.version);
@@ -480,9 +491,11 @@ export class Account {
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
     const identityCryptoManager = AsymmetricCryptoManager.keygen();
-    const encryptedPrivkey = mainCryptoManager.encrypt(identityCryptoManager.privkey);
 
-    const loginResponse = await authenticator.signup(user, salt, loginCryptoManager.pubkey, identityCryptoManager.pubkey, encryptedPrivkey);
+    const accountKey = sodium.crypto_aead_chacha20poly1305_ietf_keygen();
+    const encryptedContent = mainCryptoManager.encrypt(concatArrayBuffers(accountKey, identityCryptoManager.privkey));
+
+    const loginResponse = await authenticator.signup(user, salt, loginCryptoManager.pubkey, identityCryptoManager.pubkey, encryptedContent);
 
     const ret = new this(mainKey, version);
 
@@ -575,7 +588,17 @@ export class Account {
   }
 
   public getCryptoManager() {
-    return new MainCryptoManager(this.mainKey, this.version);
+    // FIXME: cache this
+    const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
+    const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
+    return mainCryptoManager.getAccountCryptoManager(content.subarray(0, sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES));
+  }
+
+  public getIdentityCryptoManager() {
+    // FIXME: cache this
+    const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
+    const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
+    return mainCryptoManager.getIdentityCryptoManager(content.subarray(sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES));
   }
 }
 
@@ -724,7 +747,7 @@ export class CollectionInvitationManager {
 
   public async accept(invitation: SignedInvitationRead) {
     const mainCryptoManager = this.etesync.getCryptoManager();
-    const identCryptoManager = mainCryptoManager.getIdentityCryptoManager(fromBase64(this.etesync.user.encryptedPrivkey));
+    const identCryptoManager = this.etesync.getIdentityCryptoManager();
     const encryptionKey = identCryptoManager.decryptVerify(fromBase64(invitation.signedEncryptionKey), fromBase64(invitation.fromPubkey));
     const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
     return this.onlineManager.accept(invitation, encryptedEncryptionKey);
@@ -740,7 +763,7 @@ export class CollectionInvitationManager {
 
   public async invite(col: EncryptedCollection, username: string, pubkey: base64, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etesync.getCryptoManager();
-    const identCryptoManager = mainCryptoManager.getIdentityCryptoManager(fromBase64(this.etesync.user.encryptedPrivkey));
+    const identCryptoManager = this.etesync.getIdentityCryptoManager();
     const invitation = await col.createInvitation(mainCryptoManager, identCryptoManager, username, fromBase64(pubkey), accessLevel);
     await this.onlineManager.invite(invitation);
   }
@@ -843,7 +866,7 @@ export interface User {
 
 export interface LoginResponseUser extends User {
   pubkey: base64;
-  encryptedPrivkey: base64;
+  encryptedContent: base64;
 }
 
 export interface UserProfile {
@@ -873,7 +896,7 @@ class Authenticator extends BaseNetwork {
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1', 'authentication']);
   }
 
-  public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedPrivkey: Uint8Array): Promise<LoginResponse> {
+  public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedContent: Uint8Array): Promise<LoginResponse> {
     user = {
       username: user.username,
       email: user.email,
@@ -889,7 +912,7 @@ class Authenticator extends BaseNetwork {
         salt: toBase64(salt),
         loginPubkey: toBase64(loginPubkey),
         pubkey: toBase64(pubkey),
-        encryptedPrivkey: toBase64(encryptedPrivkey),
+        encryptedContent: toBase64(encryptedContent),
       }),
     };
 
