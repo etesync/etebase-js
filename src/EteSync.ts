@@ -648,7 +648,7 @@ export class CollectionManager {
 
 export class CollectionItemManager {
   private readonly etesync: Account;
-  private readonly collectionCryptoManager: CollectionItemCryptoManager;
+  private readonly collectionCryptoManager: CollectionCryptoManager;
   private readonly onlineManager: CollectionItemManagerOnline;
 
   constructor(etesync: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
