@@ -119,9 +119,9 @@ export class MainCryptoManager extends CryptoManager {
     return AsymmetricCryptoManager.keygen(this.asymKeySeed);
   }
 
-  public getIdentityCryptoManager(encryptedSeckey: Uint8Array): AsymmetricCryptoManager {
-    const seckey = this.decrypt(encryptedSeckey);
-    return AsymmetricCryptoManager.fromSeckey(seckey);
+  public getIdentityCryptoManager(encryptedPrivkey: Uint8Array): AsymmetricCryptoManager {
+    const privkey = this.decrypt(encryptedPrivkey);
+    return AsymmetricCryptoManager.fromPrivkey(privkey);
   }
 }
 
@@ -480,9 +480,9 @@ export class Account {
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
     const identityCryptoManager = AsymmetricCryptoManager.keygen();
-    const encryptedSeckey = mainCryptoManager.encrypt(identityCryptoManager.seckey);
+    const encryptedPrivkey = mainCryptoManager.encrypt(identityCryptoManager.privkey);
 
-    const loginResponse = await authenticator.signup(user, salt, loginCryptoManager.pubkey, identityCryptoManager.pubkey, encryptedSeckey);
+    const loginResponse = await authenticator.signup(user, salt, loginCryptoManager.pubkey, identityCryptoManager.pubkey, encryptedPrivkey);
 
     const ret = new this(mainKey, version);
 
@@ -724,7 +724,7 @@ export class CollectionInvitationManager {
 
   public async accept(invitation: SignedInvitationRead) {
     const mainCryptoManager = this.etesync.getCryptoManager();
-    const identCryptoManager = mainCryptoManager.getIdentityCryptoManager(fromBase64(this.etesync.user.encryptedSeckey));
+    const identCryptoManager = mainCryptoManager.getIdentityCryptoManager(fromBase64(this.etesync.user.encryptedPrivkey));
     const encryptionKey = identCryptoManager.decryptVerify(fromBase64(invitation.signedEncryptionKey), fromBase64(invitation.fromPubkey));
     const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
     return this.onlineManager.accept(invitation, encryptedEncryptionKey);
@@ -740,7 +740,7 @@ export class CollectionInvitationManager {
 
   public async invite(col: EncryptedCollection, username: string, pubkey: base64, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etesync.getCryptoManager();
-    const identCryptoManager = mainCryptoManager.getIdentityCryptoManager(fromBase64(this.etesync.user.encryptedSeckey));
+    const identCryptoManager = mainCryptoManager.getIdentityCryptoManager(fromBase64(this.etesync.user.encryptedPrivkey));
     const invitation = await col.createInvitation(mainCryptoManager, identCryptoManager, username, fromBase64(pubkey), accessLevel);
     await this.onlineManager.invite(invitation);
   }
@@ -843,7 +843,7 @@ export interface User {
 
 export interface LoginResponseUser extends User {
   pubkey: base64;
-  encryptedSeckey: base64;
+  encryptedPrivkey: base64;
 }
 
 export interface UserProfile {
@@ -873,7 +873,7 @@ class Authenticator extends BaseNetwork {
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1', 'authentication']);
   }
 
-  public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedSeckey: Uint8Array): Promise<LoginResponse> {
+  public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedPrivkey: Uint8Array): Promise<LoginResponse> {
     user = {
       username: user.username,
       email: user.email,
@@ -889,7 +889,7 @@ class Authenticator extends BaseNetwork {
         salt: toBase64(salt),
         loginPubkey: toBase64(loginPubkey),
         pubkey: toBase64(pubkey),
-        encryptedSeckey: toBase64(encryptedSeckey),
+        encryptedPrivkey: toBase64(encryptedPrivkey),
       }),
     };
 

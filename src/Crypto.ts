@@ -90,12 +90,12 @@ export class AsymmetricCryptoManager {
     }
   }
 
-  public static fromSeckey(seckey: Uint8Array) {
+  public static fromPrivkey(privkey: Uint8Array) {
     return new this({
       keyType: 'ed25519',
-      privateKey: seckey,
+      privateKey: privkey,
       // The public key is embedded in the secret key and the function to extract it is not exposed in libsodium-wrappers.
-      publicKey: seckey.subarray(sodium.crypto_sign_SEEDBYTES, sodium.crypto_sign_SEEDBYTES + sodium.crypto_sign_PUBLICKEYBYTES),
+      publicKey: privkey.subarray(sodium.crypto_sign_SEEDBYTES, sodium.crypto_sign_SEEDBYTES + sodium.crypto_sign_PUBLICKEYBYTES),
     });
   }
 
@@ -131,7 +131,7 @@ export class AsymmetricCryptoManager {
     return this.keypair.publicKey;
   }
 
-  public get seckey() {
+  public get privkey() {
     return this.keypair.privateKey;
   }
 }
