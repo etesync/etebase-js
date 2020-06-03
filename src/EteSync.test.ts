@@ -53,7 +53,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  etesync.logout();
+  await etesync.logout();
 });
 
 it('Simple collection handling', async () => {
@@ -727,7 +727,7 @@ it('Collection invitations', async () => {
     expect(collections.removedMemberships?.length).toBe(1);
   }
 
-  etesync2.logout();
+  await etesync2.logout();
 });
 
 it('Collection access level', async () => {
@@ -849,5 +849,5 @@ it('Collection access level', async () => {
     await itemManager2.batch([item]);
   }
 
-  etesync2.logout();
+  await etesync2.logout();
 });
