@@ -562,6 +562,26 @@ export class Account {
     this.authToken = null;
   }
 
+  public async changePassword(password: string) {
+    const authenticator = new Authenticator(this.serverUrl);
+    const username = this.user.username;
+    const loginChallenge = await authenticator.getLoginChallenge(username);
+
+    const oldMainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
+    const content = oldMainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
+
+    const mainKey = deriveKey(fromBase64(loginChallenge.salt), password);
+    const mainCryptoManager = getMainCryptoManager(mainKey, this.version);
+    const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
+
+    const encryptedContent = mainCryptoManager.encrypt(content);
+
+    await authenticator.changePassword(this.authToken!, loginCryptoManager.pubkey, encryptedContent);
+
+    this.mainKey = mainKey;
+    this.user.encryptedContent = toBase64(encryptedContent);
+  }
+
   public save(): AccountData {
     const ret: AccountData = {
       user: this.user,
@@ -956,6 +976,22 @@ class Authenticator extends BaseNetwork {
     };
 
     return this.newCall(['logout'], extra);
+  }
+
+  public async changePassword(authToken: string, loginPubkey: Uint8Array, encryptedContent: Uint8Array): Promise<void> {
+    const extra = {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Authorization': 'Token ' + authToken,
+      },
+      body: JSON.stringify({
+        loginPubkey: toBase64(loginPubkey),
+        encryptedContent: toBase64(encryptedContent),
+      }),
+    };
+
+    await this.newCall(['change_password'], extra);
   }
 }
 

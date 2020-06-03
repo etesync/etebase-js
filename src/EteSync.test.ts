@@ -851,3 +851,18 @@ it('Collection access level', async () => {
 
   await etesync2.logout();
 });
+
+it('Login and password change', async () => {
+  const anotherPassword = 'AnotherPassword';
+  const etesync2 = await EteSync.Account.login(USER2.username, USER2.password, testApiBase);
+
+  await etesync2.changePassword(anotherPassword);
+  await etesync2.logout();
+
+  await expect(EteSync.Account.login(USER2.username, USER2.password, testApiBase)).rejects.toBeInstanceOf(EteSync.HTTPError);
+
+  const etesync3 = await EteSync.Account.login(USER2.username, anotherPassword, testApiBase);
+  await etesync3.changePassword(USER2.password);
+
+  await etesync3.logout();
+}, 30000);
