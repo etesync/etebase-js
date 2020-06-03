@@ -26,6 +26,24 @@ async function verifyItem(itemManager: EteSync.CollectionItemManager, item: EteS
 }
 
 async function prepareUserForTest(user: typeof USER) {
+  await fetch(testApiBase + '/api/v1/test/authentication/reset/', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/json;charset=UTF-8',
+    },
+
+    body: JSON.stringify({
+      user: {
+        username: user.username,
+        email: user.email,
+      },
+      salt: user.salt,
+      loginPubkey: user.loginPubkey,
+      encryptedContent: user.encryptedContent,
+      pubkey: user.pubkey,
+    }),
+  });
+
   const accountData: EteSync.AccountData = {
     version: CURRENT_VERSION,
     key: user.key,
@@ -34,14 +52,6 @@ async function prepareUserForTest(user: typeof USER) {
   };
   const etesync = EteSync.Account.load(accountData);
   await etesync.fetchToken();
-
-  await fetch(testApiBase + '/api/v1/test/authentication/reset/', {
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/json;charset=UTF-8',
-      'Authorization': 'Token ' + etesync.authToken,
-    },
-  });
 
   return etesync;
 }
