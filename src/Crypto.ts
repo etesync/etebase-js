@@ -22,7 +22,7 @@ export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
     32,
     Buffer.from(password),
     salt,
-    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
+    sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
     sodium.crypto_pwhash_MEMLIMIT_MODERATE,
     sodium.crypto_pwhash_ALG_DEFAULT
   );
