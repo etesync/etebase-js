@@ -2,20 +2,18 @@ export const USER = {
   username: 'test_user',
   email: 'test@localhost',
   password: 'SomePassword',
-  pubkey: 'TZPrsS5V62YgybWLhT3d4x0Ax-vne_T1zn124DPeG90',
-  encryptedContent: 'YJMtSNjuSM_ZichwtF1IvJlZc905Wz_oRZuvcePWH2RGk1EYrbqmBKoK2wLhP0cso3BF269GSuLTapDcTTqIXJz8xatsl6TV9m0fyZU49Qk-LsUu8UI6adWZLJZ9YB7esfsGDqsjNDbCzyG9YVMJyMEuuU5iYlJp-dKe3gUWSeBnN6c_4TxCmw',
+  pubkey: 'N4fhf1Q0b_6EhCzZ8HTOzu-g-C-c2rAEgbxFZ5Yd26k',
+  encryptedContent: 'HSe12AjLMLFbuFE6zu05REjBKb-cbow3MkjWgHXwiKpHSQhuoEGByyxa6zm835T8oHCZaWHwJGQzd1bQvqxZj8x6PLdrSi3inexsJjMmHNIGQfZKLgMeENoYctppIeEa1ZcdVfzOq32MB4kCuA0NbUvUKFa279XJGYqwuOOh-08AH8rzwxewEA',
 
-  saltB64: 'GPI5hUc8npxG2gywz-3Rj3X9gcmELV3DkPc3a30_LZg',
-  keyB64: 'SpCFBbc0bDprcObA0NPcWZs3Y-IJmqrglzMhTCsesHY',
+  key: 'Eq9b_rdbzeiU3P4sg5qN24KXbNgy8GgCeC74nFF99hI',
 };
 
 export const USER2 = {
   username: 'test_user2',
   email: 'test2@localhost',
   password: 'SomePassword',
-  pubkey: 'FeO_mBIv603yicZn6su_GGNUL_lcFsEkwbpMa6cV_rs',
-  encryptedContent: 'cvnJlOGzzl31qh9Bx5LvqaRdsX-Orq7haTGdBldrbpKp-6O33qO2ORdomnIO09RbCR0TxJOr2DlUYeFEM-RcFqwx7MDpYgcbRKMFRC9sf0StecL8VzcfatUP_kLYyyVazmM1aRzwBlb_IRqUzXNYsNqQFHm5wWGHO9t3_jQkCAi2l6aGpdL4iQ',
+  pubkey: 'bPJ00z3lGmUtBYiHAk3Btfg1hAlwFq7VPBVuahhPUtg',
+  encryptedContent: 'GTPThd6WomdmbIz2u4y7ujH3BQPrZiW5rYR61TKoyJGu3DbH8js4GOIHql8iqDVaar5t3Fcieqb_YYiv2dzC-RNCjZSPEyOZ6ERkZ6QwU0_S1KU8zJegmvqEwqaRzIqu054LK1ZMggRa_iNzsCXX5OFo2NyCc0DRoOH1JQ-lz0kio5qe9md_zQ',
 
-  saltB64: 'ius3MZbX-lSBfIlf6ws5VGLV1LZht1O6gKrqJuHC2p0',
-  keyB64: 'DuovNP65LNlkbEIlauypAITVP09b8Gz4nkJE-tPDqpg',
+  key: 'AWXkhEFuf_vKquq-vTgHoYRu9NXr0z4ZeScwaLSgoT4',
 };

@@ -28,7 +28,7 @@ async function verifyItem(itemManager: EteSync.CollectionItemManager, item: EteS
 async function prepareUserForTest(user: typeof USER) {
   const accountData: EteSync.AccountData = {
     version: CURRENT_VERSION,
-    key: user.keyB64,
+    key: user.key,
     user,
     serverUrl: testApiBase,
   };
