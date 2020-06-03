@@ -866,12 +866,41 @@ it.skip('Login and password change', async () => {
   const anotherPassword = 'AnotherPassword';
   const etesync2 = await EteSync.Account.login(USER2.username, USER2.password, testApiBase);
 
+  const collectionManager2 = etesync2.getCollectionManager();
+  const colMeta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager2.create(colMeta, colContent);
+
+  await collectionManager2.upload(col);
+
   await etesync2.changePassword(anotherPassword);
+
+  {
+    // Verify we can still access the data
+    const collections = await collectionManager2.list({ inline: true });
+    expect(colMeta).toEqual(await collectionManager2.decryptMeta(collections.data[0]));
+  }
+
   await etesync2.logout();
 
   await expect(EteSync.Account.login(USER2.username, USER2.password, testApiBase)).rejects.toBeInstanceOf(EteSync.HTTPError);
 
   const etesync3 = await EteSync.Account.login(USER2.username, anotherPassword, testApiBase);
+
+  const collectionManager3 = etesync3.getCollectionManager();
+
+  {
+    // Verify we can still access the data
+    const collections = await collectionManager3.list({ inline: true });
+    expect(colMeta).toEqual(await collectionManager3.decryptMeta(collections.data[0]));
+  }
+
   await etesync3.changePassword(USER2.password);
 
   await etesync3.logout();
