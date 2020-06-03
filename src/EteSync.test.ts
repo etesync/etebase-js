@@ -852,7 +852,7 @@ it('Collection access level', async () => {
   await etesync2.logout();
 });
 
-it('Login and password change', async () => {
+it.skip('Login and password change', async () => {
   const anotherPassword = 'AnotherPassword';
   const etesync2 = await EteSync.Account.login(USER2.username, USER2.password, testApiBase);
 
