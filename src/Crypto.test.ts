@@ -7,12 +7,12 @@ import { CURRENT_VERSION } from './Constants';
 it('Derive key', async () => {
   await ready;
 
-  const derived = deriveKey(fromBase64(USER.saltB64), USER.password);
-  expect(toBase64(derived)).toBe(USER.keyB64);
+  const derived = deriveKey(fromBase64(USER.salt), USER.password);
+  expect(toBase64(derived)).toBe(USER.key);
 });
 
 it('Symmetric encryption', () => {
-  const key = fromBase64(USER.keyB64);
+  const key = fromBase64(USER.key);
 
   const cryptoManager = new CryptoManager(key, 'Col', CURRENT_VERSION);
   const clearText = sodium.from_string('This Is Some Test Cleartext.');
