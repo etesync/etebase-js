@@ -209,40 +209,29 @@ export class CollectionManager {
     this.onlineManager = new CollectionManagerOnline(this.etesync);
   }
 
-  public async create(meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
-    return EncryptedCollection.create(this.etesync.getCryptoManager(), meta, content);
+  public async create(meta: CollectionMetadata, content: Uint8Array): Promise<Collection> {
+    const mainCryptoManager = this.etesync.getCryptoManager();
+    const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, meta, content);
+    return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
-
-  public async update(col: EncryptedCollection, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
-    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
-    return col.update(cryptoManager, meta, content);
-  }
-
-  public async verify(col: EncryptedCollection) {
-    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
-    return col.verify(cryptoManager);
-  }
-
-  public async decryptMeta(col: EncryptedCollection): Promise<CollectionMetadata> {
-    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
-    return col.decryptMeta(cryptoManager);
-  }
-
-  public async decryptContent(col: EncryptedCollection): Promise<Uint8Array> {
-    const cryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
-    return col.decryptContent(cryptoManager);
-  }
-
 
   public async fetch(colUid: base62, options: FetchOptions) {
-    return this.onlineManager.fetch(colUid, options);
+    const mainCryptoManager = this.etesync.getCryptoManager();
+    const encryptedCollection = await this.onlineManager.fetch(colUid, options);
+    return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
   public async list(options: FetchOptions) {
-    return this.onlineManager.list(options);
+    const mainCryptoManager = this.etesync.getCryptoManager();
+    const ret = await this.onlineManager.list(options);
+    return {
+      ...ret,
+      data: ret.data.map((x) => new Collection(x.getCryptoManager(mainCryptoManager), x)),
+    };
   }
 
-  public async upload(col: EncryptedCollection, options?: FetchOptions) {
+  public async upload(collection: Collection, options?: FetchOptions) {
+    const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
     if (col.etag) {
       await this.onlineManager.update(col, options);
@@ -252,7 +241,8 @@ export class CollectionManager {
     col.__markSaved();
   }
 
-  public async transaction(col: EncryptedCollection, options?: FetchOptions) {
+  public async transaction(collection: Collection, options?: FetchOptions) {
+    const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
     if (col.etag) {
       await this.onlineManager.update(col, { ...options, stoken: col.stoken });
@@ -262,8 +252,8 @@ export class CollectionManager {
     col.__markSaved();
   }
 
-  public getItemManager(col: EncryptedCollection) {
-    return new CollectionItemManager(this.etesync, this, col);
+  public getItemManager(col: Collection) {
+    return new CollectionItemManager(this.etesync, this, col.encryptedCollection);
   }
 }
 
@@ -359,10 +349,10 @@ export class CollectionInvitationManager {
     return this.onlineManager.fetchUserProfile(username);
   }
 
-  public async invite(col: EncryptedCollection, username: string, pubkey: base64, accessLevel: CollectionAccessLevel): Promise<void> {
+  public async invite(col: Collection, username: string, pubkey: base64, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etesync.getCryptoManager();
     const identCryptoManager = this.etesync.getIdentityCryptoManager();
-    const invitation = await col.createInvitation(mainCryptoManager, identCryptoManager, username, fromBase64(pubkey), accessLevel);
+    const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, username, fromBase64(pubkey), accessLevel);
     await this.onlineManager.invite(invitation);
   }
 }
@@ -371,9 +361,9 @@ export class CollectionMemberManager {
   private readonly etesync: Account;
   private readonly onlineManager: CollectionMemberManagerOnline;
 
-  constructor(etesync: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
+  constructor(etesync: Account, _collectionManager: CollectionManager, col: Collection) {
     this.etesync = etesync;
-    this.onlineManager = new CollectionMemberManagerOnline(this.etesync, col);
+    this.onlineManager = new CollectionMemberManagerOnline(this.etesync, col.encryptedCollection);
   }
 
   public async list() {
@@ -390,5 +380,43 @@ export class CollectionMemberManager {
 
   public async modifyAccessLevel(username: string, accessLevel: CollectionAccessLevel) {
     return this.onlineManager.modifyAccessLevel(username, accessLevel);
+  }
+}
+
+export class Collection {
+  private readonly cryptoManager: CollectionCryptoManager;
+  public readonly encryptedCollection: EncryptedCollection;
+
+  public constructor(cryptoManager: CollectionCryptoManager, encryptedCollection: EncryptedCollection) {
+    this.cryptoManager = cryptoManager;
+    this.encryptedCollection = encryptedCollection;
+  }
+
+  public async verify() {
+    return this.encryptedCollection.verify(this.cryptoManager);
+  }
+
+  async update(meta: CollectionMetadata, content: Uint8Array): Promise<void> {
+    return this.encryptedCollection.update(this.cryptoManager, meta, content);
+  }
+
+  public async getMeta(): Promise<CollectionMetadata> {
+    return this.encryptedCollection.decryptMeta(this.cryptoManager);
+  }
+
+  public async getContent(): Promise<Uint8Array> {
+    return this.encryptedCollection.decryptContent(this.cryptoManager);
+  }
+
+  public get uid() {
+    return this.encryptedCollection.uid;
+  }
+
+  public get etag() {
+    return this.encryptedCollection.etag;
+  }
+
+  public get stoken() {
+    return this.encryptedCollection.stoken;
   }
 }

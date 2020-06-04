@@ -9,11 +9,11 @@ const testApiBase = 'http://localhost:8033';
 
 let etesync: EteSync.Account;
 
-async function verifyCollection(collectionManager: EteSync.CollectionManager, col: EteSync.EncryptedCollection, meta: EteSync.CollectionMetadata, content: Uint8Array) {
-  collectionManager.verify(col);
-  const decryptedMeta = await collectionManager.decryptMeta(col);
+async function verifyCollection(col: EteSync.Collection, meta: EteSync.CollectionMetadata, content: Uint8Array) {
+  await col.verify();
+  const decryptedMeta = await col.getMeta();
   expect(decryptedMeta).toEqual(meta);
-  const decryptedContent = await collectionManager.decryptContent(col);
+  const decryptedContent = await col.getContent();
   expect(decryptedContent).toEqual(content);
 }
 
@@ -77,7 +77,7 @@ it('Simple collection handling', async () => {
 
   const content = Uint8Array.from([1, 2, 3, 5]);
   const col = await collectionManager.create(meta, content);
-  await verifyCollection(collectionManager, col, meta, content);
+  await verifyCollection(col, meta, content);
 
   const meta2 = {
     type: 'COLTYPE',
@@ -85,10 +85,10 @@ it('Simple collection handling', async () => {
     description: 'Someone',
     color: '#000000',
   };
-  await collectionManager.update(col, meta2, content);
+  await col.update(meta2, content);
 
-  await verifyCollection(collectionManager, col, meta2, content);
-  expect(meta).not.toEqual(await collectionManager.decryptMeta(col));
+  await verifyCollection(col, meta2, content);
+  expect(meta).not.toEqual(await col.getMeta());
 });
 
 it('Simple item handling', async () => {
@@ -120,7 +120,7 @@ it('Simple item handling', async () => {
   await itemManager.update(item, meta2, content);
 
   await verifyItem(itemManager, item, meta2, content);
-  expect(meta).not.toEqual(await collectionManager.decryptMeta(col));
+  expect(meta).not.toEqual(await col.getMeta());
 });
 
 it('Simple collection sync', async () => {
@@ -134,7 +134,7 @@ it('Simple collection sync', async () => {
 
   const content = Uint8Array.from([1, 2, 3, 5]);
   let col = await collectionManager.create(meta, content);
-  await verifyCollection(collectionManager, col, meta, content);
+  await verifyCollection(col, meta, content);
 
   {
     const collections = await collectionManager.list({ inline: true });
@@ -146,7 +146,7 @@ it('Simple collection sync', async () => {
   {
     const collections = await collectionManager.list({ inline: true });
     expect(collections.data.length).toBe(1);
-    await verifyCollection(collectionManager, collections.data[0], meta, content);
+    await verifyCollection(collections.data[0], meta, content);
   }
 
   {
@@ -163,14 +163,14 @@ it('Simple collection sync', async () => {
     description: 'Someone',
     color: '#000000',
   };
-  await collectionManager.update(col, meta2, content);
+  await col.update(meta2, content);
 
   await collectionManager.upload(col);
 
   {
     const collections = await collectionManager.list({ inline: true });
     expect(collections.data.length).toBe(1);
-    await verifyCollection(collectionManager, collections.data[0], meta2, content);
+    await verifyCollection(collections.data[0], meta2, content);
   }
 
   {
@@ -181,7 +181,7 @@ it('Simple collection sync', async () => {
   // Fail uploading because of an old stoken/etag
   {
     const content2 = Uint8Array.from([7, 2, 3, 5]);
-    await collectionManager.update(colOld, meta2, content2);
+    await colOld.update(meta2, content2);
 
     await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(EteSync.HTTPError);
 
@@ -189,14 +189,14 @@ it('Simple collection sync', async () => {
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
-  await collectionManager.update(col, meta2, content2);
+  await col.update(meta2, content2);
 
   await collectionManager.upload(col);
 
   {
     const collections = await collectionManager.list({ inline: true });
     expect(collections.data.length).toBe(1);
-    await verifyCollection(collectionManager, collections.data[0], meta2, content2);
+    await verifyCollection(collections.data[0], meta2, content2);
   }
 });
 
@@ -680,7 +680,7 @@ it('Collection invitations', async () => {
     const collections = await collectionManager2.list({ inline: true });
     expect(collections.data.length).toBe(1);
 
-    await collectionManager2.decryptMeta(collections.data[0]);
+    await collections.data[0].getMeta();
   }
 
   {
@@ -884,7 +884,7 @@ it.skip('Login and password change', async () => {
   {
     // Verify we can still access the data
     const collections = await collectionManager2.list({ inline: true });
-    expect(colMeta).toEqual(await collectionManager2.decryptMeta(collections.data[0]));
+    expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
   await etesync2.logout();
@@ -898,7 +898,7 @@ it.skip('Login and password change', async () => {
   {
     // Verify we can still access the data
     const collections = await collectionManager3.list({ inline: true });
-    expect(colMeta).toEqual(await collectionManager3.decryptMeta(collections.data[0]));
+    expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
   await etesync3.changePassword(USER2.password);
