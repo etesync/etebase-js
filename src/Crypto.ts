@@ -12,6 +12,17 @@ export function concatArrayBuffers(buffer1: Uint8Array, buffer2: Uint8Array): Ui
   return ret;
 }
 
+export function concatArrayBuffersArrays(buffers: Uint8Array[]): Uint8Array {
+  const length = buffers.reduce((x, y) => x + y.length, 0);
+  const ret = new Uint8Array(length);
+  let pos = 0;
+  for (const buffer of buffers) {
+    ret.set(buffer, pos);
+    pos += buffer.length;
+  }
+  return ret;
+}
+
 export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
   // XXX should probably move to scrypt or at least change parameters. - we need it fast in JS most likely
 

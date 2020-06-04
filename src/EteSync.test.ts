@@ -85,7 +85,7 @@ it('Simple collection handling', async () => {
     description: 'Someone',
     color: '#000000',
   };
-  await col.update(meta2, content);
+  await col.setMeta(meta2);
 
   await verifyCollection(col, meta2, content);
   expect(meta).not.toEqual(await col.getMeta());
@@ -117,7 +117,7 @@ it('Simple item handling', async () => {
     type: 'ITEMTYPE',
     someval: 'someval',
   };
-  await item.update(meta2, content);
+  await item.setMeta(meta2);
 
   await verifyItem(item, meta2, content);
   expect(meta).not.toEqual(await col.getMeta());
@@ -163,7 +163,7 @@ it('Simple collection sync', async () => {
     description: 'Someone',
     color: '#000000',
   };
-  await col.update(meta2, content);
+  await col.setMeta(meta2);
 
   await collectionManager.upload(col);
 
@@ -181,7 +181,7 @@ it('Simple collection sync', async () => {
   // Fail uploading because of an old stoken/etag
   {
     const content2 = Uint8Array.from([7, 2, 3, 5]);
-    await colOld.update(meta2, content2);
+    await colOld.setContent(content2);
 
     await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(EteSync.HTTPError);
 
@@ -189,7 +189,7 @@ it('Simple collection sync', async () => {
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
-  await col.update(meta2, content2);
+  await col.setContent(content2);
 
   await collectionManager.upload(col);
 
@@ -241,7 +241,7 @@ it('Simple item sync', async () => {
     type: 'ITEMTYPE',
     someval: 'someval',
   };
-  await item.update(meta2, content);
+  await item.setMeta(meta2);
 
   await itemManager.batch([item]);
 
@@ -252,7 +252,7 @@ it('Simple item sync', async () => {
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
-  await item.update(meta2, content2);
+  await item.setContent(content2);
 
   await itemManager.batch([item]);
 
@@ -323,7 +323,7 @@ it('Item transactions', async () => {
 
   {
     const meta3 = { ...meta, someval: 'some' };
-    await item.update(meta3, content);
+    await item.setMeta(meta3);
   }
 
   await itemManager.transaction([item], items);
@@ -335,7 +335,7 @@ it('Item transactions', async () => {
 
   {
     const meta3 = { ...meta, someval: 'some2' };
-    await item.update(meta3, content);
+    await item.setMeta(meta3);
 
     // Old in the deps
     await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(EteSync.HTTPError);
@@ -344,7 +344,7 @@ it('Item transactions', async () => {
 
     await itemManager.transaction([item]);
 
-    await itemOld2.update(meta3, content);
+    await itemOld2.setMeta(meta3);
 
     // Old stoken in the item itself
     await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
@@ -353,10 +353,10 @@ it('Item transactions', async () => {
   {
     const meta3 = { ...meta, someval: 'some2' };
     const item2 = await itemManager.fetch(items[0].uid, { inline: true });
-    await item2.update(meta3, content);
+    await item2.setMeta(meta3);
 
     const itemOld2 = itemOld._clone();
-    await itemOld2.update(meta3, content);
+    await itemOld2.setMeta(meta3);
 
     // Part of the transaction is bad, and part is good
     await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
@@ -369,7 +369,7 @@ it('Item transactions', async () => {
   {
     // Global stoken test
     const meta3 = { ...meta, someval: 'some2' };
-    await item.update(meta3, content);
+    await item.setMeta(meta3);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
     const stoken = newCol.stoken;
@@ -435,11 +435,11 @@ it('Item batch stoken', async () => {
     const meta3 = { ...meta, someval: 'some2' };
     const item2 = item._clone();
 
-    await item2.update(meta3, content);
+    await item2.setMeta(meta3);
     await itemManager.batch([item2]);
 
     meta3.someval = 'some3';
-    await item.update(meta3, content);
+    await item.setMeta(meta3);
 
     // Old stoken in the item itself should work for batch and fail for transaction
     await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(EteSync.HTTPError);
@@ -449,7 +449,7 @@ it('Item batch stoken', async () => {
   {
     // Global stoken test
     const meta3 = { ...meta, someval: 'some2' };
-    await item.update(meta3, content);
+    await item.setMeta(meta3);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
     const stoken = newCol.stoken;
@@ -536,7 +536,7 @@ it('Item fetch updates', async () => {
     const meta3 = { ...meta, someval: 'some2' };
     const item2 = items[0]._clone();
 
-    await item2.update(meta3, content);
+    await item2.setMeta(meta3);
     await itemManager.batch([item2]);
   }
 

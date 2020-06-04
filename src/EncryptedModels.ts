@@ -1,6 +1,6 @@
 import * as Constants from './Constants';
 
-import { CryptoManager, sodium, concatArrayBuffers, AsymmetricCryptoManager } from './Crypto';
+import { CryptoManager, sodium, AsymmetricCryptoManager, concatArrayBuffersArrays } from './Crypto';
 import { IntegrityError } from './Exceptions';
 import { base62, base64, toBase64 } from './Helpers';
 
@@ -156,14 +156,9 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
 
   public static async create<CM extends CollectionCryptoManager | CollectionItemCryptoManager>(cryptoManager: CM, additionalData: Uint8Array[] = [], meta: any, content: Uint8Array): Promise<EncryptedRevision<CM>> {
     const ret = new EncryptedRevision<CM>();
-    const additionalDataMerged = additionalData.reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array());
-    ret.meta = cryptoManager.encrypt(sodium.from_string(JSON.stringify(meta)), additionalDataMerged);
-    // FIXME: need to actually chunkify
-    const encContent = cryptoManager.encryptDetached(content);
-    ret.chunks = [[sodium.to_base64(encContent[0]), encContent[1]]];
-
-    const mac = await ret.calculateMac(cryptoManager, additionalData);
-    ret.uid = sodium.to_base64(mac);
+    ret.chunks = [];
+    await ret.setMeta(cryptoManager, additionalData, meta);
+    await ret.setContent(cryptoManager, additionalData, content);
 
     return ret;
   }
@@ -174,7 +169,9 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
     ret.uid = uid;
     ret.meta = sodium.from_base64(meta);
     ret.deleted = deleted; // FIXME: this should also be part of the meta additional data too. Probably can remove from the major verification everything that's verified by meta.
-    ret.chunks = chunks.map((chunk) => [chunk[0], (chunk[1]) ? sodium.from_base64(chunk[1]) : undefined]);
+    ret.chunks = chunks.map((chunk) => {
+      return [chunk[0], (chunk[1]) ? sodium.from_base64(chunk[1]) : undefined];
+    });
 
     return ret;
   }
@@ -218,14 +215,44 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
     return cryptoMac.finalize();
   }
 
+  public async setMeta(cryptoManager: CM, additionalData: Uint8Array[], meta: any): Promise<void> {
+    const additionalDataMerged = concatArrayBuffersArrays(additionalData);
+    this.meta = cryptoManager.encrypt(sodium.from_string(JSON.stringify(meta)), additionalDataMerged);
+
+    const mac = await this.calculateMac(cryptoManager, additionalData);
+    this.uid = sodium.to_base64(mac);
+  }
+
   public async decryptMeta(cryptoManager: CM, additionalData: Uint8Array[]): Promise<any> {
-    const additionalDataMerged = additionalData.reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array());
+    const additionalDataMerged = concatArrayBuffersArrays(additionalData);
     return JSON.parse(sodium.to_string(cryptoManager.decrypt(this.meta, additionalDataMerged)));
   }
 
+  public async setContent(cryptoManager: CM, additionalData: Uint8Array[], content: Uint8Array): Promise<void> {
+    const meta = await this.decryptMeta(cryptoManager, additionalData);
+    await this.setMeta(cryptoManager, additionalData, meta);
+
+    // FIXME: need to actually chunkify
+    const encContent = cryptoManager.encryptDetached(content);
+    this.chunks = [[sodium.to_base64(encContent[0]), encContent[1]]];
+
+    const mac = await this.calculateMac(cryptoManager, additionalData);
+    this.uid = sodium.to_base64(mac);
+  }
+
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
-    return this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, sodium.from_base64(chunk[0])))
-      .reduce((base, cur) => concatArrayBuffers(base, cur), new Uint8Array()) ?? new Uint8Array(0);
+    return concatArrayBuffersArrays(
+      this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, sodium.from_base64(chunk[0]))))
+    ;
+  }
+
+  public clone() {
+    const rev = new EncryptedRevision<CM>();
+    rev.uid = this.uid;
+    rev.meta = this.meta;
+    rev.chunks = this.chunks;
+    rev.deleted = this.deleted;
+    return rev;
   }
 }
 
@@ -290,17 +317,37 @@ export class EncryptedCollection {
     this.etag = this.content.uid;
   }
 
-  public async update(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<void> {
-    this.content = await EncryptedRevision.create(cryptoManager, this.getAdditionalMacData(), meta, content);
+  private isLocallyChanged() {
+    return this.etag !== this.content.uid;
   }
 
   public async verify(cryptoManager: CollectionCryptoManager) {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
+  public async setMeta(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata): Promise<void> {
+    let rev = this.content;
+    if (!this.isLocallyChanged()) {
+      rev = this.content.clone();
+    }
+    await rev.setMeta(cryptoManager, this.getAdditionalMacData(), meta);
+
+    this.content = rev;
+  }
+
   public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
     this.verify(cryptoManager);
     return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
+  }
+
+  public async setContent(cryptoManager: CollectionCryptoManager, content: Uint8Array): Promise<void> {
+    let rev = this.content;
+    if (!this.isLocallyChanged()) {
+      rev = this.content.clone();
+    }
+    await rev.setContent(cryptoManager, this.getAdditionalMacData(), content);
+
+    this.content = rev;
   }
 
   public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
@@ -390,17 +437,37 @@ export class EncryptedCollectionItem {
     this.etag = this.content.uid;
   }
 
-  public async update(cryptoManager: CollectionItemCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
-    this.content = await EncryptedRevision.create(cryptoManager, this.getAdditionalMacData(), meta, content);
+  private isLocallyChanged() {
+    return this.etag !== this.content.uid;
   }
 
   public async verify(cryptoManager: CollectionItemCryptoManager) {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
+  public async setMeta(cryptoManager: CollectionItemCryptoManager, meta: CollectionItemMetadata): Promise<void> {
+    let rev = this.content;
+    if (!this.isLocallyChanged()) {
+      rev = this.content.clone();
+    }
+    await rev.setMeta(cryptoManager, this.getAdditionalMacData(), meta);
+
+    this.content = rev;
+  }
+
   public async decryptMeta(cryptoManager: CollectionItemCryptoManager): Promise<CollectionItemMetadata> {
     this.verify(cryptoManager);
     return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
+  }
+
+  public async setContent(cryptoManager: CollectionItemCryptoManager, content: Uint8Array): Promise<void> {
+    let rev = this.content;
+    if (!this.isLocallyChanged()) {
+      rev = this.content.clone();
+    }
+    await rev.setContent(cryptoManager, this.getAdditionalMacData(), content);
+
+    this.content = rev;
   }
 
   public async decryptContent(cryptoManager: CollectionItemCryptoManager): Promise<Uint8Array> {

@@ -386,12 +386,16 @@ export class Collection {
     return this.encryptedCollection.verify(this.cryptoManager);
   }
 
-  async update(meta: CollectionMetadata, content: Uint8Array): Promise<void> {
-    return this.encryptedCollection.update(this.cryptoManager, meta, content);
+  public async setMeta(meta: CollectionMetadata): Promise<void> {
+    await this.encryptedCollection.setMeta(this.cryptoManager, meta);
   }
 
   public async getMeta(): Promise<CollectionMetadata> {
     return this.encryptedCollection.decryptMeta(this.cryptoManager);
+  }
+
+  public async setContent(content: Uint8Array): Promise<void> {
+    await this.encryptedCollection.setContent(this.cryptoManager, content);
   }
 
   public async getContent(): Promise<Uint8Array> {
@@ -424,12 +428,16 @@ export class CollectionItem {
     return this.encryptedItem.verify(this.cryptoManager);
   }
 
-  async update(meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
-    return this.encryptedItem.update(this.cryptoManager, meta, content);
+  public async setMeta(meta: CollectionItemMetadata): Promise<void> {
+    await this.encryptedItem.setMeta(this.cryptoManager, meta);
   }
 
   public async getMeta(): Promise<CollectionItemMetadata> {
     return this.encryptedItem.decryptMeta(this.cryptoManager);
+  }
+
+  public async setContent(content: Uint8Array): Promise<void> {
+    await this.encryptedItem.setContent(this.cryptoManager, content);
   }
 
   public async getContent(): Promise<Uint8Array> {
