@@ -24,14 +24,11 @@ export function concatArrayBuffersArrays(buffers: Uint8Array[]): Uint8Array {
 }
 
 export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
-  // XXX should probably move to scrypt or at least change parameters. - we need it fast in JS most likely
-
-  // FIXME: is just trimming the salt sufficient?
   salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
 
   return sodium.crypto_pwhash(
     32,
-    Buffer.from(password),
+    sodium.from_string(password),
     salt,
     sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
     sodium.crypto_pwhash_MEMLIMIT_MODERATE,
