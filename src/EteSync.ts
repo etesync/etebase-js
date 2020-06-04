@@ -11,6 +11,7 @@ export { base62, base64, fromBase64, toBase64 } from './Helpers';
 import {
   CollectionAccessLevel,
   CollectionCryptoManager,
+  CollectionItemCryptoManager,
   CollectionMetadata,
   CollectionItemMetadata,
   EncryptedCollection,
@@ -268,54 +269,43 @@ export class CollectionItemManager {
     this.onlineManager = new CollectionItemManagerOnline(this.etesync, col);
   }
 
-  public async create(meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
-    return EncryptedCollectionItem.create(this.collectionCryptoManager, meta, content);
+  public async create(meta: CollectionItemMetadata, content: Uint8Array): Promise<CollectionItem> {
+    const encryptedItem = await EncryptedCollectionItem.create(this.collectionCryptoManager, meta, content);
+    return new CollectionItem(encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
-
-  public async update(item: EncryptedCollectionItem, meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
-    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
-    return item.update(cryptoManager, meta, content);
-  }
-
-  public async verify(item: EncryptedCollectionItem) {
-    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
-    return item.verify(cryptoManager);
-  }
-
-  public async decryptMeta(item: EncryptedCollectionItem): Promise<CollectionItemMetadata> {
-    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
-    return item.decryptMeta(cryptoManager);
-  }
-
-  public async decryptContent(item: EncryptedCollectionItem): Promise<Uint8Array> {
-    const cryptoManager = item.getCryptoManager(this.collectionCryptoManager);
-    return item.decryptContent(cryptoManager);
-  }
-
 
   public async fetch(itemUid: base62, options: ItemFetchOptions) {
-    return this.onlineManager.fetch(itemUid, options);
+    const encryptedItem = await this.onlineManager.fetch(itemUid, options);
+    return new CollectionItem(encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
 
   public async list(options: ItemFetchOptions) {
-    return this.onlineManager.list(options);
+    const ret = await this.onlineManager.list(options);
+    return {
+      ...ret,
+      data: ret.data.map((x) => new CollectionItem(x.getCryptoManager(this.collectionCryptoManager), x)),
+    };
   }
 
-  public async fetchUpdates(items: EncryptedCollectionItem[], options?: ItemFetchOptions) {
-    return this.onlineManager.fetchUpdates(items, options);
+  public async fetchUpdates(items: CollectionItem[], options?: ItemFetchOptions) {
+    const ret = await this.onlineManager.fetchUpdates(items.map((x) => x.encryptedItem), options);
+    return {
+      ...ret,
+      data: ret.data.map((x) => new CollectionItem(x.getCryptoManager(this.collectionCryptoManager), x)),
+    };
   }
 
-  public async batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions) {
-    await this.onlineManager.batch(items, options);
+  public async batch(items: CollectionItem[], options?: ItemFetchOptions) {
+    await this.onlineManager.batch(items.map((x) => x.encryptedItem), options);
     items.forEach((item) => {
-      item.__markSaved();
+      item.encryptedItem.__markSaved();
     });
   }
 
-  public async transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions) {
-    await this.onlineManager.transaction(items, deps, options);
+  public async transaction(items: CollectionItem[], deps?: CollectionItem[], options?: ItemFetchOptions) {
+    await this.onlineManager.transaction(items.map((x) => x.encryptedItem), deps?.map((x) => x.encryptedItem), options);
     items.forEach((item) => {
-      item.__markSaved();
+      item.encryptedItem.__markSaved();
     });
   }
 }
@@ -418,5 +408,43 @@ export class Collection {
 
   public get stoken() {
     return this.encryptedCollection.stoken;
+  }
+}
+
+export class CollectionItem {
+  private readonly cryptoManager: CollectionItemCryptoManager;
+  public readonly encryptedItem: EncryptedCollectionItem;
+
+  public constructor(cryptoManager: CollectionItemCryptoManager, encryptedItem: EncryptedCollectionItem) {
+    this.cryptoManager = cryptoManager;
+    this.encryptedItem = encryptedItem;
+  }
+
+  public async verify() {
+    return this.encryptedItem.verify(this.cryptoManager);
+  }
+
+  async update(meta: CollectionItemMetadata, content: Uint8Array): Promise<void> {
+    return this.encryptedItem.update(this.cryptoManager, meta, content);
+  }
+
+  public async getMeta(): Promise<CollectionItemMetadata> {
+    return this.encryptedItem.decryptMeta(this.cryptoManager);
+  }
+
+  public async getContent(): Promise<Uint8Array> {
+    return this.encryptedItem.decryptContent(this.cryptoManager);
+  }
+
+  public get uid() {
+    return this.encryptedItem.uid;
+  }
+
+  public get etag() {
+    return this.encryptedItem.etag;
+  }
+
+  public _clone() {
+    return new CollectionItem(this.cryptoManager, EncryptedCollectionItem.deserialize(this.encryptedItem.serialize()));
   }
 }

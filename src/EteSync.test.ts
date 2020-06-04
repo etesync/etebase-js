@@ -17,11 +17,11 @@ async function verifyCollection(col: EteSync.Collection, meta: EteSync.Collectio
   expect(decryptedContent).toEqual(content);
 }
 
-async function verifyItem(itemManager: EteSync.CollectionItemManager, item: EteSync.EncryptedCollectionItem, meta: EteSync.CollectionItemMetadata, content: Uint8Array) {
-  itemManager.verify(item);
-  const decryptedMeta = await itemManager.decryptMeta(item);
+async function verifyItem(item: EteSync.CollectionItem, meta: EteSync.CollectionItemMetadata, content: Uint8Array) {
+  item.verify();
+  const decryptedMeta = await item.getMeta();
   expect(decryptedMeta).toEqual(meta);
-  const decryptedContent = await itemManager.decryptContent(item);
+  const decryptedContent = await item.getContent();
   expect(decryptedContent).toEqual(content);
 }
 
@@ -111,15 +111,15 @@ it('Simple item handling', async () => {
   const content = Uint8Array.from([1, 2, 3, 6]);
 
   const item = await itemManager.create(meta, content);
-  await verifyItem(itemManager, item, meta, content);
+  await verifyItem(item, meta, content);
 
   const meta2 = {
     type: 'ITEMTYPE',
     someval: 'someval',
   };
-  await itemManager.update(item, meta2, content);
+  await item.update(meta2, content);
 
-  await verifyItem(itemManager, item, meta2, content);
+  await verifyItem(item, meta2, content);
   expect(meta).not.toEqual(await col.getMeta());
 });
 
@@ -227,39 +227,39 @@ it('Simple item sync', async () => {
   const content = Uint8Array.from([1, 2, 3, 6]);
 
   const item = await itemManager.create(meta, content);
-  await verifyItem(itemManager, item, meta, content);
+  await verifyItem(item, meta, content);
 
   await itemManager.batch([item]);
 
   {
     const items = await itemManager.list({ inline: true });
     expect(items.data.length).toBe(1);
-    await verifyItem(itemManager, items.data[0], meta, content);
+    await verifyItem(items.data[0], meta, content);
   }
 
   const meta2 = {
     type: 'ITEMTYPE',
     someval: 'someval',
   };
-  await itemManager.update(item, meta2, content);
+  await item.update(meta2, content);
 
   await itemManager.batch([item]);
 
   {
     const items = await itemManager.list({ inline: true });
     expect(items.data.length).toBe(1);
-    await verifyItem(itemManager, items.data[0], meta2, content);
+    await verifyItem(items.data[0], meta2, content);
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
-  await itemManager.update(item, meta2, content2);
+  await item.update(meta2, content2);
 
   await itemManager.batch([item]);
 
   {
     const items = await itemManager.list({ inline: true });
     expect(items.data.length).toBe(1);
-    await verifyItem(itemManager, items.data[0], meta2, content2);
+    await verifyItem(items.data[0], meta2, content2);
   }
 });
 
@@ -291,12 +291,12 @@ it('Item transactions', async () => {
 
   const item = await itemManager.create(meta, content);
 
-  const deps: EteSync.EncryptedCollectionItem[] = [item];
+  const deps: EteSync.CollectionItem[] = [item];
 
   await itemManager.transaction(deps);
   const itemOld = await itemManager.fetch(item.uid, { inline: true });
 
-  const items: EteSync.EncryptedCollectionItem[] = [];
+  const items: EteSync.CollectionItem[] = [];
 
   {
     const items = await itemManager.list({ inline: true });
@@ -323,7 +323,7 @@ it('Item transactions', async () => {
 
   {
     const meta3 = { ...meta, someval: 'some' };
-    await itemManager.update(item, meta3, content);
+    await item.update(meta3, content);
   }
 
   await itemManager.transaction([item], items);
@@ -335,16 +335,16 @@ it('Item transactions', async () => {
 
   {
     const meta3 = { ...meta, someval: 'some2' };
-    await itemManager.update(item, meta3, content);
+    await item.update(meta3, content);
 
     // Old in the deps
     await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(EteSync.HTTPError);
 
-    const itemOld2 = EteSync.EncryptedCollectionItem.deserialize(itemOld.serialize());
+    const itemOld2 = itemOld._clone();
 
     await itemManager.transaction([item]);
 
-    await itemManager.update(itemOld2, meta3, content);
+    await itemOld2.update(meta3, content);
 
     // Old stoken in the item itself
     await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
@@ -353,23 +353,23 @@ it('Item transactions', async () => {
   {
     const meta3 = { ...meta, someval: 'some2' };
     const item2 = await itemManager.fetch(items[0].uid, { inline: true });
-    await itemManager.update(item2, meta3, content);
+    await item2.update(meta3, content);
 
-    const itemOld2 = EteSync.EncryptedCollectionItem.deserialize(itemOld.serialize());
-    await itemManager.update(itemOld2, meta3, content);
+    const itemOld2 = itemOld._clone();
+    await itemOld2.update(meta3, content);
 
     // Part of the transaction is bad, and part is good
     await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
 
     // Verify it hasn't changed after the transaction above failed
     const item2Fetch = await itemManager.fetch(item2.uid, { inline: true });
-    expect(item2Fetch.serialize()).not.toEqual(item2.serialize());
+    expect(await item2Fetch.getMeta()).not.toEqual(await item2.getMeta());
   }
 
   {
     // Global stoken test
     const meta3 = { ...meta, someval: 'some2' };
-    await itemManager.update(item, meta3, content);
+    await item.update(meta3, content);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
     const stoken = newCol.stoken;
@@ -411,7 +411,7 @@ it('Item batch stoken', async () => {
 
   await itemManager.batch([item]);
 
-  const items: EteSync.EncryptedCollectionItem[] = [];
+  const items: EteSync.CollectionItem[] = [];
 
   {
     const items = await itemManager.list({ inline: true });
@@ -433,13 +433,13 @@ it('Item batch stoken', async () => {
 
   {
     const meta3 = { ...meta, someval: 'some2' };
-    const item2 = EteSync.EncryptedCollectionItem.deserialize(item.serialize());
+    const item2 = item._clone();
 
-    await itemManager.update(item2, meta3, content);
+    await item2.update(meta3, content);
     await itemManager.batch([item2]);
 
     meta3.someval = 'some3';
-    await itemManager.update(item, meta3, content);
+    await item.update(meta3, content);
 
     // Old stoken in the item itself should work for batch and fail for transaction
     await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(EteSync.HTTPError);
@@ -449,7 +449,7 @@ it('Item batch stoken', async () => {
   {
     // Global stoken test
     const meta3 = { ...meta, someval: 'some2' };
-    await itemManager.update(item, meta3, content);
+    await item.update(meta3, content);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
     const stoken = newCol.stoken;
@@ -491,7 +491,7 @@ it('Item fetch updates', async () => {
 
   await itemManager.batch([item]);
 
-  const items: EteSync.EncryptedCollectionItem[] = [];
+  const items: EteSync.CollectionItem[] = [];
 
   {
     const items = await itemManager.list({ inline: true });
@@ -534,9 +534,9 @@ it('Item fetch updates', async () => {
 
   {
     const meta3 = { ...meta, someval: 'some2' };
-    const item2 = EteSync.EncryptedCollectionItem.deserialize(items[0].serialize());
+    const item2 = items[0]._clone();
 
-    await itemManager.update(item2, meta3, content);
+    await item2.update(meta3, content);
     await itemManager.batch([item2]);
   }
 
@@ -589,7 +589,7 @@ it('Collection invitations', async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const items: EteSync.EncryptedCollectionItem[] = [];
+  const items: EteSync.CollectionItem[] = [];
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
@@ -761,7 +761,7 @@ it('Collection access level', async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const items: EteSync.EncryptedCollectionItem[] = [];
+  const items: EteSync.CollectionItem[] = [];
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
