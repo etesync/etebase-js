@@ -4,6 +4,7 @@ import * as EteSync from './EteSync';
 
 import { USER, USER2 } from './TestConstants';
 import { CURRENT_VERSION } from './Constants';
+import { sodium } from './Crypto';
 
 const testApiBase = 'http://localhost:8033';
 
@@ -121,6 +122,42 @@ it('Simple item handling', async () => {
 
   await verifyItem(item, meta2, content);
   expect(meta).not.toEqual(await col.getMeta());
+});
+
+it('Content formats', async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const meta: EteSync.CollectionMetadata = {
+    type: 'COLTYPE',
+    name: 'Calendar',
+    description: 'Mine',
+    color: '#ffffff',
+  };
+
+  const content = 'Hello';
+  const col = await collectionManager.create(meta, content);
+  {
+    const decryptedContent = await col.getContent(EteSync.OutputFormat.String);
+    expect(decryptedContent).toEqual(content);
+
+    const decryptedContentUint = await col.getContent();
+    expect(decryptedContentUint).toEqual(sodium.from_string(content));
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const metaItem: EteSync.CollectionItemMetadata = {
+    type: 'ITEMTYPE',
+  };
+  const content2 = 'Hello2';
+
+  const item = await itemManager.create(metaItem, content2);
+  {
+    const decryptedContent = await item.getContent(EteSync.OutputFormat.String);
+    expect(decryptedContent).toEqual(content2);
+
+    const decryptedContentUint = await item.getContent();
+    expect(decryptedContentUint).toEqual(sodium.from_string(content2));
+  }
 });
 
 it('Simple collection sync', async () => {

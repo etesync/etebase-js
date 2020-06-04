@@ -210,9 +210,10 @@ export class CollectionManager {
     this.onlineManager = new CollectionManagerOnline(this.etesync);
   }
 
-  public async create(meta: CollectionMetadata, content: Uint8Array): Promise<Collection> {
+  public async create(meta: CollectionMetadata, content: Uint8Array | string): Promise<Collection> {
+    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
     const mainCryptoManager = this.etesync.getCryptoManager();
-    const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, meta, content);
+    const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, meta, uintcontent);
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
@@ -269,8 +270,9 @@ export class CollectionItemManager {
     this.onlineManager = new CollectionItemManagerOnline(this.etesync, col);
   }
 
-  public async create(meta: CollectionItemMetadata, content: Uint8Array): Promise<CollectionItem> {
-    const encryptedItem = await EncryptedCollectionItem.create(this.collectionCryptoManager, meta, content);
+  public async create(meta: CollectionItemMetadata, content: Uint8Array | string): Promise<CollectionItem> {
+    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
+    const encryptedItem = await EncryptedCollectionItem.create(this.collectionCryptoManager, meta, uintcontent);
     return new CollectionItem(encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
 
@@ -373,6 +375,11 @@ export class CollectionMemberManager {
   }
 }
 
+export enum OutputFormat {
+  Uint8Array,
+  String,
+}
+
 export class Collection {
   private readonly cryptoManager: CollectionCryptoManager;
   public readonly encryptedCollection: EncryptedCollection;
@@ -394,12 +401,23 @@ export class Collection {
     return this.encryptedCollection.decryptMeta(this.cryptoManager);
   }
 
-  public async setContent(content: Uint8Array): Promise<void> {
-    await this.encryptedCollection.setContent(this.cryptoManager, content);
+  public async setContent(content: Uint8Array | string): Promise<void> {
+    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
+    await this.encryptedCollection.setContent(this.cryptoManager, uintcontent);
   }
 
-  public async getContent(): Promise<Uint8Array> {
-    return this.encryptedCollection.decryptContent(this.cryptoManager);
+  public async getContent(outputFormat?: OutputFormat.Uint8Array): Promise<Uint8Array>;
+  public async getContent(outputFormat?: OutputFormat.String): Promise<string>;
+  public async getContent(outputFormat: OutputFormat = OutputFormat.Uint8Array): Promise<any> {
+    const ret = await this.encryptedCollection.decryptContent(this.cryptoManager);
+    switch (outputFormat) {
+      case OutputFormat.Uint8Array:
+        return ret;
+      case OutputFormat.String:
+        return sodium.to_string(ret);
+      default:
+        throw new Error('Bad output format');
+    }
   }
 
   public get uid() {
@@ -436,12 +454,23 @@ export class CollectionItem {
     return this.encryptedItem.decryptMeta(this.cryptoManager);
   }
 
-  public async setContent(content: Uint8Array): Promise<void> {
-    await this.encryptedItem.setContent(this.cryptoManager, content);
+  public async setContent(content: Uint8Array | string): Promise<void> {
+    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
+    await this.encryptedItem.setContent(this.cryptoManager, uintcontent);
   }
 
-  public async getContent(): Promise<Uint8Array> {
-    return this.encryptedItem.decryptContent(this.cryptoManager);
+  public async getContent(outputFormat?: OutputFormat.Uint8Array): Promise<Uint8Array>;
+  public async getContent(outputFormat?: OutputFormat.String): Promise<string>;
+  public async getContent(outputFormat: OutputFormat = OutputFormat.Uint8Array): Promise<any> {
+    const ret = await this.encryptedItem.decryptContent(this.cryptoManager);
+    switch (outputFormat) {
+      case OutputFormat.Uint8Array:
+        return ret;
+      case OutputFormat.String:
+        return sodium.to_string(ret);
+      default:
+        throw new Error('Bad output format');
+    }
   }
 
   public get uid() {
