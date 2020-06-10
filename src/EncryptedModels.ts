@@ -1,8 +1,8 @@
-import * as Constants from './Constants';
+import * as Constants from "./Constants";
 
-import { CryptoManager, sodium, AsymmetricCryptoManager, concatArrayBuffersArrays } from './Crypto';
-import { IntegrityError } from './Exceptions';
-import { base62, base64, toBase64 } from './Helpers';
+import { CryptoManager, sodium, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
+import { IntegrityError } from "./Exceptions";
+import { base62, base64, toBase64 } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -53,9 +53,9 @@ export interface CollectionItemJsonRead extends CollectionItemJsonWrite {
 }
 
 export enum CollectionAccessLevel {
-  Admin = 'adm',
-  ReadWrite = 'rw',
-  ReadOnly = 'ro',
+  Admin = "adm",
+  ReadWrite = "rw",
+  ReadOnly = "ro",
 }
 
 export interface CollectionJsonWrite {
@@ -93,14 +93,14 @@ export interface SignedInvitationRead extends SignedInvitationWrite {
 function genUidBase62(): base62 {
   const uid = sodium.to_base64(sodium.randombytes_buf(32)).substr(0, 24);
   // FIXME: not the best function, but we don't care about the bias for now
-  return uid.replace(/-/g, 'a').replace(/_/g, 'b');
+  return uid.replace(/-/g, "a").replace(/_/g, "b");
 }
 
 export class MainCryptoManager extends CryptoManager {
   protected Main = true; // So classes are different
 
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
-    super(key, 'Main', version);
+    super(key, "Main", version);
   }
 
   public getLoginCryptoManager(): AsymmetricCryptoManager {
@@ -120,7 +120,7 @@ export class AccountCryptoManager extends CryptoManager {
   protected Account = true; // So classes are different
 
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
-    super(key, 'Acct', version);
+    super(key, "Acct", version);
   }
 }
 
@@ -128,7 +128,7 @@ export class CollectionCryptoManager extends CryptoManager {
   protected Collection = true; // So classes are different
 
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
-    super(key, 'Col', version);
+    super(key, "Col", version);
   }
 }
 
@@ -136,7 +136,7 @@ export class CollectionItemCryptoManager extends CryptoManager {
   protected CollectionItem = true; // So classes are different
 
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
-    super(key, 'ColItem', version);
+    super(key, "ColItem", version);
   }
 }
 

@@ -1,6 +1,6 @@
-import _sodium from 'libsodium-wrappers';
+import _sodium from "libsodium-wrappers";
 
-import * as Constants from './Constants';
+import * as Constants from "./Constants";
 
 export const sodium = _sodium;
 export const ready = _sodium.ready;
@@ -100,7 +100,7 @@ export class AsymmetricCryptoManager {
 
   public static fromPrivkey(privkey: Uint8Array) {
     return new this({
-      keyType: 'ed25519',
+      keyType: "ed25519",
       privateKey: privkey,
       // The public key is embedded in the secret key and the function to extract it is not exposed in libsodium-wrappers.
       publicKey: privkey.subarray(sodium.crypto_sign_SEEDBYTES, sodium.crypto_sign_SEEDBYTES + sodium.crypto_sign_PUBLICKEYBYTES),

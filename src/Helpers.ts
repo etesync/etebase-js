@@ -1,7 +1,7 @@
 export type base62 = string;
 export type base64 = string;
 
-import { sodium } from './Crypto';
+import { sodium } from "./Crypto";
 
 export function toBase64(input: string | Uint8Array): string {
   return sodium.to_base64(input);

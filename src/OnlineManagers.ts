@@ -1,9 +1,9 @@
-import URI from 'urijs';
+import URI from "urijs";
 
-export { deriveKey, ready } from './Crypto';
-import { HTTPError, NetworkError } from './Exceptions';
-export * from './Exceptions';
-import { base62, base64, toBase64 } from './Helpers';
+export { deriveKey, ready } from "./Crypto";
+import { HTTPError, NetworkError } from "./Exceptions";
+export * from "./Exceptions";
+import { base62, base64, toBase64 } from "./Helpers";
 
 import {
   CollectionAccessLevel,
@@ -13,7 +13,7 @@ import {
   EncryptedCollectionItem,
   SignedInvitationRead,
   SignedInvitationWrite,
-} from './EncryptedModels';
+} from "./EncryptedModels";
 
 export interface User {
   username: string;
@@ -91,7 +91,7 @@ class BaseNetwork {
     for (const segment of segments) {
       baseUrl.segment(segment);
     }
-    baseUrl.segment('');
+    baseUrl.segment("");
     return baseUrl.normalize();
   }
   public apiBase: URI;
@@ -106,7 +106,7 @@ class BaseNetwork {
     extra = {
       ...extra,
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
         ...extra.headers,
       },
     };
@@ -143,7 +143,7 @@ class BaseNetwork {
 export class Authenticator extends BaseNetwork {
   constructor(apiBase: string) {
     super(apiBase);
-    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1', 'authentication']);
+    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1", "authentication"]);
   }
 
   public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedContent: Uint8Array): Promise<LoginResponse> {
@@ -153,9 +153,9 @@ export class Authenticator extends BaseNetwork {
     };
 
     const extra = {
-      method: 'post',
+      method: "post",
       headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
+        "Content-Type": "application/json;charset=UTF-8",
       },
       body: JSON.stringify({
         user,
@@ -166,26 +166,26 @@ export class Authenticator extends BaseNetwork {
       }),
     };
 
-    return this.newCall<LoginResponse>(['signup'], extra);
+    return this.newCall<LoginResponse>(["signup"], extra);
   }
 
   public getLoginChallenge(username: string): Promise<LoginChallange> {
     const extra = {
-      method: 'post',
+      method: "post",
       headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
+        "Content-Type": "application/json;charset=UTF-8",
       },
       body: JSON.stringify({ username }),
     };
 
-    return this.newCall<LoginChallange>(['login_challenge'], extra);
+    return this.newCall<LoginChallange>(["login_challenge"], extra);
   }
 
   public login(response: string, signature: Uint8Array): Promise<LoginResponse> {
     const extra = {
-      method: 'post',
+      method: "post",
       headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
+        "Content-Type": "application/json;charset=UTF-8",
       },
       body: JSON.stringify({
         response: toBase64(response),
@@ -193,27 +193,27 @@ export class Authenticator extends BaseNetwork {
       }),
     };
 
-    return this.newCall<LoginResponse>(['login'], extra);
+    return this.newCall<LoginResponse>(["login"], extra);
   }
 
   public logout(authToken: string): Promise<void> {
     const extra = {
-      method: 'post',
+      method: "post",
       headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
-        'Authorization': 'Token ' + authToken,
+        "Content-Type": "application/json;charset=UTF-8",
+        "Authorization": "Token " + authToken,
       },
     };
 
-    return this.newCall(['logout'], extra);
+    return this.newCall(["logout"], extra);
   }
 
   public async changePassword(authToken: string, loginPubkey: Uint8Array, encryptedContent: Uint8Array): Promise<void> {
     const extra = {
-      method: 'post',
+      method: "post",
       headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
-        'Authorization': 'Token ' + authToken,
+        "Content-Type": "application/json;charset=UTF-8",
+        "Authorization": "Token " + authToken,
       },
       body: JSON.stringify({
         loginPubkey: toBase64(loginPubkey),
@@ -221,7 +221,7 @@ export class Authenticator extends BaseNetwork {
       }),
     };
 
-    await this.newCall(['change_password'], extra);
+    await this.newCall(["change_password"], extra);
   }
 }
 
@@ -231,15 +231,15 @@ class BaseManager extends BaseNetwork {
   constructor(etesync: AccountOnlineData, segments: string[]) {
     super(etesync.serverUrl);
     this.etesync = etesync;
-    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ['api', 'v1'].concat(segments));
+    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1"].concat(segments));
   }
 
   public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBase: URI = this.apiBase): Promise<T> {
     extra = {
       ...extra,
       headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
-        'Authorization': 'Token ' + this.etesync.authToken,
+        "Content-Type": "application/json;charset=UTF-8",
+        "Authorization": "Token " + this.etesync.authToken,
         ...extra.headers,
       },
     };
@@ -255,7 +255,7 @@ class BaseManager extends BaseNetwork {
     const { stoken, inline, limit } = options;
 
     if (!inline) {
-      console.warn('inline must be set as the non-inline variant is not yet implemented.');
+      console.warn("inline must be set as the non-inline variant is not yet implemented.");
     }
 
     return this.apiBase.clone().search({
@@ -268,7 +268,7 @@ class BaseManager extends BaseNetwork {
 
 export class CollectionManagerOnline extends BaseManager {
   constructor(etesync: AccountOnlineData) {
-    super(etesync, ['collection']);
+    super(etesync, ["collection"]);
   }
 
   public async fetch(colUid: string, options: FetchOptions): Promise<EncryptedCollection> {
@@ -292,7 +292,7 @@ export class CollectionManagerOnline extends BaseManager {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
-      method: 'post',
+      method: "post",
       body: JSON.stringify(collection.serialize()),
     };
 
@@ -303,7 +303,7 @@ export class CollectionManagerOnline extends BaseManager {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
-      method: 'put',
+      method: "put",
       body: JSON.stringify(collection.serialize()),
     };
 
@@ -313,7 +313,7 @@ export class CollectionManagerOnline extends BaseManager {
 
 export class CollectionItemManagerOnline extends BaseManager {
   constructor(etesync: AccountOnlineData, col: EncryptedCollection) {
-    super(etesync, ['collection', col.uid, 'item']);
+    super(etesync, ["collection", col.uid, "item"]);
   }
 
   public async fetch(colUid: string, options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
@@ -335,7 +335,7 @@ export class CollectionItemManagerOnline extends BaseManager {
 
   public create(item: EncryptedCollectionItem): Promise<{}> {
     const extra = {
-      method: 'post',
+      method: "post",
       body: JSON.stringify(item.serialize()),
     };
 
@@ -348,11 +348,11 @@ export class CollectionItemManagerOnline extends BaseManager {
     const wantEtag = !options?.stoken;
 
     const extra = {
-      method: 'post',
+      method: "post",
       body: JSON.stringify(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.etag : undefined) }))),
     };
 
-    const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(['fetch_updates'], extra, apiBase);
+    const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(["fetch_updates"], extra, apiBase);
     const data = json.data;
     return {
       ...json,
@@ -364,37 +364,37 @@ export class CollectionItemManagerOnline extends BaseManager {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
-      method: 'post',
+      method: "post",
       body: JSON.stringify({
         items: items.map((x) => x.serialize()),
       }),
     };
 
-    return this.newCall(['batch'], extra, apiBase);
+    return this.newCall(["batch"], extra, apiBase);
   }
 
   public transaction(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{}> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
-      method: 'post',
+      method: "post",
       body: JSON.stringify({
         items: items.map((x) => x.serialize()),
         deps: deps?.map((x) => ({ uid: x.uid, etag: x.etag })),
       }),
     };
 
-    return this.newCall(['transaction'], extra, apiBase);
+    return this.newCall(["transaction"], extra, apiBase);
   }
 }
 
 export class CollectionInvitationManagerOnline extends BaseManager {
   constructor(etesync: AccountOnlineData) {
-    super(etesync, ['invitation']);
+    super(etesync, ["invitation"]);
   }
 
   public async listIncoming(): Promise<ListResponse<SignedInvitationRead>> {
-    const json = await this.newCall<ListResponse<SignedInvitationRead>>(['incoming']);
+    const json = await this.newCall<ListResponse<SignedInvitationRead>>(["incoming"]);
     return {
       ...json,
       data: json.data.map((val) => val),
@@ -403,21 +403,21 @@ export class CollectionInvitationManagerOnline extends BaseManager {
 
   public async accept(invitation: SignedInvitationRead, encryptionKey: Uint8Array): Promise<{}> {
     const extra = {
-      method: 'post',
+      method: "post",
       body: JSON.stringify({
         encryptionKey: toBase64(encryptionKey),
       }),
     };
 
-    return this.newCall(['incoming', invitation.uid, 'accept'], extra);
+    return this.newCall(["incoming", invitation.uid, "accept"], extra);
   }
 
   public async reject(invitation: SignedInvitationRead): Promise<{}> {
     const extra = {
-      method: 'delete',
+      method: "delete",
     };
 
-    return this.newCall(['incoming', invitation.uid], extra);
+    return this.newCall(["incoming", invitation.uid], extra);
   }
 
   public async fetchUserProfile(username: string): Promise<UserProfile> {
@@ -425,30 +425,30 @@ export class CollectionInvitationManagerOnline extends BaseManager {
       username: username,
     });
 
-    return this.newCall(['outgoing', 'fetch_user_profile'], undefined, apiBase);
+    return this.newCall(["outgoing", "fetch_user_profile"], undefined, apiBase);
   }
 
   public async invite(invitation: SignedInvitationWrite): Promise<{}> {
     const extra = {
-      method: 'post',
+      method: "post",
       body: JSON.stringify(invitation),
     };
 
-    return this.newCall(['outgoing'], extra);
+    return this.newCall(["outgoing"], extra);
   }
 
   public async disinvite(invitation: SignedInvitationRead): Promise<{}> {
     const extra = {
-      method: 'delete',
+      method: "delete",
     };
 
-    return this.newCall(['outgoing', invitation.uid], extra);
+    return this.newCall(["outgoing", invitation.uid], extra);
   }
 }
 
 export class CollectionMemberManagerOnline extends BaseManager {
   constructor(etesync: AccountOnlineData, col: EncryptedCollection) {
-    super(etesync, ['collection', col.uid, 'member']);
+    super(etesync, ["collection", col.uid, "member"]);
   }
 
   public async list(): Promise<ListResponse<CollectionMember>> {
@@ -457,7 +457,7 @@ export class CollectionMemberManagerOnline extends BaseManager {
 
   public async remove(username: string): Promise<{}> {
     const extra = {
-      method: 'delete',
+      method: "delete",
     };
 
     return this.newCall([username], extra);
@@ -465,15 +465,15 @@ export class CollectionMemberManagerOnline extends BaseManager {
 
   public async leave(): Promise<{}> {
     const extra = {
-      method: 'post',
+      method: "post",
     };
 
-    return this.newCall(['leave'], extra);
+    return this.newCall(["leave"], extra);
   }
 
   public async modifyAccessLevel(username: string, accessLevel: CollectionAccessLevel): Promise<{}> {
     const extra = {
-      method: 'patch',
+      method: "patch",
       body: JSON.stringify({
         accessLevel,
       }),

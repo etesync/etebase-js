@@ -1,12 +1,12 @@
-import 'whatwg-fetch';
+import "whatwg-fetch";
 
-import * as EteSync from './EteSync';
+import * as EteSync from "./EteSync";
 
-import { USER, USER2 } from './TestConstants';
-import { CURRENT_VERSION } from './Constants';
-import { sodium } from './Crypto';
+import { USER, USER2 } from "./TestConstants";
+import { CURRENT_VERSION } from "./Constants";
+import { sodium } from "./Crypto";
 
-const testApiBase = 'http://localhost:8033';
+const testApiBase = "http://localhost:8033";
 
 let etesync: EteSync.Account;
 
@@ -27,10 +27,10 @@ async function verifyItem(item: EteSync.CollectionItem, meta: EteSync.Collection
 }
 
 async function prepareUserForTest(user: typeof USER) {
-  await fetch(testApiBase + '/api/v1/test/authentication/reset/', {
-    method: 'post',
+  await fetch(testApiBase + "/api/v1/test/authentication/reset/", {
+    method: "post",
     headers: {
-      'Content-Type': 'application/json;charset=UTF-8',
+      "Content-Type": "application/json;charset=UTF-8",
     },
 
     body: JSON.stringify({
@@ -67,13 +67,13 @@ afterEach(async () => {
   await etesync.logout();
 });
 
-it('Simple collection handling', async () => {
+it("Simple collection handling", async () => {
   const collectionManager = etesync.getCollectionManager();
   const meta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const content = Uint8Array.from([1, 2, 3, 5]);
@@ -81,10 +81,10 @@ it('Simple collection handling', async () => {
   await verifyCollection(col, meta, content);
 
   const meta2 = {
-    type: 'COLTYPE',
-    name: 'Calendar2',
-    description: 'Someone',
-    color: '#000000',
+    type: "COLTYPE",
+    name: "Calendar2",
+    description: "Someone",
+    color: "#000000",
   };
   await col.setMeta(meta2);
 
@@ -92,13 +92,13 @@ it('Simple collection handling', async () => {
   expect(meta).not.toEqual(await col.getMeta());
 });
 
-it('Simple item handling', async () => {
+it("Simple item handling", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
@@ -107,7 +107,7 @@ it('Simple item handling', async () => {
   const itemManager = collectionManager.getItemManager(col);
 
   const meta: EteSync.CollectionItemMetadata = {
-    type: 'ITEMTYPE',
+    type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -115,8 +115,8 @@ it('Simple item handling', async () => {
   await verifyItem(item, meta, content);
 
   const meta2 = {
-    type: 'ITEMTYPE',
-    someval: 'someval',
+    type: "ITEMTYPE",
+    someval: "someval",
   };
   await item.setMeta(meta2);
 
@@ -124,16 +124,16 @@ it('Simple item handling', async () => {
   expect(meta).not.toEqual(await col.getMeta());
 });
 
-it('Content formats', async () => {
+it("Content formats", async () => {
   const collectionManager = etesync.getCollectionManager();
   const meta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
-  const content = 'Hello';
+  const content = "Hello";
   const col = await collectionManager.create(meta, content);
   {
     const decryptedContent = await col.getContent(EteSync.OutputFormat.String);
@@ -146,9 +146,9 @@ it('Content formats', async () => {
   const itemManager = collectionManager.getItemManager(col);
 
   const metaItem: EteSync.CollectionItemMetadata = {
-    type: 'ITEMTYPE',
+    type: "ITEMTYPE",
   };
-  const content2 = 'Hello2';
+  const content2 = "Hello2";
 
   const item = await itemManager.create(metaItem, content2);
   {
@@ -160,13 +160,13 @@ it('Content formats', async () => {
   }
 });
 
-it('Simple collection sync', async () => {
+it("Simple collection sync", async () => {
   const collectionManager = etesync.getCollectionManager();
   const meta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const content = Uint8Array.from([1, 2, 3, 5]);
@@ -195,10 +195,10 @@ it('Simple collection sync', async () => {
   const colOld = await collectionManager.fetch(col.uid, { inline: true });
 
   const meta2 = {
-    type: 'COLTYPE',
-    name: 'Calendar2',
-    description: 'Someone',
-    color: '#000000',
+    type: "COLTYPE",
+    name: "Calendar2",
+    description: "Someone",
+    color: "#000000",
   };
   await col.setMeta(meta2);
 
@@ -237,13 +237,13 @@ it('Simple collection sync', async () => {
   }
 });
 
-it('Simple item sync', async () => {
+it("Simple item sync", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
@@ -259,7 +259,7 @@ it('Simple item sync', async () => {
   const itemManager = collectionManager.getItemManager(col);
 
   const meta: EteSync.CollectionItemMetadata = {
-    type: 'ITEMTYPE',
+    type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -275,8 +275,8 @@ it('Simple item sync', async () => {
   }
 
   const meta2 = {
-    type: 'ITEMTYPE',
-    someval: 'someval',
+    type: "ITEMTYPE",
+    someval: "someval",
   };
   await item.setMeta(meta2);
 
@@ -300,13 +300,13 @@ it('Simple item sync', async () => {
   }
 });
 
-it('Item transactions', async () => {
+it("Item transactions", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
@@ -322,7 +322,7 @@ it('Item transactions', async () => {
   const itemManager = collectionManager.getItemManager(col);
 
   const meta: EteSync.CollectionItemMetadata = {
-    type: 'ITEMTYPE',
+    type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -342,8 +342,8 @@ it('Item transactions', async () => {
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
-      type: 'ITEMTYPE',
-      someval: 'someval',
+      type: "ITEMTYPE",
+      someval: "someval",
       i,
     };
     const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
@@ -359,7 +359,7 @@ it('Item transactions', async () => {
   }
 
   {
-    const meta3 = { ...meta, someval: 'some' };
+    const meta3 = { ...meta, someval: "some" };
     await item.setMeta(meta3);
   }
 
@@ -371,7 +371,7 @@ it('Item transactions', async () => {
   }
 
   {
-    const meta3 = { ...meta, someval: 'some2' };
+    const meta3 = { ...meta, someval: "some2" };
     await item.setMeta(meta3);
 
     // Old in the deps
@@ -388,7 +388,7 @@ it('Item transactions', async () => {
   }
 
   {
-    const meta3 = { ...meta, someval: 'some2' };
+    const meta3 = { ...meta, someval: "some2" };
     const item2 = await itemManager.fetch(items[0].uid, { inline: true });
     await item2.setMeta(meta3);
 
@@ -405,7 +405,7 @@ it('Item transactions', async () => {
 
   {
     // Global stoken test
-    const meta3 = { ...meta, someval: 'some2' };
+    const meta3 = { ...meta, someval: "some2" };
     await item.setMeta(meta3);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
@@ -418,13 +418,13 @@ it('Item transactions', async () => {
   }
 });
 
-it('Item batch stoken', async () => {
+it("Item batch stoken", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
@@ -440,7 +440,7 @@ it('Item batch stoken', async () => {
   const itemManager = collectionManager.getItemManager(col);
 
   const meta: EteSync.CollectionItemMetadata = {
-    type: 'ITEMTYPE',
+    type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -457,8 +457,8 @@ it('Item batch stoken', async () => {
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
-      type: 'ITEMTYPE',
-      someval: 'someval',
+      type: "ITEMTYPE",
+      someval: "someval",
       i,
     };
     const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
@@ -469,13 +469,13 @@ it('Item batch stoken', async () => {
   await itemManager.batch(items);
 
   {
-    const meta3 = { ...meta, someval: 'some2' };
+    const meta3 = { ...meta, someval: "some2" };
     const item2 = item._clone();
 
     await item2.setMeta(meta3);
     await itemManager.batch([item2]);
 
-    meta3.someval = 'some3';
+    meta3.someval = "some3";
     await item.setMeta(meta3);
 
     // Old stoken in the item itself should work for batch and fail for transaction
@@ -485,7 +485,7 @@ it('Item batch stoken', async () => {
 
   {
     // Global stoken test
-    const meta3 = { ...meta, someval: 'some2' };
+    const meta3 = { ...meta, someval: "some2" };
     await item.setMeta(meta3);
 
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
@@ -498,13 +498,13 @@ it('Item batch stoken', async () => {
   }
 });
 
-it('Item fetch updates', async () => {
+it("Item fetch updates", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
@@ -520,7 +520,7 @@ it('Item fetch updates', async () => {
   const itemManager = collectionManager.getItemManager(col);
 
   const meta: EteSync.CollectionItemMetadata = {
-    type: 'ITEMTYPE',
+    type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -537,8 +537,8 @@ it('Item fetch updates', async () => {
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
-      type: 'ITEMTYPE',
-      someval: 'someval',
+      type: "ITEMTYPE",
+      someval: "someval",
       i,
     };
     const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
@@ -570,7 +570,7 @@ it('Item fetch updates', async () => {
   }
 
   {
-    const meta3 = { ...meta, someval: 'some2' };
+    const meta3 = { ...meta, someval: "some2" };
     const item2 = items[0]._clone();
 
     await item2.setMeta(meta3);
@@ -605,13 +605,13 @@ it('Item fetch updates', async () => {
   }
 });
 
-it('Collection invitations', async () => {
+it("Collection invitations", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
@@ -630,8 +630,8 @@ it('Collection invitations', async () => {
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
-      type: 'ITEMTYPE',
-      someval: 'someval',
+      type: "ITEMTYPE",
+      someval: "someval",
       i,
     };
     const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
@@ -777,13 +777,13 @@ it('Collection invitations', async () => {
   await etesync2.logout();
 });
 
-it('Collection access level', async () => {
+it("Collection access level", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
@@ -802,8 +802,8 @@ it('Collection access level', async () => {
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
-      type: 'ITEMTYPE',
-      someval: 'someval',
+      type: "ITEMTYPE",
+      someval: "someval",
       i,
     };
     const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
@@ -846,7 +846,7 @@ it('Collection access level', async () => {
     }
 
     const meta: EteSync.CollectionItemMetadata = {
-      type: 'ITEMTYPE2',
+      type: "ITEMTYPE2",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -867,7 +867,7 @@ it('Collection access level', async () => {
     }
 
     const meta: EteSync.CollectionItemMetadata = {
-      type: 'ITEMTYPE3',
+      type: "ITEMTYPE3",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -888,7 +888,7 @@ it('Collection access level', async () => {
     }
 
     const meta: EteSync.CollectionItemMetadata = {
-      type: 'ITEMTYPE3',
+      type: "ITEMTYPE3",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
 
@@ -899,16 +899,16 @@ it('Collection access level', async () => {
   await etesync2.logout();
 });
 
-it.skip('Login and password change', async () => {
-  const anotherPassword = 'AnotherPassword';
+it.skip("Login and password change", async () => {
+  const anotherPassword = "AnotherPassword";
   const etesync2 = await EteSync.Account.login(USER2.username, USER2.password, testApiBase);
 
   const collectionManager2 = etesync2.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
-    type: 'COLTYPE',
-    name: 'Calendar',
-    description: 'Mine',
-    color: '#ffffff',
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);

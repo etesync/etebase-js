@@ -1,12 +1,12 @@
-import URI from 'urijs';
+import URI from "urijs";
 
-import * as Constants from './Constants';
+import * as Constants from "./Constants";
 
-import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager } from './Crypto';
-export { deriveKey, ready } from './Crypto';
-export * from './Exceptions';
-import { base62, base64, fromBase64, toBase64 } from './Helpers';
-export { base62, base64, fromBase64, toBase64 } from './Helpers';
+import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager } from "./Crypto";
+export { deriveKey, ready } from "./Crypto";
+export * from "./Exceptions";
+import { base62, base64, fromBase64, toBase64 } from "./Helpers";
+export { base62, base64, fromBase64, toBase64 } from "./Helpers";
 
 import {
   CollectionAccessLevel,
@@ -18,8 +18,8 @@ import {
   EncryptedCollectionItem,
   getMainCryptoManager,
   SignedInvitationRead,
-} from './EncryptedModels';
-export * from './EncryptedModels'; // FIXME: cherry-pick what we export
+} from "./EncryptedModels";
+export * from "./EncryptedModels"; // FIXME: cherry-pick what we export
 import {
   Authenticator,
   CollectionManagerOnline,
@@ -31,10 +31,10 @@ import {
   LoginResponseUser,
   User,
   UserProfile,
-} from './OnlineManagers';
-export { User, FetchOptions, ItemFetchOptions } from './OnlineManagers';
+} from "./OnlineManagers";
+export { User, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
 
-export { CURRENT_VERSION } from './Constants';
+export { CURRENT_VERSION } from "./Constants";
 
 export interface AccountData {
   version: number;
@@ -416,7 +416,7 @@ export class Collection {
       case OutputFormat.String:
         return sodium.to_string(ret);
       default:
-        throw new Error('Bad output format');
+        throw new Error("Bad output format");
     }
   }
 
@@ -469,7 +469,7 @@ export class CollectionItem {
       case OutputFormat.String:
         return sodium.to_string(ret);
       default:
-        throw new Error('Bad output format');
+        throw new Error("Bad output format");
     }
   }
 
