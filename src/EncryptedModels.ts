@@ -237,9 +237,13 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
   }
 
   public async setContent(cryptoManager: CM, additionalData: Uint8Array[], content: Uint8Array): Promise<void> {
-    // FIXME: need to actually chunkify
-    const encContent = cryptoManager.encryptDetached(content);
-    this.chunks = [[sodium.to_base64(encContent[0]), encContent[1]]];
+    if (content.length > 0) {
+      // FIXME: need to actually chunkify
+      const encContent = cryptoManager.encryptDetached(content);
+      this.chunks = [[sodium.to_base64(encContent[0]), encContent[1]]];
+    } else {
+      this.chunks = [];
+    }
 
     await this.updateMac(cryptoManager, additionalData);
   }

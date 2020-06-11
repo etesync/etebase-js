@@ -300,6 +300,41 @@ it("Simple item sync", async () => {
   }
 });
 
+it("Empty content", async () => {
+  const collectionManager = etesync.getCollectionManager();
+  const meta: EteSync.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const content = Uint8Array.from([]);
+  let col = await collectionManager.create(meta, content);
+  await verifyCollection(col, meta, content);
+  await collectionManager.upload(col);
+
+  {
+    col = await collectionManager.fetch(col.uid, { inline: true });
+    await verifyCollection(col, meta, content);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const itemMeta: EteSync.CollectionItemMetadata = {
+    type: "ITEMTYPE",
+  };
+  const item = await itemManager.create(itemMeta, content);
+
+  await itemManager.transaction([item]);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    const itemFetched = items.data[0];
+    verifyItem(itemFetched, itemMeta, content);
+  }
+});
+
 it("Item transactions", async () => {
   const collectionManager = etesync.getCollectionManager();
   const colMeta: EteSync.CollectionMetadata = {
