@@ -360,13 +360,14 @@ export class CollectionItemManagerOnline extends BaseManager {
     };
   }
 
-  public batch(items: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{}> {
+  public batch(items: EncryptedCollectionItem[], deps?: EncryptedCollectionItem[], options?: ItemFetchOptions): Promise<{}> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const extra = {
       method: "post",
       body: JSON.stringify({
         items: items.map((x) => x.serialize()),
+        deps: deps?.map((x) => ({ uid: x.uid, etag: x.etag })),
       }),
     };
 

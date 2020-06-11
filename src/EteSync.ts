@@ -297,14 +297,14 @@ export class CollectionItemManager {
     };
   }
 
-  public async batch(items: CollectionItem[], options?: ItemFetchOptions) {
-    await this.onlineManager.batch(items.map((x) => x.encryptedItem), options);
+  public async batch(items: CollectionItem[], deps?: CollectionItem[] | null, options?: ItemFetchOptions) {
+    await this.onlineManager.batch(items.map((x) => x.encryptedItem), deps?.map((x) => x.encryptedItem), options);
     items.forEach((item) => {
       item.encryptedItem.__markSaved();
     });
   }
 
-  public async transaction(items: CollectionItem[], deps?: CollectionItem[], options?: ItemFetchOptions) {
+  public async transaction(items: CollectionItem[], deps?: CollectionItem[] | null, options?: ItemFetchOptions) {
     await this.onlineManager.transaction(items.map((x) => x.encryptedItem), deps?.map((x) => x.encryptedItem), options);
     items.forEach((item) => {
       item.encryptedItem.__markSaved();

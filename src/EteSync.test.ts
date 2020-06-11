@@ -478,8 +478,9 @@ it("Item batch stoken", async () => {
     meta3.someval = "some3";
     await item.setMeta(meta3);
 
-    // Old stoken in the item itself should work for batch and fail for transaction
+    // Old stoken in the item itself should work for batch and fail for transaction or batch with deps
     await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.batch([item], [item])).rejects.toBeInstanceOf(EteSync.HTTPError);
     await itemManager.batch([item]);
   }
 
@@ -492,9 +493,9 @@ it("Item batch stoken", async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.batch([item], { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.batch([item], null, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(EteSync.HTTPError);
 
-    await itemManager.batch([item], { stoken });
+    await itemManager.batch([item], null, { stoken });
   }
 });
 
