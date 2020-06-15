@@ -186,14 +186,14 @@ export class Account {
     return new CollectionManager(this);
   }
 
-  public getCryptoManager() {
+  public _getCryptoManager() {
     // FIXME: cache this
     const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
     const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
     return mainCryptoManager.getAccountCryptoManager(content.subarray(0, sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES));
   }
 
-  public getIdentityCryptoManager() {
+  public _getIdentityCryptoManager() {
     // FIXME: cache this
     const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
     const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
@@ -212,19 +212,19 @@ export class CollectionManager {
 
   public async create(meta: CollectionMetadata, content: Uint8Array | string): Promise<Collection> {
     const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
-    const mainCryptoManager = this.etesync.getCryptoManager();
+    const mainCryptoManager = this.etesync._getCryptoManager();
     const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, meta, uintcontent);
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
   public async fetch(colUid: base62, options: FetchOptions) {
-    const mainCryptoManager = this.etesync.getCryptoManager();
+    const mainCryptoManager = this.etesync._getCryptoManager();
     const encryptedCollection = await this.onlineManager.fetch(colUid, options);
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
   public async list(options: FetchOptions) {
-    const mainCryptoManager = this.etesync.getCryptoManager();
+    const mainCryptoManager = this.etesync._getCryptoManager();
     const ret = await this.onlineManager.list(options);
     return {
       ...ret,
@@ -266,7 +266,7 @@ export class CollectionItemManager {
 
   constructor(etesync: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
     this.etesync = etesync;
-    this.collectionCryptoManager = col.getCryptoManager(this.etesync.getCryptoManager());
+    this.collectionCryptoManager = col.getCryptoManager(this.etesync._getCryptoManager());
     this.onlineManager = new CollectionItemManagerOnline(this.etesync, col);
   }
 
@@ -326,8 +326,8 @@ export class CollectionInvitationManager {
   }
 
   public async accept(invitation: SignedInvitationRead) {
-    const mainCryptoManager = this.etesync.getCryptoManager();
-    const identCryptoManager = this.etesync.getIdentityCryptoManager();
+    const mainCryptoManager = this.etesync._getCryptoManager();
+    const identCryptoManager = this.etesync._getIdentityCryptoManager();
     const encryptionKey = identCryptoManager.decryptVerify(fromBase64(invitation.signedEncryptionKey), fromBase64(invitation.fromPubkey));
     const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
     return this.onlineManager.accept(invitation, encryptedEncryptionKey);
@@ -342,8 +342,8 @@ export class CollectionInvitationManager {
   }
 
   public async invite(col: Collection, username: string, pubkey: base64, accessLevel: CollectionAccessLevel): Promise<void> {
-    const mainCryptoManager = this.etesync.getCryptoManager();
-    const identCryptoManager = this.etesync.getIdentityCryptoManager();
+    const mainCryptoManager = this.etesync._getCryptoManager();
+    const identCryptoManager = this.etesync._getIdentityCryptoManager();
     const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, username, fromBase64(pubkey), accessLevel);
     await this.onlineManager.invite(invitation);
   }
