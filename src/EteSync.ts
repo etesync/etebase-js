@@ -217,13 +217,13 @@ export class CollectionManager {
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
-  public async fetch(colUid: base62, options: FetchOptions) {
+  public async fetch(colUid: base62, options?: FetchOptions) {
     const mainCryptoManager = this.etesync._getCryptoManager();
     const encryptedCollection = await this.onlineManager.fetch(colUid, options);
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
-  public async list(options: FetchOptions) {
+  public async list(options?: FetchOptions) {
     const mainCryptoManager = this.etesync._getCryptoManager();
     const ret = await this.onlineManager.list(options);
     return {
@@ -276,12 +276,12 @@ export class CollectionItemManager {
     return new CollectionItem(encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
 
-  public async fetch(itemUid: base62, options: ItemFetchOptions) {
+  public async fetch(itemUid: base62, options?: ItemFetchOptions) {
     const encryptedItem = await this.onlineManager.fetch(itemUid, options);
     return new CollectionItem(encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
 
-  public async list(options: ItemFetchOptions) {
+  public async list(options?: ItemFetchOptions) {
     const ret = await this.onlineManager.list(options);
     return {
       ...ret,

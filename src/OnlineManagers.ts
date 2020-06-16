@@ -271,14 +271,14 @@ export class CollectionManagerOnline extends BaseManager {
     super(etesync, ["collection"]);
   }
 
-  public async fetch(colUid: string, options: FetchOptions): Promise<EncryptedCollection> {
+  public async fetch(colUid: string, options?: FetchOptions): Promise<EncryptedCollection> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const json = await this.newCall<CollectionJsonRead>([colUid], undefined, apiBase);
     return EncryptedCollection.deserialize(json);
   }
 
-  public async list(options: FetchOptions): Promise<CollectionListResponse<EncryptedCollection>> {
+  public async list(options?: FetchOptions): Promise<CollectionListResponse<EncryptedCollection>> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const json = await this.newCall<CollectionListResponse<CollectionJsonRead>>(undefined, undefined, apiBase);
@@ -316,14 +316,14 @@ export class CollectionItemManagerOnline extends BaseManager {
     super(etesync, ["collection", col.uid, "item"]);
   }
 
-  public async fetch(colUid: string, options: ItemFetchOptions): Promise<EncryptedCollectionItem> {
+  public async fetch(colUid: string, options?: ItemFetchOptions): Promise<EncryptedCollectionItem> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const json = await this.newCall<CollectionItemJsonRead>([colUid], undefined, apiBase);
     return EncryptedCollectionItem.deserialize(json);
   }
 
-  public async list(options: ItemFetchOptions): Promise<CollectionItemListResponse<EncryptedCollectionItem>> {
+  public async list(options?: ItemFetchOptions): Promise<CollectionItemListResponse<EncryptedCollectionItem>> {
     const apiBase = this.urlFromFetchOptions(options);
 
     const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(undefined, undefined, apiBase);
