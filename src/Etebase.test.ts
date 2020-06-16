@@ -1,6 +1,6 @@
 import "whatwg-fetch";
 
-import * as EteSync from "./EteSync";
+import * as Etebase from "./Etebase";
 
 import { USER, USER2 } from "./TestConstants";
 import { CURRENT_VERSION } from "./Constants";
@@ -8,9 +8,9 @@ import { sodium } from "./Crypto";
 
 const testApiBase = "http://localhost:8033";
 
-let etesync: EteSync.Account;
+let etebase: Etebase.Account;
 
-async function verifyCollection(col: EteSync.Collection, meta: EteSync.CollectionMetadata, content: Uint8Array) {
+async function verifyCollection(col: Etebase.Collection, meta: Etebase.CollectionMetadata, content: Uint8Array) {
   await col.verify();
   const decryptedMeta = await col.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -18,7 +18,7 @@ async function verifyCollection(col: EteSync.Collection, meta: EteSync.Collectio
   expect(decryptedContent).toEqual(content);
 }
 
-async function verifyItem(item: EteSync.CollectionItem, meta: EteSync.CollectionItemMetadata, content: Uint8Array) {
+async function verifyItem(item: Etebase.CollectionItem, meta: Etebase.CollectionItemMetadata, content: Uint8Array) {
   item.verify();
   const decryptedMeta = await item.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -45,31 +45,31 @@ async function prepareUserForTest(user: typeof USER) {
     }),
   });
 
-  const accountData: EteSync.AccountData = {
+  const accountData: Etebase.AccountData = {
     version: CURRENT_VERSION,
     key: user.key,
     user,
     serverUrl: testApiBase,
   };
-  const etesync = await EteSync.Account.load(accountData);
-  await etesync.fetchToken();
+  const etebase = await Etebase.Account.load(accountData);
+  await etebase.fetchToken();
 
-  return etesync;
+  return etebase;
 }
 
 beforeEach(async () => {
-  await EteSync.ready;
+  await Etebase.ready;
 
-  etesync = await prepareUserForTest(USER);
+  etebase = await prepareUserForTest(USER);
 });
 
 afterEach(async () => {
-  await etesync.logout();
+  await etebase.logout();
 });
 
 it("Simple collection handling", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const meta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const meta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -93,8 +93,8 @@ it("Simple collection handling", async () => {
 });
 
 it("Simple item handling", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -106,7 +106,7 @@ it("Simple item handling", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: EteSync.CollectionItemMetadata = {
+  const meta: Etebase.CollectionItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -125,8 +125,8 @@ it("Simple item handling", async () => {
 });
 
 it("Content formats", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const meta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const meta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -136,7 +136,7 @@ it("Content formats", async () => {
   const content = "Hello";
   const col = await collectionManager.create(meta, content);
   {
-    const decryptedContent = await col.getContent(EteSync.OutputFormat.String);
+    const decryptedContent = await col.getContent(Etebase.OutputFormat.String);
     expect(decryptedContent).toEqual(content);
 
     const decryptedContentUint = await col.getContent();
@@ -145,14 +145,14 @@ it("Content formats", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const metaItem: EteSync.CollectionItemMetadata = {
+  const metaItem: Etebase.CollectionItemMetadata = {
     type: "ITEMTYPE",
   };
   const content2 = "Hello2";
 
   const item = await itemManager.create(metaItem, content2);
   {
-    const decryptedContent = await item.getContent(EteSync.OutputFormat.String);
+    const decryptedContent = await item.getContent(Etebase.OutputFormat.String);
     expect(decryptedContent).toEqual(content2);
 
     const decryptedContentUint = await item.getContent();
@@ -161,8 +161,8 @@ it("Content formats", async () => {
 });
 
 it("Simple collection sync", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const meta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const meta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -220,9 +220,9 @@ it("Simple collection sync", async () => {
     const content2 = Uint8Array.from([7, 2, 3, 5]);
     await colOld.setContent(content2);
 
-    await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(Etebase.HTTPError);
 
-    await expect(collectionManager.upload(colOld, { stoken: colOld.stoken })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(collectionManager.upload(colOld, { stoken: colOld.stoken })).rejects.toBeInstanceOf(Etebase.HTTPError);
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
@@ -238,8 +238,8 @@ it("Simple collection sync", async () => {
 });
 
 it("Simple item sync", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -258,7 +258,7 @@ it("Simple item sync", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: EteSync.CollectionItemMetadata = {
+  const meta: Etebase.CollectionItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -301,8 +301,8 @@ it("Simple item sync", async () => {
 });
 
 it("Empty content", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const meta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const meta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -321,7 +321,7 @@ it("Empty content", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const itemMeta: EteSync.CollectionItemMetadata = {
+  const itemMeta: Etebase.CollectionItemMetadata = {
     type: "ITEMTYPE",
   };
   const item = await itemManager.create(itemMeta, content);
@@ -336,8 +336,8 @@ it("Empty content", async () => {
 });
 
 it("Item transactions", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -356,19 +356,19 @@ it("Item transactions", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: EteSync.CollectionItemMetadata = {
+  const meta: Etebase.CollectionItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
 
   const item = await itemManager.create(meta, content);
 
-  const deps: EteSync.CollectionItem[] = [item];
+  const deps: Etebase.CollectionItem[] = [item];
 
   await itemManager.transaction(deps);
   const itemOld = await itemManager.fetch(item.uid, { inline: true });
 
-  const items: EteSync.CollectionItem[] = [];
+  const items: Etebase.CollectionItem[] = [];
 
   {
     const items = await itemManager.list({ inline: true });
@@ -410,7 +410,7 @@ it("Item transactions", async () => {
     await item.setMeta(meta3);
 
     // Old in the deps
-    await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(Etebase.HTTPError);
 
     const itemOld2 = itemOld._clone();
 
@@ -419,7 +419,7 @@ it("Item transactions", async () => {
     await itemOld2.setMeta(meta3);
 
     // Old stoken in the item itself
-    await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(Etebase.HTTPError);
   }
 
   {
@@ -431,7 +431,7 @@ it("Item transactions", async () => {
     await itemOld2.setMeta(meta3);
 
     // Part of the transaction is bad, and part is good
-    await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(Etebase.HTTPError);
 
     // Verify it hasn't changed after the transaction above failed
     const item2Fetch = await itemManager.fetch(item2.uid, { inline: true });
@@ -447,15 +447,15 @@ it("Item transactions", async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.transaction([item], undefined, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.transaction([item], undefined, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(Etebase.HTTPError);
 
     await itemManager.transaction([item], undefined, { stoken });
   }
 });
 
 it("Item batch stoken", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -474,7 +474,7 @@ it("Item batch stoken", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: EteSync.CollectionItemMetadata = {
+  const meta: Etebase.CollectionItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -483,7 +483,7 @@ it("Item batch stoken", async () => {
 
   await itemManager.batch([item]);
 
-  const items: EteSync.CollectionItem[] = [];
+  const items: Etebase.CollectionItem[] = [];
 
   {
     const items = await itemManager.list({ inline: true });
@@ -514,8 +514,8 @@ it("Item batch stoken", async () => {
     await item.setMeta(meta3);
 
     // Old stoken in the item itself should work for batch and fail for transaction or batch with deps
-    await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(EteSync.HTTPError);
-    await expect(itemManager.batch([item], [item])).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.batch([item], [item])).rejects.toBeInstanceOf(Etebase.HTTPError);
     await itemManager.batch([item]);
   }
 
@@ -528,15 +528,15 @@ it("Item batch stoken", async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.batch([item], null, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager.batch([item], null, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(Etebase.HTTPError);
 
     await itemManager.batch([item], null, { stoken });
   }
 });
 
 it("Item fetch updates", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -555,7 +555,7 @@ it("Item fetch updates", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: EteSync.CollectionItemMetadata = {
+  const meta: Etebase.CollectionItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -564,7 +564,7 @@ it("Item fetch updates", async () => {
 
   await itemManager.batch([item]);
 
-  const items: EteSync.CollectionItem[] = [];
+  const items: Etebase.CollectionItem[] = [];
 
   {
     const items = await itemManager.list({ inline: true });
@@ -642,8 +642,8 @@ it("Item fetch updates", async () => {
 });
 
 it("Collection invitations", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -662,7 +662,7 @@ it("Collection invitations", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const items: EteSync.CollectionItem[] = [];
+  const items: Etebase.CollectionItem[] = [];
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
@@ -677,16 +677,16 @@ it("Collection invitations", async () => {
 
   await itemManager.batch(items);
 
-  const collectionInvitationManager = new EteSync.CollectionInvitationManager(etesync);
+  const collectionInvitationManager = new Etebase.CollectionInvitationManager(etebase);
 
-  const etesync2 = await prepareUserForTest(USER2);
-  const collectionManager2 = etesync2.getCollectionManager();
+  const etebase2 = await prepareUserForTest(USER2);
+  const collectionManager2 = etebase2.getCollectionManager();
 
   const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
-  const collectionInvitationManager2 = new EteSync.CollectionInvitationManager(etesync2);
+  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
 
   let invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -704,7 +704,7 @@ it("Collection invitations", async () => {
   }
 
   // Invite and then disinvite
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -723,7 +723,7 @@ it("Collection invitations", async () => {
 
 
   // Invite again, this time accept
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -762,7 +762,7 @@ it("Collection invitations", async () => {
   }
 
   const col2 = await collectionManager2.fetch(col.uid, { inline: true });
-  const collectionMemberManager2 = new EteSync.CollectionMemberManager(etesync2, collectionManager2, col2);
+  const collectionMemberManager2 = new Etebase.CollectionMemberManager(etebase2, collectionManager2, col2);
 
   await collectionMemberManager2.leave();
 
@@ -773,7 +773,7 @@ it("Collection invitations", async () => {
   }
 
   // Add again
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -794,7 +794,7 @@ it("Collection invitations", async () => {
     const newCol = await collectionManager.fetch(col.uid, { inline: true });
     expect(stoken).not.toEqual(newCol.stoken);
 
-    const collectionMemberManager = new EteSync.CollectionMemberManager(etesync, collectionManager, col);
+    const collectionMemberManager = new Etebase.CollectionMemberManager(etebase, collectionManager, col);
     await collectionMemberManager.remove(USER2.username);
 
     const collections = await collectionManager2.list({ inline: true, stoken });
@@ -810,12 +810,12 @@ it("Collection invitations", async () => {
     expect(collections.removedMemberships?.length).toBe(1);
   }
 
-  await etesync2.logout();
+  await etebase2.logout();
 });
 
 it("Collection access level", async () => {
-  const collectionManager = etesync.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -834,7 +834,7 @@ it("Collection access level", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const items: EteSync.CollectionItem[] = [];
+  const items: Etebase.CollectionItem[] = [];
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
@@ -849,18 +849,18 @@ it("Collection access level", async () => {
 
   await itemManager.batch(items);
 
-  const collectionMemberManager = new EteSync.CollectionMemberManager(etesync, collectionManager, col);
-  const collectionInvitationManager = new EteSync.CollectionInvitationManager(etesync);
+  const collectionMemberManager = new Etebase.CollectionMemberManager(etebase, collectionManager, col);
+  const collectionInvitationManager = new Etebase.CollectionInvitationManager(etebase);
 
-  const etesync2 = await prepareUserForTest(USER2);
-  const collectionManager2 = etesync2.getCollectionManager();
+  const etebase2 = await prepareUserForTest(USER2);
+  const collectionManager2 = etebase2.getCollectionManager();
 
   const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
 
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, EteSync.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
-  const collectionInvitationManager2 = new EteSync.CollectionInvitationManager(etesync2);
+  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
 
   const invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -877,11 +877,11 @@ it("Collection access level", async () => {
     expect(members.data.length).toBe(2);
     for (const member of members.data) {
       if (member.username === USER2.username) {
-        expect(member.accessLevel).toBe(EteSync.CollectionAccessLevel.ReadWrite);
+        expect(member.accessLevel).toBe(Etebase.CollectionAccessLevel.ReadWrite);
       }
     }
 
-    const meta: EteSync.CollectionItemMetadata = {
+    const meta: Etebase.CollectionItemMetadata = {
       type: "ITEMTYPE2",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
@@ -890,7 +890,7 @@ it("Collection access level", async () => {
     await itemManager2.batch([item]);
   }
 
-  await collectionMemberManager.modifyAccessLevel(USER2.username, EteSync.CollectionAccessLevel.ReadOnly);
+  await collectionMemberManager.modifyAccessLevel(USER2.username, Etebase.CollectionAccessLevel.ReadOnly);
 
   // Item creation: fail
   {
@@ -898,20 +898,20 @@ it("Collection access level", async () => {
     expect(members.data.length).toBe(2);
     for (const member of members.data) {
       if (member.username === USER2.username) {
-        expect(member.accessLevel).toBe(EteSync.CollectionAccessLevel.ReadOnly);
+        expect(member.accessLevel).toBe(Etebase.CollectionAccessLevel.ReadOnly);
       }
     }
 
-    const meta: EteSync.CollectionItemMetadata = {
+    const meta: Etebase.CollectionItemMetadata = {
       type: "ITEMTYPE3",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
 
     const item = await itemManager2.create(meta, content);
-    await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(EteSync.HTTPError);
+    await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(Etebase.HTTPError);
   }
 
-  await collectionMemberManager.modifyAccessLevel(USER2.username, EteSync.CollectionAccessLevel.Admin);
+  await collectionMemberManager.modifyAccessLevel(USER2.username, Etebase.CollectionAccessLevel.Admin);
 
   // Item creation: success
   {
@@ -919,11 +919,11 @@ it("Collection access level", async () => {
     expect(members.data.length).toBe(2);
     for (const member of members.data) {
       if (member.username === USER2.username) {
-        expect(member.accessLevel).toBe(EteSync.CollectionAccessLevel.Admin);
+        expect(member.accessLevel).toBe(Etebase.CollectionAccessLevel.Admin);
       }
     }
 
-    const meta: EteSync.CollectionItemMetadata = {
+    const meta: Etebase.CollectionItemMetadata = {
       type: "ITEMTYPE3",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
@@ -932,15 +932,15 @@ it("Collection access level", async () => {
     await itemManager2.batch([item]);
   }
 
-  await etesync2.logout();
+  await etebase2.logout();
 });
 
 it.skip("Login and password change", async () => {
   const anotherPassword = "AnotherPassword";
-  const etesync2 = await EteSync.Account.login(USER2.username, USER2.password, testApiBase);
+  const etebase2 = await Etebase.Account.login(USER2.username, USER2.password, testApiBase);
 
-  const collectionManager2 = etesync2.getCollectionManager();
-  const colMeta: EteSync.CollectionMetadata = {
+  const collectionManager2 = etebase2.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -952,7 +952,7 @@ it.skip("Login and password change", async () => {
 
   await collectionManager2.upload(col);
 
-  await etesync2.changePassword(anotherPassword);
+  await etebase2.changePassword(anotherPassword);
 
   {
     // Verify we can still access the data
@@ -960,13 +960,13 @@ it.skip("Login and password change", async () => {
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
-  await etesync2.logout();
+  await etebase2.logout();
 
-  await expect(EteSync.Account.login(USER2.username, USER2.password, testApiBase)).rejects.toBeInstanceOf(EteSync.HTTPError);
+  await expect(Etebase.Account.login(USER2.username, USER2.password, testApiBase)).rejects.toBeInstanceOf(Etebase.HTTPError);
 
-  const etesync3 = await EteSync.Account.login(USER2.username, anotherPassword, testApiBase);
+  const etebase3 = await Etebase.Account.login(USER2.username, anotherPassword, testApiBase);
 
-  const collectionManager3 = etesync3.getCollectionManager();
+  const collectionManager3 = etebase3.getCollectionManager();
 
   {
     // Verify we can still access the data
@@ -974,7 +974,7 @@ it.skip("Login and password change", async () => {
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
-  await etesync3.changePassword(USER2.password);
+  await etebase3.changePassword(USER2.password);
 
-  await etesync3.logout();
+  await etebase3.logout();
 }, 30000);

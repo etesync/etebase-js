@@ -226,11 +226,11 @@ export class Authenticator extends BaseNetwork {
 }
 
 class BaseManager extends BaseNetwork {
-  protected etesync: AccountOnlineData;
+  protected etebase: AccountOnlineData;
 
-  constructor(etesync: AccountOnlineData, segments: string[]) {
-    super(etesync.serverUrl);
-    this.etesync = etesync;
+  constructor(etebase: AccountOnlineData, segments: string[]) {
+    super(etebase.serverUrl);
+    this.etebase = etebase;
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1"].concat(segments));
   }
 
@@ -239,7 +239,7 @@ class BaseManager extends BaseNetwork {
       ...extra,
       headers: {
         "Content-Type": "application/json;charset=UTF-8",
-        "Authorization": "Token " + this.etesync.authToken,
+        "Authorization": "Token " + this.etebase.authToken,
         ...extra.headers,
       },
     };
@@ -267,8 +267,8 @@ class BaseManager extends BaseNetwork {
 }
 
 export class CollectionManagerOnline extends BaseManager {
-  constructor(etesync: AccountOnlineData) {
-    super(etesync, ["collection"]);
+  constructor(etebase: AccountOnlineData) {
+    super(etebase, ["collection"]);
   }
 
   public async fetch(colUid: string, options?: FetchOptions): Promise<EncryptedCollection> {
@@ -312,8 +312,8 @@ export class CollectionManagerOnline extends BaseManager {
 }
 
 export class CollectionItemManagerOnline extends BaseManager {
-  constructor(etesync: AccountOnlineData, col: EncryptedCollection) {
-    super(etesync, ["collection", col.uid, "item"]);
+  constructor(etebase: AccountOnlineData, col: EncryptedCollection) {
+    super(etebase, ["collection", col.uid, "item"]);
   }
 
   public async fetch(colUid: string, options?: ItemFetchOptions): Promise<EncryptedCollectionItem> {
@@ -390,8 +390,8 @@ export class CollectionItemManagerOnline extends BaseManager {
 }
 
 export class CollectionInvitationManagerOnline extends BaseManager {
-  constructor(etesync: AccountOnlineData) {
-    super(etesync, ["invitation"]);
+  constructor(etebase: AccountOnlineData) {
+    super(etebase, ["invitation"]);
   }
 
   public async listIncoming(): Promise<ListResponse<SignedInvitationRead>> {
@@ -448,8 +448,8 @@ export class CollectionInvitationManagerOnline extends BaseManager {
 }
 
 export class CollectionMemberManagerOnline extends BaseManager {
-  constructor(etesync: AccountOnlineData, col: EncryptedCollection) {
-    super(etesync, ["collection", col.uid, "member"]);
+  constructor(etebase: AccountOnlineData, col: EncryptedCollection) {
+    super(etebase, ["collection", col.uid, "member"]);
   }
 
   public async list(): Promise<ListResponse<CollectionMember>> {

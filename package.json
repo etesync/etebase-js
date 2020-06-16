@@ -1,12 +1,12 @@
 {
   "name": "backendless-js",
   "version": "0.1.0",
-  "description": "EteSync TypeScript API for the web, node and react-native",
-  "main": "dist/EteSync.js",
+  "description": "Etebase TypeScript API for the web, node and react-native",
+  "main": "dist/Etebase.js",
   "files": [
     "dist/**/*"
   ],
-  "types": "dist/EteSync.d.ts",
+  "types": "dist/Etebase.d.ts",
   "scripts": {
     "build": "tsc",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx --ignore-pattern '*.d.ts' src",
@@ -47,12 +47,12 @@
     ]
   },
   "keywords": [
-    "EteSync",
+    "Etebase",
     "encryption",
     "crypto",
     "synchronization"
   ],
   "author": "Tom Hacohen <tom@stosb.com> (https://stosb.com)",
-  "repository": "https://www.github.com/etesync/etesync-js",
+  "repository": "https://www.github.com/etesync/etebase-js",
   "license": "LGPL-3.0-only"
 }
