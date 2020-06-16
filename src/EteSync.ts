@@ -2,7 +2,7 @@ import URI from "urijs";
 
 import * as Constants from "./Constants";
 
-import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager } from "./Crypto";
+import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager, ready } from "./Crypto";
 export { deriveKey, ready } from "./Crypto";
 export * from "./Exceptions";
 import { base62, base64, fromBase64, toBase64 } from "./Helpers";
@@ -60,6 +60,8 @@ export class Account {
   }
 
   public static async signup(user: User, password: string, serverUrl?: string) {
+    await ready;
+
     serverUrl = serverUrl ?? Constants.SERVER_URL;
     const authenticator = new Authenticator(serverUrl);
     const version = this.CURRENT_VERSION;
@@ -86,6 +88,8 @@ export class Account {
   }
 
   public static async login(username: string, password: string, serverUrl?: string) {
+    await ready;
+
     serverUrl = serverUrl ?? Constants.SERVER_URL;
     const authenticator = new Authenticator(serverUrl);
     const loginChallenge = await authenticator.getLoginChallenge(username);
@@ -173,7 +177,9 @@ export class Account {
     return ret;
   }
 
-  public static load(accountData: AccountData) {
+  public static async load(accountData: AccountData) {
+    await ready;
+
     const ret = new this(fromBase64(accountData.key), accountData.version);
     ret.user = accountData.user;
     ret.authToken = accountData.authToken ?? null;

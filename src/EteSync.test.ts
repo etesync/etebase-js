@@ -51,7 +51,7 @@ async function prepareUserForTest(user: typeof USER) {
     user,
     serverUrl: testApiBase,
   };
-  const etesync = EteSync.Account.load(accountData);
+  const etesync = await EteSync.Account.load(accountData);
   await etesync.fetchToken();
 
   return etesync;
