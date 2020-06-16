@@ -6,6 +6,8 @@ import { USER, USER2 } from "./TestConstants";
 import { CURRENT_VERSION } from "./Constants";
 import { sodium } from "./Crypto";
 
+import { Authenticator } from "./OnlineManagers";
+
 const testApiBase = "http://localhost:8033";
 
 let etebase: Etebase.Account;
@@ -56,6 +58,19 @@ async function prepareUserForTest(user: typeof USER) {
 
   return etebase;
 }
+
+beforeAll(async () => {
+  await Etebase.ready;
+
+  for (const user of [USER, USER2]) {
+    try {
+      const authenticator = new Authenticator(testApiBase);
+      await authenticator.signup(user, sodium.from_base64(user.salt), sodium.from_base64(user.loginPubkey), sodium.from_base64(user.pubkey), sodium.from_base64(user.encryptedContent));
+    } catch (e) {
+      //
+    }
+  }
+});
 
 beforeEach(async () => {
   await Etebase.ready;
