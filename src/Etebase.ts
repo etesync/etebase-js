@@ -98,14 +98,14 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
-    const response = JSON.stringify({
+    const response = sodium.from_string(JSON.stringify({
       username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
       action: "login",
-    });
+    }));
 
-    const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(sodium.from_string(response)));
+    const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(response));
 
     const ret = new this(mainKey, loginChallenge.version);
 
@@ -126,14 +126,14 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
-    const response = JSON.stringify({
+    const response = sodium.from_string(JSON.stringify({
       username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
       action: "login",
-    });
+    }));
 
-    const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(sodium.from_string(response)));
+    const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(response));
 
     this.authToken = loginResponse.token;
   }
@@ -148,12 +148,14 @@ export class Account {
   }
 
   public async changePassword(password: string) {
-    const authenticator = new Authenticator(this.serverUrl);
+    const serverUrl = this.serverUrl;
+    const authenticator = new Authenticator(serverUrl);
     const username = this.user.username;
     const loginChallenge = await authenticator.getLoginChallenge(username);
 
     const oldMainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
     const content = oldMainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
+    const oldLoginCryptoManager = oldMainCryptoManager.getLoginCryptoManager();
 
     const mainKey = deriveKey(fromBase64(loginChallenge.salt), password);
     const mainCryptoManager = getMainCryptoManager(mainKey, this.version);
@@ -161,7 +163,17 @@ export class Account {
 
     const encryptedContent = mainCryptoManager.encrypt(content);
 
-    await authenticator.changePassword(this.authToken!, loginCryptoManager.pubkey, encryptedContent);
+    const response = sodium.from_string(JSON.stringify({
+      username,
+      challenge: loginChallenge.challenge,
+      host: URI(serverUrl).host(),
+      action: "changePassword",
+
+      loginPubkey: toBase64(loginCryptoManager.pubkey),
+      encryptedContent: toBase64(encryptedContent),
+    }));
+
+    await authenticator.changePassword(this.authToken!, response, oldLoginCryptoManager.signDetached(response));
 
     this.mainKey = mainKey;
     this.user.encryptedContent = toBase64(encryptedContent);

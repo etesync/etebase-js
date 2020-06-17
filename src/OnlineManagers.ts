@@ -181,7 +181,7 @@ export class Authenticator extends BaseNetwork {
     return this.newCall<LoginChallange>(["login_challenge"], extra);
   }
 
-  public login(response: string, signature: Uint8Array): Promise<LoginResponse> {
+  public login(response: Uint8Array, signature: Uint8Array): Promise<LoginResponse> {
     const extra = {
       method: "post",
       headers: {
@@ -208,7 +208,7 @@ export class Authenticator extends BaseNetwork {
     return this.newCall(["logout"], extra);
   }
 
-  public async changePassword(authToken: string, loginPubkey: Uint8Array, encryptedContent: Uint8Array): Promise<void> {
+  public async changePassword(authToken: string, response: Uint8Array, signature: Uint8Array): Promise<void> {
     const extra = {
       method: "post",
       headers: {
@@ -216,8 +216,8 @@ export class Authenticator extends BaseNetwork {
         "Authorization": "Token " + authToken,
       },
       body: JSON.stringify({
-        loginPubkey: toBase64(loginPubkey),
-        encryptedContent: toBase64(encryptedContent),
+        response: toBase64(response),
+        signature: toBase64(signature),
       }),
     };
 
