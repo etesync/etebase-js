@@ -102,6 +102,7 @@ export class Account {
       username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
+      action: "login",
     });
 
     const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(sodium.from_string(response)));
@@ -129,6 +130,7 @@ export class Account {
       username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
+      action: "login",
     });
 
     const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(sodium.from_string(response)));
