@@ -335,7 +335,7 @@ it("Collection and item deletion", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  let col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colMeta, colContent);
   await verifyCollection(col, colMeta, colContent);
 
   await collectionManager.upload(col);
