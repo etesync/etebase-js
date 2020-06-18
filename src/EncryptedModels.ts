@@ -248,6 +248,11 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
     await this.updateMac(cryptoManager, additionalData);
   }
 
+  public async delete(cryptoManager: CM, additionalData: Uint8Array[]): Promise<void> {
+    this.deleted = true;
+    await this.updateMac(cryptoManager, additionalData);
+  }
+
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
     return concatArrayBuffersArrays(
       this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, sodium.from_base64(chunk[0]))))
@@ -362,6 +367,20 @@ export class EncryptedCollection {
   public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
     this.verify(cryptoManager);
     return this.content.decryptContent(cryptoManager);
+  }
+
+  public async delete(cryptoManager: CollectionCryptoManager): Promise<void> {
+    let rev = this.content;
+    if (!this.isLocallyChanged()) {
+      rev = this.content.clone();
+    }
+    await rev.delete(cryptoManager, this.getAdditionalMacData());
+
+    this.content = rev;
+  }
+
+  public get isDeleted() {
+    return this.content.deleted;
   }
 
   public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: AsymmetricCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
@@ -482,6 +501,20 @@ export class EncryptedCollectionItem {
   public async decryptContent(cryptoManager: CollectionItemCryptoManager): Promise<Uint8Array> {
     this.verify(cryptoManager);
     return this.content.decryptContent(cryptoManager);
+  }
+
+  public async delete(cryptoManager: CollectionItemCryptoManager): Promise<void> {
+    let rev = this.content;
+    if (!this.isLocallyChanged()) {
+      rev = this.content.clone();
+    }
+    await rev.delete(cryptoManager, this.getAdditionalMacData());
+
+    this.content = rev;
+  }
+
+  public get isDeleted() {
+    return this.content.deleted;
   }
 
   public getCryptoManager(parentCryptoManager: CollectionCryptoManager) {

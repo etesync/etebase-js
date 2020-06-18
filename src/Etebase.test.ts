@@ -105,6 +105,11 @@ it("Simple collection handling", async () => {
 
   await verifyCollection(col, meta2, content);
   expect(meta).not.toEqual(await col.getMeta());
+
+  expect(col.isDeleted).toBeFalsy();
+  await col.delete();
+  expect(col.isDeleted).toBeTruthy();
+  await verifyCollection(col, meta2, content);
 });
 
 it("Simple item handling", async () => {
@@ -137,6 +142,11 @@ it("Simple item handling", async () => {
 
   await verifyItem(item, meta2, content);
   expect(meta).not.toEqual(await col.getMeta());
+
+  expect(item.isDeleted).toBeFalsy();
+  await item.delete();
+  expect(item.isDeleted).toBeTruthy();
+  await verifyItem(item, meta2, content);
 });
 
 it("Content formats", async () => {
@@ -312,6 +322,64 @@ it("Simple item sync", async () => {
     const items = await itemManager.list({ inline: true });
     expect(items.data.length).toBe(1);
     await verifyItem(items.data[0], meta2, content2);
+  }
+});
+
+it("Collection and item deletion", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  let col = await collectionManager.create(colMeta, colContent);
+  await verifyCollection(col, colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  const collections = await collectionManager.list({ inline: true });
+
+  const itemManager = collectionManager.getItemManager(col);
+  const meta: Etebase.CollectionItemMetadata = {
+    type: "ITEMTYPE",
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+  await verifyItem(item, meta, content);
+
+  await itemManager.batch([item]);
+
+  const items = await itemManager.list();
+  expect(items.data.length).toBe(1);
+
+  await item.delete();
+  await itemManager.batch([item]);
+
+  {
+    const items2 = await itemManager.list({ stoken: items.stoken });
+    expect(items2.data.length).toBe(1);
+
+    const item2 = items2.data[0];
+
+    await verifyItem(item2, meta, content);
+    expect(item2.isDeleted).toBeTruthy();
+  }
+
+  await col.delete();
+  await collectionManager.upload(col);
+
+  {
+    const collections2 = await collectionManager.list({ stoken: collections.stoken });
+    expect(collections2.data.length).toBe(1);
+
+    const col2 = collections2.data[0];
+
+    await verifyCollection(col2, colMeta, colContent);
+    expect(col2.isDeleted).toBeTruthy();
   }
 });
 

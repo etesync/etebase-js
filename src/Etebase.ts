@@ -476,12 +476,20 @@ export class Collection {
     }
   }
 
+  public async delete(): Promise<void> {
+    await this.encryptedCollection.delete(this.cryptoManager);
+  }
+
   public get uid() {
     return this.encryptedCollection.uid;
   }
 
   public get etag() {
     return this.encryptedCollection.etag;
+  }
+
+  public get isDeleted() {
+    return this.encryptedCollection.isDeleted;
   }
 
   public get stoken() {
@@ -529,12 +537,20 @@ export class CollectionItem {
     }
   }
 
+  public async delete(): Promise<void> {
+    await this.encryptedItem.delete(this.cryptoManager);
+  }
+
   public get uid() {
     return this.encryptedItem.uid;
   }
 
   public get etag() {
     return this.encryptedItem.etag;
+  }
+
+  public get isDeleted() {
+    return this.encryptedItem.isDeleted;
   }
 
   public _clone() {
