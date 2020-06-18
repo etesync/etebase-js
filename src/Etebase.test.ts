@@ -752,6 +752,10 @@ it("Collection invitations", async () => {
     stoken = newCol.stoken;
   }
 
+  // Should be verified by user2 off-band
+  const user1pubkey = collectionInvitationManager.pubkey;
+  expect(invitations.data[0].fromPubkey).toEqual(user1pubkey);
+
   await collectionInvitationManager2.accept(invitations.data[0]);
 
   {

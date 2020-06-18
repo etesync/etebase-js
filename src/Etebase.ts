@@ -17,7 +17,6 @@ import {
   EncryptedCollection,
   EncryptedCollectionItem,
   getMainCryptoManager,
-  SignedInvitationRead,
 } from "./EncryptedModels";
 export * from "./EncryptedModels"; // FIXME: cherry-pick what we export
 import {
@@ -330,6 +329,17 @@ export class CollectionItemManager {
     });
   }
 }
+export interface SignedInvitation {
+  uid: base64;
+  version: number;
+  username: string;
+
+  collection: base62;
+  accessLevel: CollectionAccessLevel;
+
+  signedEncryptionKey: Uint8Array;
+  fromPubkey: Uint8Array;
+}
 
 export class CollectionInvitationManager {
   private readonly etebase: Account;
@@ -341,19 +351,37 @@ export class CollectionInvitationManager {
   }
 
   public async listIncoming() {
-    return this.onlineManager.listIncoming();
+    const ret = await this.onlineManager.listIncoming();
+    return {
+      ...ret,
+      data: ret.data.map((x) => ({
+        ...x,
+        fromPubkey: fromBase64(x.fromPubkey),
+        signedEncryptionKey: fromBase64(x.signedEncryptionKey),
+      })),
+    };
   }
 
-  public async accept(invitation: SignedInvitationRead) {
+  public async accept(invitation: SignedInvitation) {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
-    const encryptionKey = identCryptoManager.decryptVerify(fromBase64(invitation.signedEncryptionKey), fromBase64(invitation.fromPubkey));
+    const encryptionKey = identCryptoManager.decryptVerify(invitation.signedEncryptionKey, invitation.fromPubkey);
     const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
-    return this.onlineManager.accept(invitation, encryptedEncryptionKey);
+    const innerInvitation = {
+      ...invitation,
+      fromPubkey: toBase64(invitation.fromPubkey),
+      signedEncryptionKey: toBase64(invitation.signedEncryptionKey),
+    };
+    return this.onlineManager.accept(innerInvitation, encryptedEncryptionKey);
   }
 
-  public async reject(invitation: SignedInvitationRead) {
-    return this.onlineManager.reject(invitation);
+  public async reject(invitation: SignedInvitation) {
+    const innerInvitation = {
+      ...invitation,
+      fromPubkey: toBase64(invitation.fromPubkey),
+      signedEncryptionKey: toBase64(invitation.signedEncryptionKey),
+    };
+    return this.onlineManager.reject(innerInvitation);
   }
 
   public async fetchUserProfile(username: string) {
