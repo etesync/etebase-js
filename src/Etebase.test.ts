@@ -53,7 +53,7 @@ async function prepareUserForTest(user: typeof USER) {
     user,
     serverUrl: testApiBase,
   };
-  const etebase = await Etebase.Account.load(accountData);
+  const etebase = await Etebase.Account.restore(accountData);
   await etebase.fetchToken();
 
   return etebase;

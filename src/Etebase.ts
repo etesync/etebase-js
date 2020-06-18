@@ -177,7 +177,7 @@ export class Account {
     this.user.encryptedContent = toBase64(encryptedContent);
   }
 
-  public save(): AccountData {
+  public async save(): Promise<AccountData> {
     const ret: AccountData = {
       user: this.user,
       authToken: this.authToken!!,
@@ -189,7 +189,7 @@ export class Account {
     return ret;
   }
 
-  public static async load(accountData: AccountData) {
+  public static async restore(accountData: AccountData) {
     await ready;
 
     const ret = new this(fromBase64(accountData.key), accountData.version);
