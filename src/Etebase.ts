@@ -30,7 +30,6 @@ import {
   ItemFetchOptions,
   LoginResponseUser,
   User,
-  UserProfile,
 } from "./OnlineManagers";
 export { User, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
 
@@ -357,15 +356,24 @@ export class CollectionInvitationManager {
     return this.onlineManager.reject(invitation);
   }
 
-  public async fetchUserProfile(username: string): Promise<UserProfile> {
-    return this.onlineManager.fetchUserProfile(username);
+  public async fetchUserProfile(username: string) {
+    const profile = await this.onlineManager.fetchUserProfile(username);
+    return {
+      ...profile,
+      pubkey: fromBase64(profile.pubkey),
+    };
   }
 
-  public async invite(col: Collection, username: string, pubkey: base64, accessLevel: CollectionAccessLevel): Promise<void> {
+  public async invite(col: Collection, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
-    const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, username, fromBase64(pubkey), accessLevel);
+    const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, username, pubkey, accessLevel);
     await this.onlineManager.invite(invitation);
+  }
+
+  public get pubkey() {
+    const identCryptoManager = this.etebase._getIdentityCryptoManager();
+    return identCryptoManager.pubkey;
   }
 }
 

@@ -696,12 +696,15 @@ it("Collection invitations", async () => {
 
   const etebase2 = await prepareUserForTest(USER2);
   const collectionManager2 = etebase2.getCollectionManager();
+  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
 
   const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  // Should be verified by user1 off-band
+  const user2pubkey = collectionInvitationManager2.pubkey;
+  expect(user2Profile.pubkey).toEqual(user2pubkey);
 
-  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
+  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   let invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
