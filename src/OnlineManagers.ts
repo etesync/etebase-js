@@ -48,6 +48,7 @@ export type LoginResponse = {
 
 export interface ListResponse<T> {
   data: T[];
+  done: boolean;
 }
 
 export interface CollectionItemListResponse<T> extends ListResponse<T> {

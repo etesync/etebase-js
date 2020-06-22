@@ -418,6 +418,75 @@ it("Empty content", async () => {
   }
 });
 
+it("List response correctness", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  const collections = await collectionManager.list({ inline: true });
+  expect(collections.data.length).toBe(1);
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const items: Etebase.CollectionItem[] = [];
+
+  for (let i = 0 ; i < 5 ; i++) {
+    const meta2 = {
+      type: "ITEMTYPE",
+      someval: "someval",
+      i,
+    };
+    const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
+    const item2 = await itemManager.create(meta2, content2);
+    items.push(item2);
+  }
+
+  await itemManager.batch(items);
+
+  {
+    const items = await itemManager.list({ inline: true });
+    expect(items.data.length).toBe(5);
+    expect(items.done).toBeTruthy();
+  }
+
+  let stoken: string | null = null;
+  for (let i = 0 ; i < 3 ; i++) {
+    const items = await itemManager.list({ inline: true, limit: 2, stoken });
+    expect(items.done).toBe(i === 2);
+    stoken = items.stoken as string;
+  }
+
+  // Also check collections
+  {
+    for (let i = 0 ; i < 4 ; i++) {
+      const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
+      const col2 = await collectionManager.create(colMeta, content2);
+      await collectionManager.upload(col2);
+    }
+  }
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.data.length).toBe(5);
+  }
+
+  stoken = null;
+  for (let i = 0 ; i < 3 ; i++) {
+    const collections = await collectionManager.list({ inline: true, limit: 2, stoken });
+    expect(collections.done).toBe(i === 2);
+    stoken = collections.stoken as string;
+  }
+});
+
 it("Item transactions", async () => {
   const collectionManager = etebase.getCollectionManager();
   const colMeta: Etebase.CollectionMetadata = {
