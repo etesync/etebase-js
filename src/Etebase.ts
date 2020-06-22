@@ -489,7 +489,10 @@ export class Collection {
     }
   }
 
-  public async delete(): Promise<void> {
+  public async delete(preserveContent = false): Promise<void> {
+    if (!preserveContent) {
+      await this.setContent(Uint8Array.from([]));
+    }
     await this.encryptedCollection.delete(this.cryptoManager);
   }
 
@@ -552,7 +555,10 @@ export class CollectionItem {
     }
   }
 
-  public async delete(): Promise<void> {
+  public async delete(preserveContent = false): Promise<void> {
+    if (!preserveContent) {
+      await this.setContent(Uint8Array.from([]));
+    }
     await this.encryptedItem.delete(this.cryptoManager);
   }
 

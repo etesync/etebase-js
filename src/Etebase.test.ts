@@ -107,7 +107,7 @@ it("Simple collection handling", async () => {
   expect(meta).not.toEqual(await col.getMeta());
 
   expect(col.isDeleted).toBeFalsy();
-  await col.delete();
+  await col.delete(true);
   expect(col.isDeleted).toBeTruthy();
   await verifyCollection(col, meta2, content);
 });
@@ -144,7 +144,7 @@ it("Simple item handling", async () => {
   expect(meta).not.toEqual(await col.getMeta());
 
   expect(item.isDeleted).toBeFalsy();
-  await item.delete();
+  await item.delete(true);
   expect(item.isDeleted).toBeTruthy();
   await verifyItem(item, meta2, content);
 });
@@ -426,7 +426,7 @@ it("Collection and item deletion", async () => {
   const items = await itemManager.list();
   expect(items.data.length).toBe(1);
 
-  await item.delete();
+  await item.delete(true);
   await itemManager.batch([item]);
 
   {
@@ -439,7 +439,7 @@ it("Collection and item deletion", async () => {
     expect(item2.isDeleted).toBeTruthy();
   }
 
-  await col.delete();
+  await col.delete(true);
   await collectionManager.upload(col);
 
   {
