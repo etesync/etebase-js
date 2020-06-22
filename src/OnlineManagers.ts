@@ -59,6 +59,10 @@ export interface CollectionListResponse<T> extends CollectionItemListResponse<T>
   removedMemberships?: RemovedCollection[];
 }
 
+export interface CollectionMemberListResponse<T> extends ListResponse<T> {
+  iterator: string;
+}
+
 export interface RemovedCollection {
   uid: base62;
 }
@@ -72,13 +76,20 @@ export interface AcceptedInvitation {
   encryptionKey: base64;
 }
 
-export interface FetchOptions {
-  stoken?: string | null;
-  inline?: boolean;
+export interface ListFetchOptions {
   limit?: number;
 }
 
+export interface FetchOptions extends ListFetchOptions {
+  stoken?: string | null;
+  inline?: boolean;
+}
+
 export type ItemFetchOptions = FetchOptions;
+
+export interface MemberFetchOptions extends ListFetchOptions {
+  iterator?: string | null;
+}
 
 interface AccountOnlineData {
   serverUrl: string;
@@ -453,8 +464,23 @@ export class CollectionMemberManagerOnline extends BaseManager {
     super(etebase, ["collection", col.uid, "member"]);
   }
 
-  public async list(): Promise<ListResponse<CollectionMember>> {
-    return this.newCall<ListResponse<CollectionMember>>();
+  protected urlFromMemberFetchOptions(options?: MemberFetchOptions) {
+    if (!options) {
+      return this.apiBase;
+    }
+
+    const { iterator, limit } = options;
+
+    return this.apiBase.clone().search({
+      iterator: (iterator !== null) ? iterator : undefined,
+      limit: (limit && (limit > 0)) ? limit : undefined,
+    });
+  }
+
+  public async list(options?: MemberFetchOptions): Promise<CollectionMemberListResponse<CollectionMember>> {
+    const apiBase = this.urlFromMemberFetchOptions(options);
+
+    return this.newCall<CollectionMemberListResponse<CollectionMember>>(undefined, undefined, apiBase);
   }
 
   public async remove(username: string): Promise<{}> {

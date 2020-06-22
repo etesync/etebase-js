@@ -1163,6 +1163,19 @@ it("Collection access level", async () => {
     await itemManager2.batch([item]);
   }
 
+  // Iterate members
+  {
+    const members = await collectionMemberManager.list({ limit: 1 });
+    expect(members.data.length).toBe(1);
+    const members2 = await collectionMemberManager.list({ limit: 1, iterator: members.iterator });
+    expect(members2.data.length).toBe(1);
+    // Verify we got two different usersnames
+    expect(members.data[0].username).not.toEqual(members2.data[0].username);
+
+    const membersDone = await collectionMemberManager.list();
+    expect(membersDone.done).toBeTruthy();
+  }
+
   await etebase2.logout();
 });
 

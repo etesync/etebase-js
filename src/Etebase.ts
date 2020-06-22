@@ -29,6 +29,7 @@ import {
   ItemFetchOptions,
   LoginResponseUser,
   User,
+  MemberFetchOptions,
 } from "./OnlineManagers";
 import { ProgrammingError } from "./Exceptions";
 export { User, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
@@ -427,8 +428,8 @@ export class CollectionMemberManager {
     this.onlineManager = new CollectionMemberManagerOnline(this.etebase, col.encryptedCollection);
   }
 
-  public async list() {
-    return this.onlineManager.list();
+  public async list(options?: MemberFetchOptions) {
+    return this.onlineManager.list(options);
   }
 
   public async remove(username: string) {
