@@ -161,3 +161,16 @@ export class CryptoMac {
     return sodium.crypto_generichash_final(this.state, this.length);
   }
 }
+
+export function getPrettyFingerprint(content: Uint8Array, delimiter = "   ") {
+  const fingerprint = sodium.crypto_generichash(32, content);
+
+  /* A 5 digit number can be stored in 16 bits, so a 256bit pubkey needs 16 5 digit numbers. */
+  let ret = "";
+  for (let i = 0 ; i < 32 ; i += 2) {
+    const num = (fingerprint[i] << 8) + fingerprint[i + 1];
+    const suffix = ((i + 2) % 8 === 0) ? "\n" : delimiter;
+    ret += num.toString().padStart(5, "0") + suffix;
+  }
+  return ret;
+}

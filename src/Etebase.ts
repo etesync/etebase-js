@@ -3,7 +3,7 @@ import URI from "urijs";
 import * as Constants from "./Constants";
 
 import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager, ready } from "./Crypto";
-export { deriveKey, ready } from "./Crypto";
+export { deriveKey, ready, getPrettyFingerprint } from "./Crypto";
 export * from "./Exceptions";
 import { base62, base64, fromBase64, toBase64 } from "./Helpers";
 export { base62, base64, fromBase64, toBase64 } from "./Helpers";
@@ -556,19 +556,4 @@ export class CollectionItem {
   public _clone() {
     return new CollectionItem(this.cryptoManager, EncryptedCollectionItem.deserialize(this.encryptedItem.serialize()));
   }
-}
-
-export function getPrettyFingerprint(pubkey: Uint8Array) {
-  if (pubkey.length !== 32) {
-    throw new Error(`getPrettyFingerprint assumes pubkey's length is 32. Got: ${pubkey.length}`);
-  }
-
-  /* A 5 digit number can be stored in 16 bits, so a 256bit pubkey needs 16 5 digit numbers. */
-  let ret = "";
-  for (let i = 0 ; i < 32 ; i += 2) {
-    const num = (pubkey[i] << 8) + pubkey[i + 1];
-    const suffix = ((i + 2) % 8 === 0) ? "\n" : "   ";
-    ret += num.toString().padStart(5, "0") + suffix;
-  }
-  return ret;
 }
