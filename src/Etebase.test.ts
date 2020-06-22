@@ -1044,6 +1044,48 @@ it("Collection invitations", async () => {
   await etebase2.logout();
 });
 
+it("Iterating invitations", async () => {
+  const etebase2 = await prepareUserForTest(USER2);
+  const collectionManager = etebase.getCollectionManager();
+
+  const collectionInvitationManager = new Etebase.CollectionInvitationManager(etebase);
+  const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
+
+  const collections = [];
+
+  for (let i = 0 ; i < 3 ; i++) {
+    const colMeta: Etebase.CollectionMetadata = {
+      type: "COLTYPE",
+      name: `Calendar ${i}`,
+    };
+
+    const col = await collectionManager.create(colMeta, "");
+
+    await collectionManager.upload(col);
+    await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+
+    collections.push(col);
+  }
+
+  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
+
+  {
+    const invitations = await collectionInvitationManager2.listIncoming();
+    expect(invitations.data.length).toBe(3);
+  }
+
+  {
+    let iterator: string | null = null;
+    for (let i = 0 ; i < 1 ; i++) {
+      const invitations = await collectionInvitationManager2.listIncoming({ limit: 2, iterator });
+      expect(invitations.done).toBe(i === 1);
+      iterator = invitations.iterator as string;
+    }
+  }
+
+  await etebase2.logout();
+});
+
 it("Collection access level", async () => {
   const collectionManager = etebase.getCollectionManager();
   const colMeta: Etebase.CollectionMetadata = {

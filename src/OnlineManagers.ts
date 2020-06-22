@@ -59,9 +59,13 @@ export interface CollectionListResponse<T> extends CollectionItemListResponse<T>
   removedMemberships?: RemovedCollection[];
 }
 
-export interface CollectionMemberListResponse<T> extends ListResponse<T> {
+export interface ListIteratorListResponse<T> extends ListResponse<T> {
   iterator: string;
 }
+
+export type CollectionMemberListResponse<T> = ListIteratorListResponse<T>;
+
+export type CollectionInvitationListResponse<T> = ListIteratorListResponse<T>;
 
 export interface RemovedCollection {
   uid: base62;
@@ -87,9 +91,13 @@ export interface FetchOptions extends ListFetchOptions {
 
 export type ItemFetchOptions = FetchOptions;
 
-export interface MemberFetchOptions extends ListFetchOptions {
+export interface IteratorFetchOptions extends ListFetchOptions {
   iterator?: string | null;
 }
+
+export type MemberFetchOptions = IteratorFetchOptions;
+
+export type InvitationFetchOptions = IteratorFetchOptions;
 
 interface AccountOnlineData {
   serverUrl: string;
@@ -276,6 +284,19 @@ class BaseManager extends BaseNetwork {
       inline: true,
     });
   }
+
+  protected urlFromIteratorFetchOptions(options?: IteratorFetchOptions) {
+    if (!options) {
+      return this.apiBase;
+    }
+
+    const { iterator, limit } = options;
+
+    return this.apiBase.clone().search({
+      iterator: (iterator !== null) ? iterator : undefined,
+      limit: (limit && (limit > 0)) ? limit : undefined,
+    });
+  }
 }
 
 export class CollectionManagerOnline extends BaseManager {
@@ -406,8 +427,10 @@ export class CollectionInvitationManagerOnline extends BaseManager {
     super(etebase, ["invitation"]);
   }
 
-  public async listIncoming(): Promise<ListResponse<SignedInvitationRead>> {
-    const json = await this.newCall<ListResponse<SignedInvitationRead>>(["incoming"]);
+  public async listIncoming(options?: InvitationFetchOptions): Promise<CollectionInvitationListResponse<SignedInvitationRead>> {
+    const apiBase = this.urlFromIteratorFetchOptions(options);
+
+    const json = await this.newCall<CollectionInvitationListResponse<SignedInvitationRead>>(["incoming"], undefined, apiBase);
     return {
       ...json,
       data: json.data.map((val) => val),
@@ -464,21 +487,8 @@ export class CollectionMemberManagerOnline extends BaseManager {
     super(etebase, ["collection", col.uid, "member"]);
   }
 
-  protected urlFromMemberFetchOptions(options?: MemberFetchOptions) {
-    if (!options) {
-      return this.apiBase;
-    }
-
-    const { iterator, limit } = options;
-
-    return this.apiBase.clone().search({
-      iterator: (iterator !== null) ? iterator : undefined,
-      limit: (limit && (limit > 0)) ? limit : undefined,
-    });
-  }
-
   public async list(options?: MemberFetchOptions): Promise<CollectionMemberListResponse<CollectionMember>> {
-    const apiBase = this.urlFromMemberFetchOptions(options);
+    const apiBase = this.urlFromIteratorFetchOptions(options);
 
     return this.newCall<CollectionMemberListResponse<CollectionMember>>(undefined, undefined, apiBase);
   }

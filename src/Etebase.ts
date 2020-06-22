@@ -30,6 +30,7 @@ import {
   LoginResponseUser,
   User,
   MemberFetchOptions,
+  InvitationFetchOptions,
 } from "./OnlineManagers";
 import { ProgrammingError } from "./Exceptions";
 export { User, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
@@ -364,8 +365,8 @@ export class CollectionInvitationManager {
     this.onlineManager = new CollectionInvitationManagerOnline(this.etebase);
   }
 
-  public async listIncoming() {
-    const ret = await this.onlineManager.listIncoming();
+  public async listIncoming(options?: InvitationFetchOptions) {
+    const ret = await this.onlineManager.listIncoming(options);
     return {
       ...ret,
       data: ret.data.map((x) => ({
