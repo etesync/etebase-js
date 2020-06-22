@@ -377,6 +377,18 @@ export class CollectionInvitationManager {
     };
   }
 
+  public async listOutgoing(options?: InvitationFetchOptions) {
+    const ret = await this.onlineManager.listOutgoing(options);
+    return {
+      ...ret,
+      data: ret.data.map((x) => ({
+        ...x,
+        fromPubkey: fromBase64(x.fromPubkey),
+        signedEncryptionKey: fromBase64(x.signedEncryptionKey),
+      })),
+    };
+  }
+
   public async accept(invitation: SignedInvitation) {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();

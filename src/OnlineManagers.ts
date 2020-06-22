@@ -437,6 +437,16 @@ export class CollectionInvitationManagerOnline extends BaseManager {
     };
   }
 
+  public async listOutgoing(options?: InvitationFetchOptions): Promise<CollectionInvitationListResponse<SignedInvitationRead>> {
+    const apiBase = this.urlFromIteratorFetchOptions(options);
+
+    const json = await this.newCall<CollectionInvitationListResponse<SignedInvitationRead>>(["outgoing"], undefined, apiBase);
+    return {
+      ...json,
+      data: json.data.map((val) => val),
+    };
+  }
+
   public async accept(invitation: SignedInvitationRead, encryptionKey: Uint8Array): Promise<{}> {
     const extra = {
       method: "post",

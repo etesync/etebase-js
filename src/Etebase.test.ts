@@ -1069,6 +1069,7 @@ it("Iterating invitations", async () => {
 
   const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
 
+  // Check incoming
   {
     const invitations = await collectionInvitationManager2.listIncoming();
     expect(invitations.data.length).toBe(3);
@@ -1078,6 +1079,21 @@ it("Iterating invitations", async () => {
     let iterator: string | null = null;
     for (let i = 0 ; i < 1 ; i++) {
       const invitations = await collectionInvitationManager2.listIncoming({ limit: 2, iterator });
+      expect(invitations.done).toBe(i === 1);
+      iterator = invitations.iterator as string;
+    }
+  }
+
+  // Check outgoing
+  {
+    const invitations = await collectionInvitationManager.listOutgoing();
+    expect(invitations.data.length).toBe(3);
+  }
+
+  {
+    let iterator: string | null = null;
+    for (let i = 0 ; i < 1 ; i++) {
+      const invitations = await collectionInvitationManager.listOutgoing({ limit: 2, iterator });
       expect(invitations.done).toBe(i === 1);
       iterator = invitations.iterator as string;
     }
