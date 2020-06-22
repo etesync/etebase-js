@@ -325,6 +325,76 @@ it("Simple item sync", async () => {
   }
 });
 
+// Verify we prevent users from trying to use the wrong items in the API
+it("Item multiple collections", async () => {
+  const collectionManager = etebase.getCollectionManager();
+
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  const colMeta2: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar 2",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const colContent2 = Uint8Array.from([]);
+  const col2 = await collectionManager.create(colMeta2, colContent2);
+
+  await collectionManager.upload(col2);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.data.length).toBe(2);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+  const itemManager2 = collectionManager.getItemManager(col2);
+
+  const meta: Etebase.CollectionItemMetadata = {
+    type: "ITEMTYPE",
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+  await verifyItem(item, meta, content);
+
+  // With the bad item as the main
+  await itemManager.batch([item]);
+  await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+  await expect(itemManager2.transaction([item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+
+  // With the bad item as a dep
+  const item2 = await itemManager2.create(meta, "col2");
+  await expect(itemManager2.batch([item2], [item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+  await expect(itemManager2.transaction([item2], [item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+  await itemManager2.batch([item2]);
+
+  await itemManager.fetchUpdates([item]);
+  await expect(itemManager.fetchUpdates([item, item2])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+
+  // Verify we also set it correctly when fetched
+  {
+    const items = await itemManager.list({ inline: true });
+    const itemFetched = items.data[0];
+    expect(item.collectionUid).toEqual(itemFetched.collectionUid);
+  }
+  {
+    const itemFetched = await itemManager.fetch(item.uid, { inline: true });
+    expect(item.collectionUid).toEqual(itemFetched.collectionUid);
+  }
+});
+
 it("Collection and item deletion", async () => {
   const collectionManager = etebase.getCollectionManager();
   const colMeta: Etebase.CollectionMetadata = {

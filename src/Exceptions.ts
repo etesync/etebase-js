@@ -43,3 +43,11 @@ export class EncryptionPasswordError extends ExtendableError {
   }
 }
 
+export class ProgrammingError extends ExtendableError {
+  constructor(message: any) {
+    super(message);
+    Object.setPrototypeOf(this, ProgrammingError.prototype);
+    this.name = "ProgrammingError";
+  }
+}
+
