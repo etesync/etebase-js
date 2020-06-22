@@ -840,6 +840,8 @@ it("Collection invitations", async () => {
   // Should be verified by user1 off-band
   const user2pubkey = collectionInvitationManager2.pubkey;
   expect(user2Profile.pubkey).toEqual(user2pubkey);
+  // Off-band verification:
+  expect(Etebase.getPrettyFingerprint(user2Profile.pubkey)).toEqual(Etebase.getPrettyFingerprint(user2pubkey));
 
   await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
