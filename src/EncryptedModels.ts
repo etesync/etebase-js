@@ -149,7 +149,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     this.deleted = false;
   }
 
-  public static async create<CM extends CollectionItemCryptoManager>(cryptoManager: CM, additionalData: Uint8Array[] = [], meta: any, content: Uint8Array): Promise<EncryptedRevision<CM>> {
+  public static async create<CM extends CollectionItemCryptoManager>(cryptoManager: CM, additionalData: Uint8Array, meta: any, content: Uint8Array): Promise<EncryptedRevision<CM>> {
     const ret = new EncryptedRevision<CM>();
     ret.chunks = [];
     await ret.setMeta(cryptoManager, additionalData, meta);
@@ -185,7 +185,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     return ret;
   }
 
-  public async verify(cryptoManager: CM, additionalData: Uint8Array[] = []) {
+  public async verify(cryptoManager: CM, additionalData: Uint8Array) {
     const calculatedMac = await this.calculateMac(cryptoManager, additionalData);
     if (sodium.memcmp(
       sodium.from_base64(this.uid),
@@ -197,13 +197,11 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     }
   }
 
-  private async calculateMac(cryptoManager: CM, additionalData: Uint8Array[] = []) {
+  private async calculateMac(cryptoManager: CM, additionalData: Uint8Array) {
     const cryptoMac = cryptoManager.getCryptoMac();
     cryptoMac.updateWithLenPrefix(Uint8Array.from([(this.deleted) ? 1 : 0]));
     cryptoMac.updateWithLenPrefix(this.salt);
-    additionalData.forEach((data) =>
-      cryptoMac.updateWithLenPrefix(data)
-    );
+    cryptoMac.updateWithLenPrefix(additionalData);
     cryptoMac.updateWithLenPrefix(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
     this.chunks.forEach((chunk) =>
       cryptoMac.updateWithLenPrefix(sodium.from_base64(chunk[0]))
@@ -212,13 +210,13 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     return cryptoMac.finalize();
   }
 
-  private async updateMac(cryptoManager: CM, additionalData: Uint8Array[] = []) {
+  private async updateMac(cryptoManager: CM, additionalData: Uint8Array) {
     this.salt = sodium.randombytes_buf(24);
     const mac = await this.calculateMac(cryptoManager, additionalData);
     this.uid = sodium.to_base64(mac);
   }
 
-  public async setMeta(cryptoManager: CM, additionalData: Uint8Array[], meta: any): Promise<void> {
+  public async setMeta(cryptoManager: CM, additionalData: Uint8Array, meta: any): Promise<void> {
     this.meta = cryptoManager.encrypt(sodium.from_string(JSON.stringify(meta)), null);
 
     await this.updateMac(cryptoManager, additionalData);
@@ -228,7 +226,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     return JSON.parse(sodium.to_string(cryptoManager.decrypt(this.meta, null)));
   }
 
-  public async setContent(cryptoManager: CM, additionalData: Uint8Array[], content: Uint8Array): Promise<void> {
+  public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
     if (content.length > 0) {
       // FIXME: need to actually chunkify
       const encContent = cryptoManager.encryptDetached(content);
@@ -240,7 +238,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     await this.updateMac(cryptoManager, additionalData);
   }
 
-  public async delete(cryptoManager: CM, additionalData: Uint8Array[]): Promise<void> {
+  public async delete(cryptoManager: CM, additionalData: Uint8Array): Promise<void> {
     this.deleted = true;
     await this.updateMac(cryptoManager, additionalData);
   }
@@ -381,10 +379,6 @@ export class EncryptedCollection {
 
     return new CollectionCryptoManager(encryptionKey, version ?? this.version);
   }
-
-  protected getAdditionalMacData() {
-    return [sodium.from_string(this.uid)];
-  }
 }
 
 export class EncryptedCollectionItem {
@@ -500,7 +494,7 @@ export class EncryptedCollectionItem {
   }
 
   protected getAdditionalMacData() {
-    return [sodium.from_string(this.uid)];
+    return sodium.from_string(this.uid);
   }
 }
 
