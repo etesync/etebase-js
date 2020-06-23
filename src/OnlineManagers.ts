@@ -59,13 +59,13 @@ export interface CollectionListResponse<T> extends CollectionItemListResponse<T>
   removedMemberships?: RemovedCollection[];
 }
 
-export interface ListIteratorListResponse<T> extends ListResponse<T> {
+export interface IteratorListResponse<T> extends ListResponse<T> {
   iterator: string;
 }
 
-export type CollectionMemberListResponse<T> = ListIteratorListResponse<T>;
+export type CollectionMemberListResponse<T> = IteratorListResponse<T>;
 
-export type CollectionInvitationListResponse<T> = ListIteratorListResponse<T>;
+export type CollectionInvitationListResponse<T> = IteratorListResponse<T>;
 
 export interface RemovedCollection {
   uid: base62;
