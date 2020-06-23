@@ -257,7 +257,8 @@ export class CollectionManager {
     const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
     if (col.etag) {
-      await this.onlineManager.update(col, options);
+      const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col);
+      await itemOnlineManager.batch([col.item], undefined, options);
     } else {
       await this.onlineManager.create(col, options);
     }
@@ -268,7 +269,8 @@ export class CollectionManager {
     const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
     if (col.etag) {
-      await this.onlineManager.update(col, { ...options, stoken: col.stoken });
+      const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col);
+      await itemOnlineManager.batch([col.item], undefined, { ...options, stoken: col.stoken });
     } else {
       await this.onlineManager.create(col, { ...options, stoken: col.stoken });
     }

@@ -331,17 +331,6 @@ export class CollectionManagerOnline extends BaseManager {
 
     return this.newCall(undefined, extra, apiBase);
   }
-
-  public update(collection: EncryptedCollection, options?: FetchOptions): Promise<{}> {
-    const apiBase = this.urlFromFetchOptions(options);
-
-    const extra = {
-      method: "put",
-      body: JSON.stringify(collection.serialize()),
-    };
-
-    return this.newCall([collection.uid], extra, apiBase);
-  }
 }
 
 export class CollectionItemManagerOnline extends BaseManager {

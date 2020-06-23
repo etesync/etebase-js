@@ -8,8 +8,7 @@ export type CollectionType = string;
 
 export type ContentType = File | Blob | Uint8Array | string | null;
 
-export interface CollectionMetadata {
-  type: CollectionType;
+export interface CollectionMetadata extends CollectionItemMetadata {
   name: string;
   description?: string;
   color?: string;
@@ -58,14 +57,8 @@ export enum CollectionAccessLevel {
   ReadOnly = "ro",
 }
 
-export interface CollectionJsonWrite {
-  uid: base62;
-  version: number;
-
-  encryptionKey: base64;
-  content: CollectionItemRevisionJsonWrite;
-
-  etag: string | null;
+export interface CollectionJsonWrite extends CollectionItemJsonWrite {
+  collectionKey: base64;
 }
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
@@ -144,7 +137,7 @@ export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: num
   return new MainCryptoManager(mainEncryptionKey, version);
 }
 
-class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCryptoManager> {
+class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public uid: base64;
   public salt: Uint8Array;
   public meta: Uint8Array;
@@ -156,7 +149,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
     this.deleted = false;
   }
 
-  public static async create<CM extends CollectionCryptoManager | CollectionItemCryptoManager>(cryptoManager: CM, additionalData: Uint8Array[] = [], meta: any, content: Uint8Array): Promise<EncryptedRevision<CM>> {
+  public static async create<CM extends CollectionItemCryptoManager>(cryptoManager: CM, additionalData: Uint8Array[] = [], meta: any, content: Uint8Array): Promise<EncryptedRevision<CM>> {
     const ret = new EncryptedRevision<CM>();
     ret.chunks = [];
     await ret.setMeta(cryptoManager, additionalData, meta);
@@ -165,7 +158,7 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
     return ret;
   }
 
-  public static deserialize<CM extends CollectionCryptoManager | CollectionItemCryptoManager>(json: CollectionItemRevisionJsonRead) {
+  public static deserialize<CM extends CollectionItemCryptoManager>(json: CollectionItemRevisionJsonRead) {
     const { uid, salt, meta, chunks, deleted } = json;
     const ret = new EncryptedRevision<CM>();
     ret.uid = uid;
@@ -271,121 +264,105 @@ class EncryptedRevision<CM extends CollectionCryptoManager | CollectionItemCrypt
 }
 
 export class EncryptedCollection {
-  public uid: base62;
-  public version: number;
-  private encryptionKey: Uint8Array;
-  private content: EncryptedRevision<CollectionCryptoManager>;
+  private collectionKey: Uint8Array;
+  public item: EncryptedCollectionItem;
 
   public accessLevel: CollectionAccessLevel;
-  public etag: string | null;
   public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
   public static async create(parentCryptoManager: AccountCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
-    ret.uid = genUidBase62();
-    ret.version = Constants.CURRENT_VERSION;
-    ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
+    ret.collectionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
 
     ret.accessLevel = CollectionAccessLevel.Admin;
-    ret.etag = null;
     ret.stoken = null;
 
-    const cryptoManager = ret.getCryptoManager(parentCryptoManager);
+    const cryptoManager = ret.getCryptoManager(parentCryptoManager, Constants.CURRENT_VERSION);
 
-    ret.content = await EncryptedRevision.create(cryptoManager, ret.getAdditionalMacData(), meta, content);
+    ret.item = await EncryptedCollectionItem.create(cryptoManager, meta, content);
 
     return ret;
   }
 
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
-    const { uid, stoken, version, accessLevel, encryptionKey, content } = json;
+    const { stoken, accessLevel, collectionKey } = json;
     const ret = new EncryptedCollection();
-    ret.uid = uid;
-    ret.version = version;
-    ret.encryptionKey = sodium.from_base64(encryptionKey);
+    ret.collectionKey = sodium.from_base64(collectionKey);
+
+    ret.item = EncryptedCollectionItem.deserialize(json);
 
     ret.accessLevel = accessLevel;
     ret.stoken = stoken;
-
-    ret.content = EncryptedRevision.deserialize(content);
-
-    ret.etag = ret.content.uid;
 
     return ret;
   }
 
   public serialize() {
     const ret: CollectionJsonWrite = {
-      uid: this.uid,
-      version: this.version,
-      encryptionKey: sodium.to_base64(this.encryptionKey),
-      etag: this.etag,
+      ...this.item.serialize(),
 
-      content: this.content.serialize(),
+      collectionKey: sodium.to_base64(this.collectionKey),
     };
 
     return ret;
   }
 
   public __markSaved() {
-    this.etag = this.content.uid;
-  }
-
-  private isLocallyChanged() {
-    return this.etag !== this.content.uid;
+    this.item.__markSaved();
   }
 
   public async verify(cryptoManager: CollectionCryptoManager) {
-    return this.content.verify(cryptoManager, this.getAdditionalMacData());
+    const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
+    return this.item.verify(itemCryptoManager);
   }
 
   public async setMeta(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata): Promise<void> {
-    let rev = this.content;
-    if (!this.isLocallyChanged()) {
-      rev = this.content.clone();
-    }
-    await rev.setMeta(cryptoManager, this.getAdditionalMacData(), meta);
-
-    this.content = rev;
+    const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
+    return this.item.setMeta(itemCryptoManager, meta);
   }
 
   public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
     this.verify(cryptoManager);
-    return this.content.decryptMeta(cryptoManager);
+    const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
+    return this.item.decryptMeta(itemCryptoManager) as Promise<CollectionMetadata>;
   }
 
   public async setContent(cryptoManager: CollectionCryptoManager, content: Uint8Array): Promise<void> {
-    let rev = this.content;
-    if (!this.isLocallyChanged()) {
-      rev = this.content.clone();
-    }
-    await rev.setContent(cryptoManager, this.getAdditionalMacData(), content);
-
-    this.content = rev;
+    const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
+    return this.item.setContent(itemCryptoManager, content);
   }
 
   public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
     this.verify(cryptoManager);
-    return this.content.decryptContent(cryptoManager);
+    const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
+    return this.item.decryptContent(itemCryptoManager);
   }
 
   public async delete(cryptoManager: CollectionCryptoManager): Promise<void> {
-    let rev = this.content;
-    if (!this.isLocallyChanged()) {
-      rev = this.content.clone();
-    }
-    await rev.delete(cryptoManager, this.getAdditionalMacData());
-
-    this.content = rev;
+    const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
+    return this.item.delete(itemCryptoManager);
   }
 
   public get isDeleted() {
-    return this.content.deleted;
+    return this.item.isDeleted;
   }
+
+  public get uid() {
+    return this.item.uid;
+  }
+
+  public get etag() {
+    return this.item.etag;
+  }
+
+  public get version() {
+    return this.item.version;
+  }
+
 
   public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: AsymmetricCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = sodium.randombytes_buf(32);
-    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
+    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
     const signedEncryptionKey = identCryptoManager.encryptSign(encryptionKey, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
@@ -400,10 +377,10 @@ export class EncryptedCollection {
     return ret;
   }
 
-  public getCryptoManager(parentCryptoManager: AccountCryptoManager) {
-    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
+  public getCryptoManager(parentCryptoManager: AccountCryptoManager, version?: number) {
+    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
 
-    return new CollectionCryptoManager(encryptionKey, this.version);
+    return new CollectionCryptoManager(encryptionKey, version ?? this.version);
   }
 
   protected getAdditionalMacData() {
