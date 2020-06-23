@@ -13,6 +13,7 @@ import {
   EncryptedCollectionItem,
   SignedInvitationRead,
   SignedInvitationWrite,
+  CollectionItemRevisionJsonRead,
 } from "./EncryptedModels";
 
 export interface User {
@@ -100,6 +101,10 @@ export interface IteratorFetchOptions extends ListFetchOptions {
 export type MemberFetchOptions = IteratorFetchOptions;
 
 export type InvitationFetchOptions = IteratorFetchOptions;
+
+export interface RevisionsFetchOptions extends IteratorFetchOptions {
+  inline?: boolean;
+}
 
 interface AccountOnlineData {
   serverUrl: string;
@@ -343,6 +348,24 @@ export class CollectionItemManagerOnline extends BaseManager {
     return {
       ...json,
       data: json.data.map((val) => EncryptedCollectionItem.deserialize(val)),
+    };
+  }
+
+  public async itemRevisions(item: EncryptedCollectionItem, options?: RevisionsFetchOptions): Promise<IteratorListResponse<EncryptedCollectionItem>> {
+    const apiBase = this.urlFromFetchOptions(options);
+
+    const { uid, encryptionKey, version } = item.serialize();
+
+    const json = await this.newCall<IteratorListResponse<CollectionItemRevisionJsonRead>>([item.uid, "revision"], undefined, apiBase);
+    return {
+      ...json,
+      data: json.data.map((val) => EncryptedCollectionItem.deserialize({
+        uid,
+        encryptionKey,
+        version,
+        etag: val.uid, // We give revisions their old etag
+        content: val,
+      })),
     };
   }
 

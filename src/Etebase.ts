@@ -32,6 +32,7 @@ import {
   User,
   MemberFetchOptions,
   InvitationFetchOptions,
+  RevisionsFetchOptions,
 } from "./OnlineManagers";
 import { ProgrammingError } from "./Exceptions";
 export { User, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
@@ -334,6 +335,14 @@ export class CollectionItemManager {
 
   public async list(options?: ItemFetchOptions) {
     const ret = await this.onlineManager.list(options);
+    return {
+      ...ret,
+      data: ret.data.map((x) => new CollectionItem(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
+    };
+  }
+
+  public async itemRevisions(item: CollectionItem, options?: RevisionsFetchOptions) {
+    const ret = await this.onlineManager.itemRevisions(item.encryptedItem, options);
     return {
       ...ret,
       data: ret.data.map((x) => new CollectionItem(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),

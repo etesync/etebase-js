@@ -936,6 +936,63 @@ it("Item fetch updates", async () => {
   }
 });
 
+it("Item revisions", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const col = await collectionManager.create(colMeta, "");
+  await collectionManager.upload(col);
+
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: Etebase.CollectionItemMetadata = {
+    type: "ITEMTYPE",
+  };
+
+  const item = await itemManager.create(meta, "");
+
+  for (let i = 0 ; i < 5 ; i++) {
+    const content = Uint8Array.from([1, 2, i]);
+    await item.setContent(content);
+
+    await itemManager.batch([item]);
+  }
+
+  await item.setContent("Latest");
+  await itemManager.batch([item]);
+
+  {
+    const revisions = await itemManager.itemRevisions(item, { inline: true });
+    expect(revisions.data.length).toBe(5);
+    expect(revisions.done).toBeTruthy();
+
+    for (let i = 0 ; i < 5 ; i++) {
+      const content = Uint8Array.from([1, 2, i]);
+      // The revisions are ordered newest to oldest
+      const rev = revisions.data[4 - i];
+
+      expect(await rev.getContent()).toEqual(content);
+    }
+  }
+
+  // Iterate through revisions
+  {
+    let iterator: string | null = null;
+    for (let i = 0 ; i < 2 ; i++) {
+      const revisions = await itemManager.itemRevisions(item, { inline: true, limit: 2, iterator });
+      expect(revisions.done).toBe(i === 2);
+      iterator = revisions.iterator as string;
+    }
+  }
+});
+
+
 it("Collection invitations", async () => {
   const collectionManager = etebase.getCollectionManager();
   const colMeta: Etebase.CollectionMetadata = {
