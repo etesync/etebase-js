@@ -89,7 +89,9 @@ export interface FetchOptions extends ListFetchOptions {
   inline?: boolean;
 }
 
-export type ItemFetchOptions = FetchOptions;
+export interface ItemFetchOptions extends FetchOptions {
+  withCollection?: boolean;
+}
 
 export interface IteratorFetchOptions extends ListFetchOptions {
   iterator?: string | null;
@@ -267,12 +269,12 @@ class BaseManager extends BaseNetwork {
     return super.newCall(segments, extra, apiBase);
   }
 
-  protected urlFromFetchOptions(options?: FetchOptions) {
+  protected urlFromFetchOptions(options?: ItemFetchOptions) {
     if (!options) {
       return this.apiBase;
     }
 
-    const { stoken, inline, limit } = options;
+    const { stoken, inline, limit, withCollection } = options;
 
     if (!inline) {
       console.warn("inline must be set as the non-inline variant is not yet implemented.");
@@ -281,6 +283,7 @@ class BaseManager extends BaseNetwork {
     return this.apiBase.clone().search({
       stoken: (stoken !== null) ? stoken : undefined,
       limit: (limit && (limit > 0)) ? limit : undefined,
+      withCollection: withCollection,
       inline: true,
     });
   }

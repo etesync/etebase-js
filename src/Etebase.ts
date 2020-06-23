@@ -527,6 +527,11 @@ export class Collection {
   public get stoken() {
     return this.encryptedCollection.stoken;
   }
+
+  public get item() {
+    const encryptedItem = this.encryptedCollection.item;
+    return new CollectionItem(this.uid, encryptedItem.getCryptoManager(this.cryptoManager), encryptedItem);
+  }
 }
 
 export class CollectionItem {

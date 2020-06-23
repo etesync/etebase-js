@@ -325,6 +325,84 @@ it("Simple item sync", async () => {
   }
 });
 
+it("Collection as item", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const colContent = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colMeta, colContent);
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.data.length).toBe(1);
+  }
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  // Verify withCollection works
+  {
+    let items = await itemManager.list({ inline: true });
+    expect(items.data.length).toBe(0);
+    items = await itemManager.list({ inline: true, withCollection: true });
+    expect(items.data.length).toBe(1);
+    await verifyItem(items.data[0], colMeta, colContent);
+  }
+
+  const meta: Etebase.CollectionItemMetadata = {
+    type: "ITEMTYPE",
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+  await verifyItem(item, meta, content);
+
+  await itemManager.batch([item]);
+
+  {
+    let items = await itemManager.list({ inline: true });
+    expect(items.data.length).toBe(1);
+    items = await itemManager.list({ inline: true, withCollection: true });
+    expect(items.data.length).toBe(2);
+    await verifyItem(items.data[0], colMeta, colContent);
+  }
+
+  const colItemOld = await itemManager.fetch(col.uid, { inline: true });
+
+  // Manipulate the collection with batch/transaction
+  await col.setContent("test");
+
+  await itemManager.batch([col.item]);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.data.length).toBe(1);
+    await verifyCollection(collections.data[0], colMeta, sodium.from_string("test"));
+  }
+
+  await col.setContent("test2");
+
+  await itemManager.transaction([col.item]);
+
+  {
+    const collections = await collectionManager.list({ inline: true });
+    expect(collections.data.length).toBe(1);
+    await verifyCollection(collections.data[0], colMeta, sodium.from_string("test2"));
+  }
+
+  {
+    const updates = await itemManager.fetchUpdates([colItemOld, item], { inline: true });
+    expect(updates.data.length).toBe(1);
+    await verifyItem(updates.data[0], colMeta, sodium.from_string("test2"));
+  }
+});
+
 // Verify we prevent users from trying to use the wrong items in the API
 it("Item multiple collections", async () => {
   const collectionManager = etebase.getCollectionManager();
