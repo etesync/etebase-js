@@ -204,7 +204,6 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     additionalData.forEach((data) =>
       cryptoMac.update(data)
     );
-    // FIXME: we are using the meta's mac here. Make sure we are doing it correctly.
     cryptoMac.update(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
     this.chunks.forEach((chunk) =>
       cryptoMac.update(sodium.from_base64(chunk[0]))
