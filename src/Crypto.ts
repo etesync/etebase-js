@@ -1,6 +1,7 @@
 import _sodium from "libsodium-wrappers";
 
 import * as Constants from "./Constants";
+import { numToUint8Array } from "./Helpers";
 
 export const sodium = _sodium;
 export const ready = _sodium.ready;
@@ -153,7 +154,8 @@ export class CryptoMac {
     this.state = sodium.crypto_generichash_init(key, length);
   }
 
-  public update(messageChunk: Uint8Array) {
+  public updateWithLenPrefix(messageChunk: Uint8Array) {
+    sodium.crypto_generichash_update(this.state, numToUint8Array(messageChunk.length));
     sodium.crypto_generichash_update(this.state, messageChunk);
   }
 

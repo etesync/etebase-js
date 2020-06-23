@@ -199,14 +199,14 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   private async calculateMac(cryptoManager: CM, additionalData: Uint8Array[] = []) {
     const cryptoMac = cryptoManager.getCryptoMac();
-    cryptoMac.update(Uint8Array.from([(this.deleted) ? 1 : 0]));
-    cryptoMac.update(this.salt);
+    cryptoMac.updateWithLenPrefix(Uint8Array.from([(this.deleted) ? 1 : 0]));
+    cryptoMac.updateWithLenPrefix(this.salt);
     additionalData.forEach((data) =>
-      cryptoMac.update(data)
+      cryptoMac.updateWithLenPrefix(data)
     );
-    cryptoMac.update(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
+    cryptoMac.updateWithLenPrefix(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
     this.chunks.forEach((chunk) =>
-      cryptoMac.update(sodium.from_base64(chunk[0]))
+      cryptoMac.updateWithLenPrefix(sodium.from_base64(chunk[0]))
     );
 
     return cryptoMac.finalize();
