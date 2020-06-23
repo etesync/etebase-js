@@ -35,6 +35,7 @@ import {
 import { ProgrammingError } from "./Exceptions";
 export { User, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
 
+import { CURRENT_VERSION } from "./Constants";
 export { CURRENT_VERSION } from "./Constants";
 
 export interface AccountData {
@@ -46,8 +47,6 @@ export interface AccountData {
 }
 
 export class Account {
-  private static readonly CURRENT_VERSION = 1;
-
   private mainKey: Uint8Array;
   private version: number;
   public user: LoginResponseUser;
@@ -65,7 +64,7 @@ export class Account {
 
     serverUrl = serverUrl ?? Constants.SERVER_URL;
     const authenticator = new Authenticator(serverUrl);
-    const version = this.CURRENT_VERSION;
+    const version = CURRENT_VERSION;
     const salt = sodium.randombytes_buf(32);
 
     const mainKey = deriveKey(salt, password);
