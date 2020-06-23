@@ -48,6 +48,7 @@ async function prepareUserForTest(user: typeof USER) {
   });
 
   const etebase = await Etebase.Account.restore(user.storedSession, fromBase64(sessionStorageKey));
+  etebase.serverUrl = testApiBase;
   await etebase.fetchToken();
 
   return etebase;
