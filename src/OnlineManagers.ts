@@ -329,10 +329,10 @@ export class CollectionItemManagerOnline extends BaseManager {
     super(etebase, ["collection", col.uid, "item"]);
   }
 
-  public async fetch(colUid: string, options?: ItemFetchOptions): Promise<EncryptedCollectionItem> {
+  public async fetch(itemUid: string, options?: ItemFetchOptions): Promise<EncryptedCollectionItem> {
     const apiBase = this.urlFromFetchOptions(options);
 
-    const json = await this.newCall<CollectionItemJsonRead>([colUid], undefined, apiBase);
+    const json = await this.newCall<CollectionItemJsonRead>([itemUid], undefined, apiBase);
     return EncryptedCollectionItem.deserialize(json);
   }
 
