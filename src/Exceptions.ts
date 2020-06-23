@@ -11,7 +11,7 @@ export class HTTPError extends ExtendableError {
   public status: number;
 
   constructor(status: number, message: any) {
-    super(message);
+    super(`${status} ${message}`);
     Object.setPrototypeOf(this, HTTPError.prototype);
     this.name = "HTTPError";
 
