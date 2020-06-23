@@ -269,12 +269,12 @@ class BaseManager extends BaseNetwork {
     return super.newCall(segments, extra, apiBase);
   }
 
-  protected urlFromFetchOptions(options?: ItemFetchOptions) {
+  protected urlFromFetchOptions(options?: ItemFetchOptions & IteratorFetchOptions) {
     if (!options) {
       return this.apiBase;
     }
 
-    const { stoken, inline, limit, withCollection } = options;
+    const { stoken, inline, limit, withCollection, iterator } = options;
 
     if (!inline) {
       console.warn("inline must be set as the non-inline variant is not yet implemented.");
@@ -282,22 +282,10 @@ class BaseManager extends BaseNetwork {
 
     return this.apiBase.clone().search({
       stoken: (stoken !== null) ? stoken : undefined,
+      iterator: (iterator !== null) ? iterator : undefined,
       limit: (limit && (limit > 0)) ? limit : undefined,
       withCollection: withCollection,
       inline: true,
-    });
-  }
-
-  protected urlFromIteratorFetchOptions(options?: IteratorFetchOptions) {
-    if (!options) {
-      return this.apiBase;
-    }
-
-    const { iterator, limit } = options;
-
-    return this.apiBase.clone().search({
-      iterator: (iterator !== null) ? iterator : undefined,
-      limit: (limit && (limit > 0)) ? limit : undefined,
     });
   }
 }
@@ -420,7 +408,7 @@ export class CollectionInvitationManagerOnline extends BaseManager {
   }
 
   public async listIncoming(options?: InvitationFetchOptions): Promise<CollectionInvitationListResponse<SignedInvitationRead>> {
-    const apiBase = this.urlFromIteratorFetchOptions(options);
+    const apiBase = this.urlFromFetchOptions(options);
 
     const json = await this.newCall<CollectionInvitationListResponse<SignedInvitationRead>>(["incoming"], undefined, apiBase);
     return {
@@ -430,7 +418,7 @@ export class CollectionInvitationManagerOnline extends BaseManager {
   }
 
   public async listOutgoing(options?: InvitationFetchOptions): Promise<CollectionInvitationListResponse<SignedInvitationRead>> {
-    const apiBase = this.urlFromIteratorFetchOptions(options);
+    const apiBase = this.urlFromFetchOptions(options);
 
     const json = await this.newCall<CollectionInvitationListResponse<SignedInvitationRead>>(["outgoing"], undefined, apiBase);
     return {
@@ -490,7 +478,7 @@ export class CollectionMemberManagerOnline extends BaseManager {
   }
 
   public async list(options?: MemberFetchOptions): Promise<CollectionMemberListResponse<CollectionMember>> {
-    const apiBase = this.urlFromIteratorFetchOptions(options);
+    const apiBase = this.urlFromFetchOptions(options);
 
     return this.newCall<CollectionMemberListResponse<CollectionMember>>(undefined, undefined, apiBase);
   }
