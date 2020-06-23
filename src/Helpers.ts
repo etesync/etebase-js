@@ -3,6 +3,10 @@ export type base64 = string;
 
 import { sodium } from "./Crypto";
 
+export function randomBytes(length: number): Uint8Array {
+  return sodium.randombytes_buf(length);
+}
+
 export function toBase64(input: string | Uint8Array): string {
   return sodium.to_base64(input);
 }

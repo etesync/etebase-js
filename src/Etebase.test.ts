@@ -2,11 +2,11 @@ import "whatwg-fetch";
 
 import * as Etebase from "./Etebase";
 
-import { USER, USER2 } from "./TestConstants";
-import { CURRENT_VERSION } from "./Constants";
+import { USER, USER2, sessionStorageKey } from "./TestConstants";
 import { sodium } from "./Crypto";
 
 import { Authenticator } from "./OnlineManagers";
+import { fromBase64 } from "./Helpers";
 
 const testApiBase = "http://localhost:8033";
 
@@ -47,13 +47,7 @@ async function prepareUserForTest(user: typeof USER) {
     }),
   });
 
-  const accountData: Etebase.AccountData = {
-    version: CURRENT_VERSION,
-    key: user.key,
-    user,
-    serverUrl: testApiBase,
-  };
-  const etebase = await Etebase.Account.restore(accountData);
+  const etebase = await Etebase.Account.restore(user.storedSession, fromBase64(sessionStorageKey));
   await etebase.fetchToken();
 
   return etebase;
@@ -1313,6 +1307,42 @@ it("Collection access level", async () => {
   }
 
   await etebase2.logout();
+});
+
+it("Session store and restore", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const meta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+  };
+
+  const col = await collectionManager.create(meta, "test");
+  await collectionManager.upload(col);
+
+  // Verify we can store and restore without an encryption key
+  {
+    const saved = await etebase.save();
+    const etebase2 = await Etebase.Account.restore(saved);
+
+    // Verify we can access the data
+    const collectionManager2 = etebase2.getCollectionManager();
+    const collections = await collectionManager2.list({ inline: true });
+    expect(collections.data.length).toBe(1);
+    expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
+  }
+
+  // Verify we can store and restore with an encryption key
+  {
+    const encryptionKey = Etebase.randomBytes(32);
+    const saved = await etebase.save(encryptionKey);
+    const etebase2 = await Etebase.Account.restore(saved, encryptionKey);
+
+    // Verify we can access the data
+    const collectionManager2 = etebase2.getCollectionManager();
+    const collections = await collectionManager2.list({ inline: true });
+    expect(collections.data.length).toBe(1);
+    expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
+  }
 });
 
 it.skip("Login and password change", async () => {

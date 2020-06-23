@@ -6,7 +6,7 @@ import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager, ready }
 export { deriveKey, ready, getPrettyFingerprint } from "./Crypto";
 export * from "./Exceptions";
 import { base62, base64, fromBase64, toBase64 } from "./Helpers";
-export { base62, base64, fromBase64, toBase64 } from "./Helpers";
+export { base62, base64, fromBase64, toBase64, randomBytes } from "./Helpers";
 
 import {
   CollectionAccessLevel,
@@ -17,6 +17,7 @@ import {
   EncryptedCollection,
   EncryptedCollectionItem,
   getMainCryptoManager,
+  StorageCryptoManager,
 } from "./EncryptedModels";
 export * from "./EncryptedModels"; // FIXME: cherry-pick what we export
 import {
@@ -44,6 +45,11 @@ export interface AccountData {
   user: LoginResponseUser;
   serverUrl: string;
   authToken?: string;
+}
+
+export interface AccountDataStored {
+  version: number;
+  encryptedData: base64;
 }
 
 export class Account {
@@ -179,22 +185,43 @@ export class Account {
     this.user.encryptedContent = toBase64(encryptedContent);
   }
 
-  public async save(): Promise<AccountData> {
-    const ret: AccountData = {
+  public async save(encryptionKey_?: Uint8Array): Promise<base64> {
+    const version = CURRENT_VERSION;
+    const encryptionKey = encryptionKey_ ?? new Uint8Array(32);
+    const cryptoManager = new StorageCryptoManager(encryptionKey, version);
+
+    const content: AccountData = {
       user: this.user,
       authToken: this.authToken!!,
       serverUrl: this.serverUrl,
       version: this.version,
-      key: toBase64(this.mainKey),
+      key: toBase64(cryptoManager.encrypt(this.mainKey)),
     };
 
-    return ret;
+    const ret: AccountDataStored = {
+      version,
+      encryptedData: sodium.to_base64(
+        cryptoManager.encrypt(sodium.from_string(JSON.stringify(content)), Uint8Array.from([version]))
+      ),
+    };
+
+    return sodium.to_base64(JSON.stringify(ret));
   }
 
-  public static async restore(accountData: AccountData) {
+  public static async restore(accountDataStored_: base64, encryptionKey_?: Uint8Array) {
     await ready;
 
-    const ret = new this(fromBase64(accountData.key), accountData.version);
+    const encryptionKey = encryptionKey_ ?? new Uint8Array(32);
+    const accountDataStored: AccountDataStored = JSON.parse(sodium.to_string(sodium.from_base64(accountDataStored_)));
+    const encryptedData = sodium.from_base64(accountDataStored.encryptedData);
+
+    const cryptoManager = new StorageCryptoManager(encryptionKey, accountDataStored.version);
+
+    const accountData: AccountData = JSON.parse(sodium.to_string(
+      cryptoManager.decrypt(encryptedData, Uint8Array.from([accountDataStored.version]))
+    ));
+
+    const ret = new this(cryptoManager.decrypt(fromBase64(accountData.key)), accountData.version);
     ret.user = accountData.user;
     ret.authToken = accountData.authToken ?? null;
     ret.serverUrl = accountData.serverUrl;

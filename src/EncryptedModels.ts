@@ -133,6 +133,14 @@ export class CollectionItemCryptoManager extends CryptoManager {
   }
 }
 
+export class StorageCryptoManager extends CryptoManager {
+  protected Storage = true; // So classes are different
+
+  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+    super(key, "Stor", version);
+  }
+}
+
 export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: number) {
   return new MainCryptoManager(mainEncryptionKey, version);
 }
