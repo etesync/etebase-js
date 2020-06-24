@@ -1,8 +1,8 @@
 import * as Constants from "./Constants";
 
-import { CryptoManager, sodium, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
+import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base64, toBase64 } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, memcmp, symmetricKeyLength, symmetricTagLength } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -84,7 +84,7 @@ export interface SignedInvitationRead extends SignedInvitationWrite {
 }
 
 function genUidBase64(): base64 {
-  return sodium.to_base64(sodium.randombytes_buf(32)).substr(0, 24);
+  return toBase64(randomBytes(32)).substr(0, 24);
 }
 
 export class MainCryptoManager extends CryptoManager {
@@ -168,11 +168,11 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     const { uid, salt, meta, chunks, deleted } = json;
     const ret = new EncryptedRevision<CM>();
     ret.uid = uid;
-    ret.salt = sodium.from_base64(salt);
-    ret.meta = sodium.from_base64(meta);
+    ret.salt = fromBase64(salt);
+    ret.meta = fromBase64(meta);
     ret.deleted = deleted;
     ret.chunks = chunks.map((chunk) => {
-      return [chunk[0], (chunk[1]) ? sodium.from_base64(chunk[1]) : undefined];
+      return [chunk[0], (chunk[1]) ? fromBase64(chunk[1]) : undefined];
     });
 
     return ret;
@@ -181,11 +181,11 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public serialize() {
     const ret: CollectionItemRevisionJsonWrite = {
       uid: this.uid,
-      salt: sodium.to_base64(this.salt),
-      meta: sodium.to_base64(this.meta),
+      salt: toBase64(this.salt),
+      meta: toBase64(this.meta),
       deleted: this.deleted,
 
-      chunks: this.chunks.map((chunk) => [chunk[0], (chunk[1]) ? sodium.to_base64(chunk[1]) : undefined]),
+      chunks: this.chunks.map((chunk) => [chunk[0], (chunk[1]) ? toBase64(chunk[1]) : undefined]),
     };
 
     return ret;
@@ -193,13 +193,13 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   public async verify(cryptoManager: CM, additionalData: Uint8Array) {
     const calculatedMac = await this.calculateMac(cryptoManager, additionalData);
-    if (sodium.memcmp(
-      sodium.from_base64(this.uid),
+    if (memcmp(
+      fromBase64(this.uid),
       calculatedMac
     )) {
       return true;
     } else {
-      throw new IntegrityError(`mac verification failed. Expected: ${this.uid} got: ${sodium.to_base64(calculatedMac)}`);
+      throw new IntegrityError(`mac verification failed. Expected: ${this.uid} got: ${toBase64(calculatedMac)}`);
     }
   }
 
@@ -208,35 +208,35 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     cryptoMac.updateWithLenPrefix(Uint8Array.from([(this.deleted) ? 1 : 0]));
     cryptoMac.updateWithLenPrefix(this.salt);
     cryptoMac.updateWithLenPrefix(additionalData);
-    cryptoMac.updateWithLenPrefix(this.meta.subarray(-1 * sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES));
+    cryptoMac.updateWithLenPrefix(this.meta.subarray(-1 * symmetricTagLength));
     this.chunks.forEach((chunk) =>
-      cryptoMac.updateWithLenPrefix(sodium.from_base64(chunk[0]))
+      cryptoMac.updateWithLenPrefix(fromBase64(chunk[0]))
     );
 
     return cryptoMac.finalize();
   }
 
   private async updateMac(cryptoManager: CM, additionalData: Uint8Array) {
-    this.salt = sodium.randombytes_buf(24);
+    this.salt = randomBytes(24);
     const mac = await this.calculateMac(cryptoManager, additionalData);
-    this.uid = sodium.to_base64(mac);
+    this.uid = toBase64(mac);
   }
 
   public async setMeta(cryptoManager: CM, additionalData: Uint8Array, meta: any): Promise<void> {
-    this.meta = cryptoManager.encrypt(sodium.from_string(JSON.stringify(meta)), null);
+    this.meta = cryptoManager.encrypt(fromString(JSON.stringify(meta)), null);
 
     await this.updateMac(cryptoManager, additionalData);
   }
 
   public async decryptMeta(cryptoManager: CM): Promise<any> {
-    return JSON.parse(sodium.to_string(cryptoManager.decrypt(this.meta, null)));
+    return JSON.parse(toString(cryptoManager.decrypt(this.meta, null)));
   }
 
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
     if (content.length > 0) {
       // FIXME: need to actually chunkify
       const encContent = cryptoManager.encryptDetached(content);
-      this.chunks = [[sodium.to_base64(encContent[0]), encContent[1]]];
+      this.chunks = [[toBase64(encContent[0]), encContent[1]]];
     } else {
       this.chunks = [];
     }
@@ -251,7 +251,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
     return concatArrayBuffersArrays(
-      this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, sodium.from_base64(chunk[0]))))
+      this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, fromBase64(chunk[0]))))
     ;
   }
 
@@ -275,7 +275,7 @@ export class EncryptedCollection {
 
   public static async create(parentCryptoManager: AccountCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
-    ret.collectionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
+    ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength));
 
     ret.accessLevel = CollectionAccessLevel.Admin;
     ret.stoken = null;
@@ -290,7 +290,7 @@ export class EncryptedCollection {
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
     const { stoken, accessLevel, collectionKey } = json;
     const ret = new EncryptedCollection();
-    ret.collectionKey = sodium.from_base64(collectionKey);
+    ret.collectionKey = fromBase64(collectionKey);
 
     ret.item = EncryptedCollectionItem.deserialize(json);
 
@@ -304,7 +304,7 @@ export class EncryptedCollection {
     const ret: CollectionJsonWrite = {
       ...this.item.serialize(),
 
-      collectionKey: sodium.to_base64(this.collectionKey),
+      collectionKey: toBase64(this.collectionKey),
     };
 
     return ret;
@@ -364,7 +364,7 @@ export class EncryptedCollection {
 
 
   public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: AsymmetricCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
-    const uid = sodium.randombytes_buf(32);
+    const uid = randomBytes(32);
     const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
     const signedEncryptionKey = identCryptoManager.encryptSign(encryptionKey, pubkey);
     const ret: SignedInvitationWrite = {
@@ -399,7 +399,7 @@ export class EncryptedCollectionItem {
     const ret = new EncryptedCollectionItem();
     ret.uid = genUidBase64();
     ret.version = Constants.CURRENT_VERSION;
-    ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
+    ret.encryptionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength));
 
     ret.etag = null;
 
@@ -415,7 +415,7 @@ export class EncryptedCollectionItem {
     const ret = new EncryptedCollectionItem();
     ret.uid = uid;
     ret.version = version;
-    ret.encryptionKey = sodium.from_base64(encryptionKey);
+    ret.encryptionKey = fromBase64(encryptionKey);
 
     ret.content = EncryptedRevision.deserialize(content);
 
@@ -428,7 +428,7 @@ export class EncryptedCollectionItem {
     const ret: CollectionItemJsonWrite = {
       uid: this.uid,
       version: this.version,
-      encryptionKey: sodium.to_base64(this.encryptionKey),
+      encryptionKey: toBase64(this.encryptionKey),
       etag: this.etag,
 
       content: this.content.serialize(),
@@ -500,7 +500,7 @@ export class EncryptedCollectionItem {
   }
 
   protected getAdditionalMacData() {
-    return sodium.from_string(this.uid);
+    return fromString(this.uid);
   }
 }
 

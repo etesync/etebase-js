@@ -3,10 +3,9 @@ import "whatwg-fetch";
 import * as Etebase from "./Etebase";
 
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
-import { sodium } from "./Crypto";
 
 import { Authenticator } from "./OnlineManagers";
-import { fromBase64 } from "./Helpers";
+import { fromBase64, fromString } from "./Helpers";
 
 const testApiBase = "http://localhost:8033";
 
@@ -60,7 +59,7 @@ beforeAll(async () => {
   for (const user of [USER, USER2]) {
     try {
       const authenticator = new Authenticator(testApiBase);
-      await authenticator.signup(user, sodium.from_base64(user.salt), sodium.from_base64(user.loginPubkey), sodium.from_base64(user.pubkey), sodium.from_base64(user.encryptedContent));
+      await authenticator.signup(user, fromBase64(user.salt), fromBase64(user.loginPubkey), fromBase64(user.pubkey), fromBase64(user.encryptedContent));
     } catch (e) {
       //
     }
@@ -160,7 +159,7 @@ it("Content formats", async () => {
     expect(decryptedContent).toEqual(content);
 
     const decryptedContentUint = await col.getContent();
-    expect(decryptedContentUint).toEqual(sodium.from_string(content));
+    expect(decryptedContentUint).toEqual(fromString(content));
   }
 
   const itemManager = collectionManager.getItemManager(col);
@@ -176,7 +175,7 @@ it("Content formats", async () => {
     expect(decryptedContent).toEqual(content2);
 
     const decryptedContentUint = await item.getContent();
-    expect(decryptedContentUint).toEqual(sodium.from_string(content2));
+    expect(decryptedContentUint).toEqual(fromString(content2));
   }
 });
 
@@ -378,7 +377,7 @@ it("Collection as item", async () => {
   {
     const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
-    await verifyCollection(collections.data[0], colMeta, sodium.from_string("test"));
+    await verifyCollection(collections.data[0], colMeta, fromString("test"));
   }
 
   await col.setContent("test2");
@@ -388,13 +387,13 @@ it("Collection as item", async () => {
   {
     const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
-    await verifyCollection(collections.data[0], colMeta, sodium.from_string("test2"));
+    await verifyCollection(collections.data[0], colMeta, fromString("test2"));
   }
 
   {
     const updates = await itemManager.fetchUpdates([colItemOld, item]);
     expect(updates.data.length).toBe(1);
-    await verifyItem(updates.data[0], colMeta, sodium.from_string("test2"));
+    await verifyItem(updates.data[0], colMeta, fromString("test2"));
   }
 });
 

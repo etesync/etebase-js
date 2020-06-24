@@ -2,10 +2,10 @@ import URI from "urijs";
 
 import * as Constants from "./Constants";
 
-import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager, ready } from "./Crypto";
+import { deriveKey, concatArrayBuffers, AsymmetricCryptoManager, ready } from "./Crypto";
 export { ready, getPrettyFingerprint } from "./Crypto";
 export * from "./Exceptions";
-import { base64, fromBase64, toBase64 } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength } from "./Helpers";
 export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
 
 import {
@@ -72,7 +72,7 @@ export class Account {
     serverUrl = serverUrl ?? Constants.SERVER_URL;
     const authenticator = new Authenticator(serverUrl);
     const version = CURRENT_VERSION;
-    const salt = sodium.randombytes_buf(32);
+    const salt = randomBytes(32);
 
     const mainKey = deriveKey(salt, password);
     const mainCryptoManager = getMainCryptoManager(mainKey, version);
@@ -80,7 +80,7 @@ export class Account {
 
     const identityCryptoManager = AsymmetricCryptoManager.keygen();
 
-    const accountKey = sodium.crypto_aead_chacha20poly1305_ietf_keygen();
+    const accountKey = randomBytes(symmetricKeyLength);
     const encryptedContent = mainCryptoManager.encrypt(concatArrayBuffers(accountKey, identityCryptoManager.privkey));
 
     const loginResponse = await authenticator.signup(user, salt, loginCryptoManager.pubkey, identityCryptoManager.pubkey, encryptedContent);
@@ -105,7 +105,7 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
-    const response = sodium.from_string(JSON.stringify({
+    const response = fromString(JSON.stringify({
       username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
@@ -133,7 +133,7 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
-    const response = sodium.from_string(JSON.stringify({
+    const response = fromString(JSON.stringify({
       username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
@@ -170,7 +170,7 @@ export class Account {
 
     const encryptedContent = mainCryptoManager.encrypt(content);
 
-    const response = sodium.from_string(JSON.stringify({
+    const response = fromString(JSON.stringify({
       username,
       challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
@@ -201,24 +201,24 @@ export class Account {
 
     const ret: AccountDataStored = {
       version,
-      encryptedData: sodium.to_base64(
-        cryptoManager.encrypt(sodium.from_string(JSON.stringify(content)), Uint8Array.from([version]))
+      encryptedData: toBase64(
+        cryptoManager.encrypt(fromString(JSON.stringify(content)), Uint8Array.from([version]))
       ),
     };
 
-    return sodium.to_base64(JSON.stringify(ret));
+    return toBase64(JSON.stringify(ret));
   }
 
   public static async restore(accountDataStored_: base64, encryptionKey_?: Uint8Array) {
     await ready;
 
     const encryptionKey = encryptionKey_ ?? new Uint8Array(32);
-    const accountDataStored: AccountDataStored = JSON.parse(sodium.to_string(sodium.from_base64(accountDataStored_)));
-    const encryptedData = sodium.from_base64(accountDataStored.encryptedData);
+    const accountDataStored: AccountDataStored = JSON.parse(toString(fromBase64(accountDataStored_)));
+    const encryptedData = fromBase64(accountDataStored.encryptedData);
 
     const cryptoManager = new StorageCryptoManager(encryptionKey, accountDataStored.version);
 
-    const accountData: AccountData = JSON.parse(sodium.to_string(
+    const accountData: AccountData = JSON.parse(toString(
       cryptoManager.decrypt(encryptedData, Uint8Array.from([accountDataStored.version]))
     ));
 
@@ -238,14 +238,14 @@ export class Account {
     // FIXME: cache this
     const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
     const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
-    return mainCryptoManager.getAccountCryptoManager(content.subarray(0, sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES));
+    return mainCryptoManager.getAccountCryptoManager(content.subarray(0, symmetricKeyLength));
   }
 
   public _getIdentityCryptoManager() {
     // FIXME: cache this
     const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
     const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
-    return mainCryptoManager.getIdentityCryptoManager(content.subarray(sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES));
+    return mainCryptoManager.getIdentityCryptoManager(content.subarray(symmetricKeyLength));
   }
 }
 
@@ -259,7 +259,7 @@ export class CollectionManager {
   }
 
   public async create(meta: CollectionMetadata, content: Uint8Array | string): Promise<Collection> {
-    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
+    const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const mainCryptoManager = this.etebase._getCryptoManager();
     const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, meta, uintcontent);
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
@@ -323,7 +323,7 @@ export class CollectionItemManager {
   }
 
   public async create(meta: CollectionItemMetadata, content: Uint8Array | string): Promise<CollectionItem> {
-    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
+    const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const encryptedItem = await EncryptedCollectionItem.create(this.collectionCryptoManager, meta, uintcontent);
     return new CollectionItem(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
@@ -522,7 +522,7 @@ export class Collection {
   }
 
   public async setContent(content: Uint8Array | string): Promise<void> {
-    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
+    const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     await this.encryptedCollection.setContent(this.cryptoManager, uintcontent);
   }
 
@@ -534,7 +534,7 @@ export class Collection {
       case OutputFormat.Uint8Array:
         return ret;
       case OutputFormat.String:
-        return sodium.to_string(ret);
+        return toString(ret);
       default:
         throw new Error("Bad output format");
     }
@@ -593,7 +593,7 @@ export class CollectionItem {
   }
 
   public async setContent(content: Uint8Array | string): Promise<void> {
-    const uintcontent = (content instanceof Uint8Array) ? content : sodium.from_string(content);
+    const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     await this.encryptedItem.setContent(this.cryptoManager, uintcontent);
   }
 
@@ -605,7 +605,7 @@ export class CollectionItem {
       case OutputFormat.Uint8Array:
         return ret;
       case OutputFormat.String:
-        return sodium.to_string(ret);
+        return toString(ret);
       default:
         throw new Error("Bad output format");
     }

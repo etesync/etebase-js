@@ -1,6 +1,9 @@
+import { sodium } from "./Crypto";
+
 export type base64 = string;
 
-import { sodium } from "./Crypto";
+export const symmetricKeyLength = 32; // sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES;
+export const symmetricTagLength = 16; // sodium.crypto_aead_chacha20poly1305_ietf_ABYTES;
 
 export function randomBytes(length: number): Uint8Array {
   return sodium.randombytes_buf(length);
@@ -12,6 +15,18 @@ export function toBase64(input: string | Uint8Array): string {
 
 export function fromBase64(input: string): Uint8Array {
   return sodium.from_base64(input);
+}
+
+export function toString(input: Uint8Array): string {
+  return sodium.to_string(input);
+}
+
+export function fromString(input: string): Uint8Array {
+  return sodium.from_string(input);
+}
+
+export function memcmp(b1: Uint8Array, b2: Uint8Array): boolean {
+  return sodium.memcmp(b1, b2);
 }
 
 export function numToUint8Array(num: number): Uint8Array {
