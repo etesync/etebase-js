@@ -596,8 +596,10 @@ it("List response correctness", async () => {
   await itemManager.batch(items);
 
   {
-    const items = await itemManager.list({ inline: true });
+    let items = await itemManager.list({ inline: true });
     expect(items.data.length).toBe(5);
+    expect(items.done).toBeTruthy();
+    items = await itemManager.list({ inline: true, limit: 5 });
     expect(items.done).toBeTruthy();
   }
 
@@ -618,8 +620,11 @@ it("List response correctness", async () => {
   }
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    let collections = await collectionManager.list({ inline: true });
     expect(collections.data.length).toBe(5);
+    expect(collections.done).toBeTruthy();
+    collections = await collectionManager.list({ inline: true, limit: 5 });
+    expect(collections.done).toBeTruthy();
   }
 
   stoken = null;
@@ -968,8 +973,10 @@ it("Item revisions", async () => {
   await itemManager.batch([item]);
 
   {
-    const revisions = await itemManager.itemRevisions(item, { inline: true, iterator: item.etag });
+    let revisions = await itemManager.itemRevisions(item, { inline: true, iterator: item.etag });
     expect(revisions.data.length).toBe(5);
+    expect(revisions.done).toBeTruthy();
+    revisions = await itemManager.itemRevisions(item, { inline: true, iterator: item.etag, limit: 5 });
     expect(revisions.done).toBeTruthy();
 
     for (let i = 0 ; i < 5 ; i++) {
