@@ -5,8 +5,8 @@ import * as Constants from "./Constants";
 import { deriveKey, sodium, concatArrayBuffers, AsymmetricCryptoManager, ready } from "./Crypto";
 export { deriveKey, ready, getPrettyFingerprint } from "./Crypto";
 export * from "./Exceptions";
-import { base62, base64, fromBase64, toBase64 } from "./Helpers";
-export { base62, base64, fromBase64, toBase64, randomBytes } from "./Helpers";
+import { base64, fromBase64, toBase64 } from "./Helpers";
+export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
 
 import {
   CollectionAccessLevel,
@@ -265,7 +265,7 @@ export class CollectionManager {
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
-  public async fetch(colUid: base62, options?: FetchOptions) {
+  public async fetch(colUid: base64, options?: FetchOptions) {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const encryptedCollection = await this.onlineManager.fetch(colUid, options);
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
@@ -328,7 +328,7 @@ export class CollectionItemManager {
     return new CollectionItem(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
 
-  public async fetch(itemUid: base62, options?: ItemFetchOptions) {
+  public async fetch(itemUid: base64, options?: ItemFetchOptions) {
     const encryptedItem = await this.onlineManager.fetch(itemUid, options);
     return new CollectionItem(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
@@ -386,7 +386,7 @@ export interface SignedInvitation {
   version: number;
   username: string;
 
-  collection: base62;
+  collection: base64;
   accessLevel: CollectionAccessLevel;
 
   signedEncryptionKey: Uint8Array;

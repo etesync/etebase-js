@@ -2,7 +2,7 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, sodium, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base62, base64, toBase64 } from "./Helpers";
+import { base64, toBase64 } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -38,7 +38,7 @@ export interface CollectionItemRevisionJsonRead extends CollectionItemRevisionJs
 }
 
 export interface CollectionItemJsonWrite {
-  uid: base62;
+  uid: base64;
   version: number;
 
   encryptionKey: base64;
@@ -73,7 +73,7 @@ export interface SignedInvitationWrite {
   version: number;
   username: string;
 
-  collection: base62;
+  collection: base64;
   accessLevel: CollectionAccessLevel;
 
   signedEncryptionKey: base64;
@@ -83,10 +83,8 @@ export interface SignedInvitationRead extends SignedInvitationWrite {
   fromPubkey: base64;
 }
 
-function genUidBase62(): base62 {
-  const uid = sodium.to_base64(sodium.randombytes_buf(32)).substr(0, 24);
-  // FIXME: not the best function, but we don't care about the bias for now
-  return uid.replace(/-/g, "a").replace(/_/g, "b");
+function genUidBase64(): base64 {
+  return sodium.to_base64(sodium.randombytes_buf(32)).substr(0, 24);
 }
 
 export class MainCryptoManager extends CryptoManager {
@@ -390,7 +388,7 @@ export class EncryptedCollection {
 }
 
 export class EncryptedCollectionItem {
-  public uid: base62;
+  public uid: base64;
   public version: number;
   private encryptionKey: Uint8Array;
   private content: EncryptedRevision<CollectionItemCryptoManager>;
@@ -399,7 +397,7 @@ export class EncryptedCollectionItem {
 
   public static async create(parentCryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
-    ret.uid = genUidBase62();
+    ret.uid = genUidBase64();
     ret.version = Constants.CURRENT_VERSION;
     ret.encryptionKey = parentCryptoManager.encrypt(sodium.crypto_aead_chacha20poly1305_ietf_keygen());
 

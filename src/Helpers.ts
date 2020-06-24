@@ -1,4 +1,3 @@
-export type base62 = string;
 export type base64 = string;
 
 import { sodium } from "./Crypto";

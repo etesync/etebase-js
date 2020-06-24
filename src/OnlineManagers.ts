@@ -3,7 +3,7 @@ import URI from "urijs";
 export { deriveKey, ready } from "./Crypto";
 import { HTTPError, NetworkError } from "./Exceptions";
 export * from "./Exceptions";
-import { base62, base64, toBase64 } from "./Helpers";
+import { base64, toBase64 } from "./Helpers";
 
 import {
   CollectionAccessLevel,
@@ -69,7 +69,7 @@ export type CollectionMemberListResponse<T> = IteratorListResponse<T>;
 export type CollectionInvitationListResponse<T> = IteratorListResponse<T>;
 
 export interface RemovedCollection {
-  uid: base62;
+  uid: base64;
 }
 
 export interface CollectionMember {
