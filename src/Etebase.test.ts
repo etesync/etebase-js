@@ -968,7 +968,7 @@ it("Item revisions", async () => {
   await itemManager.batch([item]);
 
   {
-    const revisions = await itemManager.itemRevisions(item, { inline: true });
+    const revisions = await itemManager.itemRevisions(item, { inline: true, iterator: item.etag });
     expect(revisions.data.length).toBe(5);
     expect(revisions.done).toBeTruthy();
 
@@ -983,7 +983,7 @@ it("Item revisions", async () => {
 
   // Iterate through revisions
   {
-    let iterator: string | null = null;
+    let iterator: string | null = item.etag;
     for (let i = 0 ; i < 2 ; i++) {
       const revisions = await itemManager.itemRevisions(item, { inline: true, limit: 2, iterator });
       expect(revisions.done).toBe(i === 2);
