@@ -1,5 +1,5 @@
 {
-  "name": "backendless-js",
+  "name": "etebase",
   "version": "0.1.0",
   "description": "Etebase TypeScript API for the web, node and react-native",
   "main": "dist/Etebase.js",
