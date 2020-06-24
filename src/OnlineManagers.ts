@@ -87,7 +87,7 @@ export interface ListFetchOptions {
 
 export interface FetchOptions extends ListFetchOptions {
   stoken?: string | null;
-  inline?: boolean;
+  prefetch?: boolean;
 }
 
 export interface ItemFetchOptions extends FetchOptions {
@@ -103,7 +103,7 @@ export type MemberFetchOptions = IteratorFetchOptions;
 export type InvitationFetchOptions = IteratorFetchOptions;
 
 export interface RevisionsFetchOptions extends IteratorFetchOptions {
-  inline?: boolean;
+  prefetch?: boolean;
 }
 
 interface AccountOnlineData {
@@ -279,18 +279,14 @@ class BaseManager extends BaseNetwork {
       return this.apiBase;
     }
 
-    const { stoken, inline, limit, withCollection, iterator } = options;
-
-    if (!inline) {
-      console.warn("inline must be set as the non-inline variant is not yet implemented.");
-    }
+    const { stoken, prefetch, limit, withCollection, iterator } = options;
 
     return this.apiBase.clone().search({
       stoken: (stoken !== null) ? stoken : undefined,
       iterator: (iterator !== null) ? iterator : undefined,
       limit: (limit && (limit > 0)) ? limit : undefined,
       withCollection: withCollection,
-      inline: true,
+      prefetch,
     });
   }
 }

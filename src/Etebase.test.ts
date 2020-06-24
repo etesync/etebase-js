@@ -194,25 +194,25 @@ it("Simple collection sync", async () => {
   await verifyCollection(col, meta, content);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(0);
   }
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta, content);
   }
 
   {
-    col = await collectionManager.fetch(col.uid, { inline: true });
-    const collections = await collectionManager.list({ inline: true, stoken: col.stoken });
+    col = await collectionManager.fetch(col.uid);
+    const collections = await collectionManager.list({ stoken: col.stoken });
     expect(collections.data.length).toBe(0);
   }
 
-  const colOld = await collectionManager.fetch(col.uid, { inline: true });
+  const colOld = await collectionManager.fetch(col.uid);
 
   const meta2 = {
     type: "COLTYPE",
@@ -225,13 +225,13 @@ it("Simple collection sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta2, content);
   }
 
   {
-    const collections = await collectionManager.list({ inline: true, stoken: col.stoken });
+    const collections = await collectionManager.list({ stoken: col.stoken });
     expect(collections.data.length).toBe(1);
   }
 
@@ -251,7 +251,7 @@ it("Simple collection sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta2, content2);
   }
@@ -272,7 +272,7 @@ it("Simple item sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
   }
 
@@ -289,7 +289,7 @@ it("Simple item sync", async () => {
   await itemManager.batch([item]);
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(1);
     await verifyItem(items.data[0], meta, content);
   }
@@ -303,7 +303,7 @@ it("Simple item sync", async () => {
   await itemManager.batch([item]);
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(1);
     await verifyItem(items.data[0], meta2, content);
   }
@@ -314,7 +314,7 @@ it("Simple item sync", async () => {
   await itemManager.batch([item]);
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(1);
     await verifyItem(items.data[0], meta2, content2);
   }
@@ -335,7 +335,7 @@ it("Collection as item", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
   }
 
@@ -343,9 +343,9 @@ it("Collection as item", async () => {
 
   // Verify withCollection works
   {
-    let items = await itemManager.list({ inline: true });
+    let items = await itemManager.list();
     expect(items.data.length).toBe(0);
-    items = await itemManager.list({ inline: true, withCollection: true });
+    items = await itemManager.list({ withCollection: true });
     expect(items.data.length).toBe(1);
     await verifyItem(items.data[0], colMeta, colContent);
   }
@@ -361,14 +361,14 @@ it("Collection as item", async () => {
   await itemManager.batch([item]);
 
   {
-    let items = await itemManager.list({ inline: true });
+    let items = await itemManager.list();
     expect(items.data.length).toBe(1);
-    items = await itemManager.list({ inline: true, withCollection: true });
+    items = await itemManager.list({ withCollection: true });
     expect(items.data.length).toBe(2);
     await verifyItem(items.data[0], colMeta, colContent);
   }
 
-  const colItemOld = await itemManager.fetch(col.uid, { inline: true });
+  const colItemOld = await itemManager.fetch(col.uid);
 
   // Manipulate the collection with batch/transaction
   await col.setContent("test");
@@ -376,7 +376,7 @@ it("Collection as item", async () => {
   await itemManager.batch([col.item]);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], colMeta, sodium.from_string("test"));
   }
@@ -386,13 +386,13 @@ it("Collection as item", async () => {
   await itemManager.transaction([col.item]);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], colMeta, sodium.from_string("test2"));
   }
 
   {
-    const updates = await itemManager.fetchUpdates([colItemOld, item], { inline: true });
+    const updates = await itemManager.fetchUpdates([colItemOld, item]);
     expect(updates.data.length).toBe(1);
     await verifyItem(updates.data[0], colMeta, sodium.from_string("test2"));
   }
@@ -427,7 +427,7 @@ it("Item multiple collections", async () => {
   await collectionManager.upload(col2);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(2);
   }
 
@@ -458,12 +458,12 @@ it("Item multiple collections", async () => {
 
   // Verify we also set it correctly when fetched
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     const itemFetched = items.data[0];
     expect(item.collectionUid).toEqual(itemFetched.collectionUid);
   }
   {
-    const itemFetched = await itemManager.fetch(item.uid, { inline: true });
+    const itemFetched = await itemManager.fetch(item.uid);
     expect(item.collectionUid).toEqual(itemFetched.collectionUid);
   }
 });
@@ -483,7 +483,7 @@ it("Collection and item deletion", async () => {
 
   await collectionManager.upload(col);
 
-  const collections = await collectionManager.list({ inline: true });
+  const collections = await collectionManager.list();
 
   const itemManager = collectionManager.getItemManager(col);
   const meta: Etebase.CollectionItemMetadata = {
@@ -541,7 +541,7 @@ it("Empty content", async () => {
   await collectionManager.upload(col);
 
   {
-    col = await collectionManager.fetch(col.uid, { inline: true });
+    col = await collectionManager.fetch(col.uid);
     await verifyCollection(col, meta, content);
   }
 
@@ -555,7 +555,7 @@ it("Empty content", async () => {
   await itemManager.transaction([item]);
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     const itemFetched = items.data[0];
     verifyItem(itemFetched, itemMeta, content);
   }
@@ -575,7 +575,7 @@ it("List response correctness", async () => {
 
   await collectionManager.upload(col);
 
-  const collections = await collectionManager.list({ inline: true });
+  const collections = await collectionManager.list();
   expect(collections.data.length).toBe(1);
 
   const itemManager = collectionManager.getItemManager(col);
@@ -596,16 +596,16 @@ it("List response correctness", async () => {
   await itemManager.batch(items);
 
   {
-    let items = await itemManager.list({ inline: true });
+    let items = await itemManager.list();
     expect(items.data.length).toBe(5);
     expect(items.done).toBeTruthy();
-    items = await itemManager.list({ inline: true, limit: 5 });
+    items = await itemManager.list({ limit: 5 });
     expect(items.done).toBeTruthy();
   }
 
   let stoken: string | null = null;
   for (let i = 0 ; i < 3 ; i++) {
-    const items = await itemManager.list({ inline: true, limit: 2, stoken });
+    const items = await itemManager.list({ limit: 2, stoken });
     expect(items.done).toBe(i === 2);
     stoken = items.stoken as string;
   }
@@ -620,16 +620,16 @@ it("List response correctness", async () => {
   }
 
   {
-    let collections = await collectionManager.list({ inline: true });
+    let collections = await collectionManager.list();
     expect(collections.data.length).toBe(5);
     expect(collections.done).toBeTruthy();
-    collections = await collectionManager.list({ inline: true, limit: 5 });
+    collections = await collectionManager.list({ limit: 5 });
     expect(collections.done).toBeTruthy();
   }
 
   stoken = null;
   for (let i = 0 ; i < 3 ; i++) {
-    const collections = await collectionManager.list({ inline: true, limit: 2, stoken });
+    const collections = await collectionManager.list({ limit: 2, stoken });
     expect(collections.done).toBe(i === 2);
     stoken = collections.stoken as string;
   }
@@ -650,7 +650,7 @@ it("Item transactions", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
   }
 
@@ -666,12 +666,12 @@ it("Item transactions", async () => {
   const deps: Etebase.CollectionItem[] = [item];
 
   await itemManager.transaction(deps);
-  const itemOld = await itemManager.fetch(item.uid, { inline: true });
+  const itemOld = await itemManager.fetch(item.uid);
 
   const items: Etebase.CollectionItem[] = [];
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(1);
   }
 
@@ -689,7 +689,7 @@ it("Item transactions", async () => {
   await itemManager.transaction(items, deps);
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(6);
   }
 
@@ -701,7 +701,7 @@ it("Item transactions", async () => {
   await itemManager.transaction([item], items);
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(6);
   }
 
@@ -724,7 +724,7 @@ it("Item transactions", async () => {
 
   {
     const meta3 = { ...meta, someval: "some2" };
-    const item2 = await itemManager.fetch(items[0].uid, { inline: true });
+    const item2 = await itemManager.fetch(items[0].uid);
     await item2.setMeta(meta3);
 
     const itemOld2 = itemOld._clone();
@@ -734,7 +734,7 @@ it("Item transactions", async () => {
     await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(Etebase.HTTPError);
 
     // Verify it hasn't changed after the transaction above failed
-    const item2Fetch = await itemManager.fetch(item2.uid, { inline: true });
+    const item2Fetch = await itemManager.fetch(item2.uid);
     expect(await item2Fetch.getMeta()).not.toEqual(await item2.getMeta());
   }
 
@@ -743,11 +743,11 @@ it("Item transactions", async () => {
     const meta3 = { ...meta, someval: "some2" };
     await item.setMeta(meta3);
 
-    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const newCol = await collectionManager.fetch(col.uid);
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.transaction([item], undefined, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.transaction([item], undefined, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.HTTPError);
 
     await itemManager.transaction([item], undefined, { stoken });
   }
@@ -768,7 +768,7 @@ it("Item batch stoken", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
   }
 
@@ -786,7 +786,7 @@ it("Item batch stoken", async () => {
   const items: Etebase.CollectionItem[] = [];
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(1);
   }
 
@@ -824,11 +824,11 @@ it("Item batch stoken", async () => {
     const meta3 = { ...meta, someval: "some2" };
     await item.setMeta(meta3);
 
-    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const newCol = await collectionManager.fetch(col.uid);
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.batch([item], null, { stoken: badEtag, inline: true })).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.batch([item], null, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.HTTPError);
 
     await itemManager.batch([item], null, { stoken });
   }
@@ -849,7 +849,7 @@ it("Item fetch updates", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
   }
 
@@ -867,7 +867,7 @@ it("Item fetch updates", async () => {
   const items: Etebase.CollectionItem[] = [];
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(1);
   }
 
@@ -885,7 +885,7 @@ it("Item fetch updates", async () => {
   await itemManager.batch(items);
 
   {
-    const items = await itemManager.list({ inline: true });
+    const items = await itemManager.list();
     expect(items.data.length).toBe(6);
   }
 
@@ -893,7 +893,7 @@ it("Item fetch updates", async () => {
   let stoken: string | null = null;
 
   {
-    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const newCol = await collectionManager.fetch(col.uid);
     stoken = newCol.stoken;
   }
 
@@ -901,7 +901,7 @@ it("Item fetch updates", async () => {
     let updates = await itemManager.fetchUpdates(items);
     expect(updates.data.length).toBe(0);
 
-    updates = await itemManager.fetchUpdates(items, { stoken, inline: true });
+    updates = await itemManager.fetchUpdates(items, { stoken });
     expect(updates.data.length).toBe(0);
   }
 
@@ -917,26 +917,26 @@ it("Item fetch updates", async () => {
     let updates = await itemManager.fetchUpdates(items);
     expect(updates.data.length).toBe(1);
 
-    updates = await itemManager.fetchUpdates(items, { stoken, inline: true });
+    updates = await itemManager.fetchUpdates(items, { stoken });
     expect(updates.data.length).toBe(1);
   }
 
   {
-    const item2 = await itemManager.fetch(items[0].uid, { inline: true });
+    const item2 = await itemManager.fetch(items[0].uid);
     let updates = await itemManager.fetchUpdates([item2]);
     expect(updates.data.length).toBe(0);
 
-    updates = await itemManager.fetchUpdates([item2], { stoken, inline: true });
+    updates = await itemManager.fetchUpdates([item2], { stoken });
     expect(updates.data.length).toBe(1);
   }
 
   {
-    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const newCol = await collectionManager.fetch(col.uid);
     stoken = newCol.stoken;
   }
 
   {
-    const updates = await itemManager.fetchUpdates(items, { stoken, inline: true });
+    const updates = await itemManager.fetchUpdates(items, { stoken });
     expect(updates.data.length).toBe(0);
   }
 });
@@ -973,10 +973,10 @@ it("Item revisions", async () => {
   await itemManager.batch([item]);
 
   {
-    let revisions = await itemManager.itemRevisions(item, { inline: true, iterator: item.etag });
+    let revisions = await itemManager.itemRevisions(item, { iterator: item.etag });
     expect(revisions.data.length).toBe(5);
     expect(revisions.done).toBeTruthy();
-    revisions = await itemManager.itemRevisions(item, { inline: true, iterator: item.etag, limit: 5 });
+    revisions = await itemManager.itemRevisions(item, { iterator: item.etag, limit: 5 });
     expect(revisions.done).toBeTruthy();
 
     for (let i = 0 ; i < 5 ; i++) {
@@ -992,7 +992,7 @@ it("Item revisions", async () => {
   {
     let iterator: string | null = item.etag;
     for (let i = 0 ; i < 2 ; i++) {
-      const revisions = await itemManager.itemRevisions(item, { inline: true, limit: 2, iterator });
+      const revisions = await itemManager.itemRevisions(item, { limit: 2, iterator });
       expect(revisions.done).toBe(i === 2);
       iterator = revisions.iterator as string;
     }
@@ -1015,7 +1015,7 @@ it("Collection invitations", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
   }
 
@@ -1058,7 +1058,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.reject(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list({ inline: true });
+    const collections = await collectionManager2.list();
     expect(collections.data.length).toBe(0);
   }
 
@@ -1076,7 +1076,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.reject(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list({ inline: true });
+    const collections = await collectionManager2.list();
     expect(collections.data.length).toBe(0);
   }
 
@@ -1094,7 +1094,7 @@ it("Collection invitations", async () => {
 
   let stoken;
   {
-    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const newCol = await collectionManager.fetch(col.uid);
     stoken = newCol.stoken;
   }
 
@@ -1105,7 +1105,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.accept(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list({ inline: true });
+    const collections = await collectionManager2.list();
     expect(collections.data.length).toBe(1);
 
     await collections.data[0].getMeta();
@@ -1116,13 +1116,13 @@ it("Collection invitations", async () => {
     expect(invitations.data.length).toBe(0);
   }
 
-  const col2 = await collectionManager2.fetch(col.uid, { inline: true });
+  const col2 = await collectionManager2.fetch(col.uid);
   const collectionMemberManager2 = new Etebase.CollectionMemberManager(etebase2, collectionManager2, col2);
 
   await collectionMemberManager2.leave();
 
   {
-    const collections = await collectionManager2.list({ inline: true, stoken });
+    const collections = await collectionManager2.list({ stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
   }
@@ -1135,10 +1135,10 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.accept(invitations.data[0]);
 
   {
-    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const newCol = await collectionManager.fetch(col.uid);
     expect(stoken).not.toEqual(newCol.stoken);
 
-    const collections = await collectionManager2.list({ inline: true, stoken });
+    const collections = await collectionManager2.list({ stoken });
     expect(collections.data.length).toBe(1);
     expect(collections.data[0].uid).toEqual(col.uid);
     expect(collections.removedMemberships).not.toBeDefined();
@@ -1146,13 +1146,13 @@ it("Collection invitations", async () => {
 
   // Remove
   {
-    const newCol = await collectionManager.fetch(col.uid, { inline: true });
+    const newCol = await collectionManager.fetch(col.uid);
     expect(stoken).not.toEqual(newCol.stoken);
 
     const collectionMemberManager = new Etebase.CollectionMemberManager(etebase, collectionManager, col);
     await collectionMemberManager.remove(USER2.username);
 
-    const collections = await collectionManager2.list({ inline: true, stoken });
+    const collections = await collectionManager2.list({ stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
 
@@ -1160,7 +1160,7 @@ it("Collection invitations", async () => {
   }
 
   {
-    const collections = await collectionManager2.list({ inline: true, stoken });
+    const collections = await collectionManager2.list({ stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
   }
@@ -1241,7 +1241,7 @@ it("Collection access level", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list({ inline: true });
+    const collections = await collectionManager.list();
     expect(collections.data.length).toBe(1);
   }
 
@@ -1281,7 +1281,7 @@ it("Collection access level", async () => {
   await collectionInvitationManager2.accept(invitations.data[0]);
 
 
-  const col2 = await collectionManager2.fetch(col.uid, { inline: true });
+  const col2 = await collectionManager2.fetch(col.uid);
   const itemManager2 = collectionManager2.getItemManager(col2);
 
   // Item creation: success
@@ -1378,7 +1378,7 @@ it("Session store and restore", async () => {
 
     // Verify we can access the data
     const collectionManager2 = etebase2.getCollectionManager();
-    const collections = await collectionManager2.list({ inline: true });
+    const collections = await collectionManager2.list();
     expect(collections.data.length).toBe(1);
     expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
   }
@@ -1391,7 +1391,7 @@ it("Session store and restore", async () => {
 
     // Verify we can access the data
     const collectionManager2 = etebase2.getCollectionManager();
-    const collections = await collectionManager2.list({ inline: true });
+    const collections = await collectionManager2.list();
     expect(collections.data.length).toBe(1);
     expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
   }
@@ -1418,7 +1418,7 @@ it.skip("Login and password change", async () => {
 
   {
     // Verify we can still access the data
-    const collections = await collectionManager2.list({ inline: true });
+    const collections = await collectionManager2.list();
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
@@ -1432,7 +1432,7 @@ it.skip("Login and password change", async () => {
 
   {
     // Verify we can still access the data
-    const collections = await collectionManager3.list({ inline: true });
+    const collections = await collectionManager3.list();
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
