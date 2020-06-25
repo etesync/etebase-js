@@ -24,7 +24,7 @@ export function concatArrayBuffersArrays(buffers: Uint8Array[]): Uint8Array {
   return ret;
 }
 
-export function deriveKey(salt: Uint8Array, password: string): Uint8Array {
+export async function deriveKey(salt: Uint8Array, password: string): Promise<Uint8Array> {
   salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
 
   return sodium.crypto_pwhash(

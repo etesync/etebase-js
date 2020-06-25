@@ -74,7 +74,7 @@ export class Account {
     const version = CURRENT_VERSION;
     const salt = randomBytes(32);
 
-    const mainKey = deriveKey(salt, password);
+    const mainKey = await deriveKey(salt, password);
     const mainCryptoManager = getMainCryptoManager(mainKey, version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
@@ -101,7 +101,7 @@ export class Account {
     const authenticator = new Authenticator(serverUrl);
     const loginChallenge = await authenticator.getLoginChallenge(username);
 
-    const mainKey = deriveKey(fromBase64(loginChallenge.salt), password);
+    const mainKey = await deriveKey(fromBase64(loginChallenge.salt), password);
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
@@ -164,7 +164,7 @@ export class Account {
     const content = oldMainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
     const oldLoginCryptoManager = oldMainCryptoManager.getLoginCryptoManager();
 
-    const mainKey = deriveKey(fromBase64(loginChallenge.salt), password);
+    const mainKey = await deriveKey(fromBase64(loginChallenge.salt), password);
     const mainCryptoManager = getMainCryptoManager(mainKey, this.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
