@@ -18,6 +18,9 @@
     "libsodium-wrappers": "^0.7.6",
     "urijs": "^1.19.1"
   },
+  "optionalDependencies": {
+    "react-native-sodium": "^0.3.8"
+  },
   "devDependencies": {
     "@babel/core": "^7.9.0",
     "@babel/plugin-proposal-class-properties": "^7.8.3",
@@ -38,6 +41,7 @@
     "core-js": "3",
     "eslint": "^6.6.0",
     "jest": "^24.9.0",
+    "react-native-sodium": "^0.3.8",
     "typescript": "^3.7.1",
     "whatwg-fetch": "^3.0.0"
   },

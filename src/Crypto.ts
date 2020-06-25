@@ -1,10 +1,23 @@
+// Shim document if it doesn't exist (e.g. on React native)
+(global as any).document = (global as any).document || {};
 import _sodium from "libsodium-wrappers";
 
 import * as Constants from "./Constants";
 import { numToUint8Array } from "./Helpers";
 
+import type rnsodiumType from "react-native-sodium";
+
 export const sodium = _sodium;
-export const ready = _sodium.ready;
+
+let rnsodium: typeof rnsodiumType;
+export const ready = (async () => {
+  try {
+    rnsodium = (await require("react-native-sodium")).default;
+  } catch (e) {
+    //
+  }
+  await sodium.ready;
+})();
 
 export function concatArrayBuffers(buffer1: Uint8Array, buffer2: Uint8Array): Uint8Array {
   const ret = new Uint8Array(buffer1.length + buffer2.length);
@@ -26,6 +39,18 @@ export function concatArrayBuffersArrays(buffers: Uint8Array[]): Uint8Array {
 
 export async function deriveKey(salt: Uint8Array, password: string): Promise<Uint8Array> {
   salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+
+  if (rnsodium) {
+    const ret = await rnsodium.crypto_pwhash(
+      32,
+      sodium.to_base64(sodium.from_string(password), sodium.base64_variants.ORIGINAL),
+      sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+      sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+      sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+      sodium.crypto_pwhash_ALG_DEFAULT
+    );
+    return sodium.from_base64(ret, sodium.base64_variants.ORIGINAL);
+  }
 
   return sodium.crypto_pwhash(
     32,
