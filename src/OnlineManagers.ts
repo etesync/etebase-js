@@ -1,7 +1,7 @@
 import URI from "urijs";
 
 export { deriveKey, ready } from "./Crypto";
-import { HTTPError, NetworkError } from "./Exceptions";
+import { HTTPError, NetworkError, EncryptionPasswordError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, toBase64 } from "./Helpers";
 
@@ -159,7 +159,7 @@ class BaseNetwork {
       return body;
     } else {
       if (json) {
-        throw new HTTPError(response.status, json.detail || json.non_field_errors || JSON.stringify(json));
+        throw new HTTPError(response.status, json.detail || json.non_field_errors || JSON.stringify(json), json);
       } else {
         throw new HTTPError(response.status, body);
       }
@@ -171,6 +171,19 @@ export class Authenticator extends BaseNetwork {
   constructor(apiBase: string) {
     super(apiBase);
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1", "authentication"]);
+  }
+
+  public async newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBase: URI = this.apiBase): Promise<T> {
+    try {
+      return await super.newCall(segments, extra, apiBase);
+    } catch (e) {
+      if (e instanceof HTTPError) {
+        if (e.content?.code === "login_bad_signature") {
+          throw new EncryptionPasswordError(e.content.detail || e.message);
+        }
+      }
+      throw e;
+    }
   }
 
   public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedContent: Uint8Array): Promise<LoginResponse> {

@@ -1423,7 +1423,7 @@ it.skip("Login and password change", async () => {
 
   await etebase2.logout();
 
-  await expect(Etebase.Account.login(USER2.username, USER2.password, testApiBase)).rejects.toBeInstanceOf(Etebase.HTTPError);
+  await expect(Etebase.Account.login(USER2.username, USER2.password, testApiBase)).rejects.toBeInstanceOf(Etebase.EncryptionPasswordError);
 
   const etebase3 = await Etebase.Account.login(USER2.username, anotherPassword, testApiBase);
 
