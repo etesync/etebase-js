@@ -2,7 +2,7 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, toString, randomBytes, memcmp, symmetricKeyLength, symmetricTagLength } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -188,22 +188,21 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   public async verify(cryptoManager: CM, additionalData: Uint8Array) {
-    const calculatedMac = await this.calculateMac(cryptoManager, additionalData);
-    if (memcmp(
-      fromBase64(this.uid),
-      calculatedMac
-    )) {
+    const adHash = await this.calculateAdHash(cryptoManager, additionalData);
+    const mac = fromBase64(this.uid);
+
+    try {
+      cryptoManager.verify(this.meta, mac, adHash);
       return true;
-    } else {
-      throw new IntegrityError(`mac verification failed. Expected: ${this.uid} got: ${toBase64(calculatedMac)}`);
+    } catch (e) {
+      throw new IntegrityError(`mac verification failed.`);
     }
   }
 
-  private async calculateMac(cryptoManager: CM, additionalData: Uint8Array) {
+  private async calculateAdHash(cryptoManager: CM, additionalData: Uint8Array) {
     const cryptoMac = cryptoManager.getCryptoMac();
     cryptoMac.updateWithLenPrefix(Uint8Array.from([(this.deleted) ? 1 : 0]));
     cryptoMac.updateWithLenPrefix(additionalData);
-    cryptoMac.updateWithLenPrefix(this.meta.subarray(-1 * symmetricTagLength));
     this.chunks.forEach((chunk) =>
       cryptoMac.updateWithLenPrefix(fromBase64(chunk[0]))
     );
@@ -211,22 +210,25 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     return cryptoMac.finalize();
   }
 
-  private async updateMac(cryptoManager: CM, additionalData: Uint8Array) {
-    const mac = await this.calculateMac(cryptoManager, additionalData);
-    this.uid = toBase64(mac);
-  }
-
   public async setMeta(cryptoManager: CM, additionalData: Uint8Array, meta: any): Promise<void> {
-    this.meta = cryptoManager.encrypt(fromString(JSON.stringify(meta)), null);
+    const adHash = await this.calculateAdHash(cryptoManager, additionalData);
 
-    await this.updateMac(cryptoManager, additionalData);
+    const encContent = cryptoManager.encryptDetached(fromString(JSON.stringify(meta)), adHash);
+
+    this.meta = encContent[1];
+    this.uid = toBase64(encContent[0]);
   }
 
-  public async decryptMeta(cryptoManager: CM): Promise<any> {
-    return JSON.parse(toString(cryptoManager.decrypt(this.meta, null)));
+  public async decryptMeta(cryptoManager: CM, additionalData: Uint8Array): Promise<any> {
+    const mac = fromBase64(this.uid);
+    const adHash = await this.calculateAdHash(cryptoManager, additionalData);
+
+    return JSON.parse(toString(cryptoManager.decryptDetached(this.meta, mac, adHash)));
   }
 
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
+    const meta = await this.decryptMeta(cryptoManager, additionalData);
+
     if (content.length > 0) {
       // FIXME: need to actually chunkify
       const encContent = cryptoManager.encryptDetached(content);
@@ -235,12 +237,15 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       this.chunks = [];
     }
 
-    await this.updateMac(cryptoManager, additionalData);
+    await this.setMeta(cryptoManager, additionalData, meta);
   }
 
   public async delete(cryptoManager: CM, additionalData: Uint8Array): Promise<void> {
+    const meta = await this.decryptMeta(cryptoManager, additionalData);
+
     this.deleted = true;
-    await this.updateMac(cryptoManager, additionalData);
+
+    await this.setMeta(cryptoManager, additionalData, meta);
   }
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
@@ -454,7 +459,7 @@ export class EncryptedCollectionItem {
 
   public async decryptMeta(cryptoManager: CollectionItemCryptoManager): Promise<CollectionItemMetadata> {
     this.verify(cryptoManager);
-    return this.content.decryptMeta(cryptoManager);
+    return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
   }
 
   public async setContent(cryptoManager: CollectionItemCryptoManager, content: Uint8Array): Promise<void> {
