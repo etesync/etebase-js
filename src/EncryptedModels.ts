@@ -1,8 +1,8 @@
 import * as Constants from "./Constants";
 
-import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays, concatArrayBuffers } from "./Crypto";
+import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, toString, randomBytes, memcmp, symmetricKeyLength, symmetricTagLength, symmetricNonceSize } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, memcmp, symmetricKeyLength, symmetricTagLength } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -235,10 +235,8 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
     if (content.length > 0) {
       // FIXME: need to actually chunkify
-      const nonce = randomBytes(symmetricNonceSize);
-      const encContent = cryptoManager.encryptDetachedNonce(content, nonce);
-      const macNonce = concatArrayBuffers(nonce, encContent[0]);
-      this.chunks = [[toBase64(macNonce), encContent[1]]];
+      const encContent = cryptoManager.encryptDetached(content);
+      this.chunks = [[toBase64(encContent[0]), encContent[1]]];
     } else {
       this.chunks = [];
     }
@@ -253,10 +251,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
     return concatArrayBuffersArrays(
-      this.chunks.map((chunk) => {
-        const macNonce = fromBase64(chunk[0]);
-        return cryptoManager.decryptDetachedNonce(chunk[1]!, macNonce.subarray(symmetricNonceSize), macNonce.subarray(0, symmetricNonceSize));
-      }))
+      this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, fromBase64(chunk[0]))))
     ;
   }
 

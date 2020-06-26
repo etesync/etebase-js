@@ -104,15 +104,6 @@ export class CryptoManager {
     return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(null, ciphertext, mac, additionalData, nonce, this.cipherKey);
   }
 
-  public encryptDetachedNonce(message: Uint8Array, nonce: Uint8Array, additionalData: Uint8Array | null = null): [Uint8Array, Uint8Array] {
-    const ret = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt_detached(message, additionalData, null, nonce, this.cipherKey);
-    return [ret.mac, ret.ciphertext];
-  }
-
-  public decryptDetachedNonce(ciphertext: Uint8Array, mac: Uint8Array, nonce: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
-    return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(null, ciphertext, mac, additionalData, nonce, this.cipherKey);
-  }
-
   public deriveSubkey(salt: Uint8Array): Uint8Array {
     return sodium.crypto_generichash(32, this.subDerivationKey, salt);
   }
