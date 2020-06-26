@@ -26,7 +26,6 @@ export type ChunkJson = [base64, base64?];
 
 export interface CollectionItemRevisionJsonWrite {
   uid: base64;
-  salt: base64;
   meta: base64;
 
   chunks: ChunkJson[];
@@ -145,7 +144,6 @@ export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: num
 
 class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public uid: base64;
-  public salt: Uint8Array;
   public meta: Uint8Array;
   public deleted: boolean;
 
@@ -165,10 +163,9 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   public static deserialize<CM extends CollectionItemCryptoManager>(json: CollectionItemRevisionJsonRead) {
-    const { uid, salt, meta, chunks, deleted } = json;
+    const { uid, meta, chunks, deleted } = json;
     const ret = new EncryptedRevision<CM>();
     ret.uid = uid;
-    ret.salt = fromBase64(salt);
     ret.meta = fromBase64(meta);
     ret.deleted = deleted;
     ret.chunks = chunks.map((chunk) => {
@@ -181,7 +178,6 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public serialize() {
     const ret: CollectionItemRevisionJsonWrite = {
       uid: this.uid,
-      salt: toBase64(this.salt),
       meta: toBase64(this.meta),
       deleted: this.deleted,
 
@@ -206,7 +202,6 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   private async calculateMac(cryptoManager: CM, additionalData: Uint8Array) {
     const cryptoMac = cryptoManager.getCryptoMac();
     cryptoMac.updateWithLenPrefix(Uint8Array.from([(this.deleted) ? 1 : 0]));
-    cryptoMac.updateWithLenPrefix(this.salt);
     cryptoMac.updateWithLenPrefix(additionalData);
     cryptoMac.updateWithLenPrefix(this.meta.subarray(-1 * symmetricTagLength));
     this.chunks.forEach((chunk) =>
@@ -217,7 +212,6 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   private async updateMac(cryptoManager: CM, additionalData: Uint8Array) {
-    this.salt = randomBytes(24);
     const mac = await this.calculateMac(cryptoManager, additionalData);
     this.uid = toBase64(mac);
   }
@@ -258,7 +252,6 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public clone() {
     const rev = new EncryptedRevision<CM>();
     rev.uid = this.uid;
-    rev.salt = this.salt;
     rev.meta = this.meta;
     rev.chunks = this.chunks;
     rev.deleted = this.deleted;
