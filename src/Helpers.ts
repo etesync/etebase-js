@@ -2,8 +2,9 @@ import { sodium } from "./Crypto";
 
 export type base64 = string;
 
-export const symmetricKeyLength = 32; // sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES;
-export const symmetricTagLength = 16; // sodium.crypto_aead_chacha20poly1305_ietf_ABYTES;
+export const symmetricKeyLength = 32; // sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES;
+export const symmetricTagLength = 16; // sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
+export const symmetricNonceSize = 24; // sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
 
 export function randomBytes(length: number): Uint8Array {
   return sodium.randombytes_buf(length);

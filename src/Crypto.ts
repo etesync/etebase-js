@@ -3,7 +3,7 @@
 import _sodium from "libsodium-wrappers";
 
 import * as Constants from "./Constants";
-import { numToUint8Array } from "./Helpers";
+import { numToUint8Array, symmetricNonceSize } from "./Helpers";
 
 import type rnsodiumType from "react-native-sodium";
 
@@ -81,28 +81,26 @@ export class CryptoManager {
   }
 
   public encrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
-    const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+    const nonce = sodium.randombytes_buf(symmetricNonceSize);
     return concatArrayBuffers(nonce,
       sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(message, additionalData, null, nonce, this.cipherKey));
   }
 
   public decrypt(nonceCiphertext: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
-    const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
-    const nonce = nonceCiphertext.subarray(0, nonceSize);
-    const ciphertext = nonceCiphertext.subarray(nonceSize);
+    const nonce = nonceCiphertext.subarray(0, symmetricNonceSize);
+    const ciphertext = nonceCiphertext.subarray(symmetricNonceSize);
     return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, additionalData, nonce, this.cipherKey);
   }
 
   public encryptDetached(message: Uint8Array, additionalData: Uint8Array | null = null): [Uint8Array, Uint8Array] {
-    const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+    const nonce = sodium.randombytes_buf(symmetricNonceSize);
     const ret = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt_detached(message, additionalData, null, nonce, this.cipherKey);
     return [ret.mac, concatArrayBuffers(nonce, ret.ciphertext)];
   }
 
   public decryptDetached(nonceCiphertext: Uint8Array, mac: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
-    const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
-    const nonce = nonceCiphertext.subarray(0, nonceSize);
-    const ciphertext = nonceCiphertext.subarray(nonceSize);
+    const nonce = nonceCiphertext.subarray(0, symmetricNonceSize);
+    const ciphertext = nonceCiphertext.subarray(symmetricNonceSize);
     return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(null, ciphertext, mac, additionalData, nonce, this.cipherKey);
   }
 
