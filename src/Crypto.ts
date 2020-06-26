@@ -67,6 +67,7 @@ export class CryptoManager {
   protected cipherKey: Uint8Array;
   protected macKey: Uint8Array;
   protected asymKeySeed: Uint8Array;
+  protected subDerivationKey: Uint8Array;
 
   constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
     keyContext = keyContext.padEnd(8);
@@ -76,6 +77,7 @@ export class CryptoManager {
     this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
     this.macKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
     this.asymKeySeed = sodium.crypto_kdf_derive_from_key(32, 3, keyContext, key);
+    this.subDerivationKey = sodium.crypto_kdf_derive_from_key(32, 4, keyContext, key);
   }
 
   public encrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
@@ -102,6 +104,10 @@ export class CryptoManager {
     const nonce = nonceCiphertext.subarray(0, nonceSize);
     const ciphertext = nonceCiphertext.subarray(nonceSize);
     return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(null, ciphertext, mac, additionalData, nonce, this.cipherKey);
+  }
+
+  public deriveSubkey(salt: Uint8Array): Uint8Array {
+    return sodium.crypto_generichash(32, this.subDerivationKey, salt);
   }
 
   public getCryptoMac() {

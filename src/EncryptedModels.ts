@@ -41,7 +41,7 @@ export interface CollectionItemJsonWrite {
   uid: base64;
   version: number;
 
-  encryptionKey: base64;
+  encryptionKey?: base64;
   content: CollectionItemRevisionJsonWrite;
 
   etag: string | null;
@@ -390,7 +390,7 @@ export class EncryptedCollection {
 export class EncryptedCollectionItem {
   public uid: base64;
   public version: number;
-  private encryptionKey: Uint8Array;
+  private encryptionKey: Uint8Array | null;
   private content: EncryptedRevision<CollectionItemCryptoManager>;
 
   public etag: string | null;
@@ -399,7 +399,7 @@ export class EncryptedCollectionItem {
     const ret = new EncryptedCollectionItem();
     ret.uid = genUidBase64();
     ret.version = Constants.CURRENT_VERSION;
-    ret.encryptionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength));
+    ret.encryptionKey = null;
 
     ret.etag = null;
 
@@ -415,7 +415,7 @@ export class EncryptedCollectionItem {
     const ret = new EncryptedCollectionItem();
     ret.uid = uid;
     ret.version = version;
-    ret.encryptionKey = fromBase64(encryptionKey);
+    ret.encryptionKey = encryptionKey ? fromBase64(encryptionKey) : null;
 
     ret.content = EncryptedRevision.deserialize(content);
 
@@ -428,7 +428,7 @@ export class EncryptedCollectionItem {
     const ret: CollectionItemJsonWrite = {
       uid: this.uid,
       version: this.version,
-      encryptionKey: toBase64(this.encryptionKey),
+      encryptionKey: this.encryptionKey ? toBase64(this.encryptionKey) : undefined,
       etag: this.etag,
 
       content: this.content.serialize(),
@@ -494,7 +494,9 @@ export class EncryptedCollectionItem {
   }
 
   public getCryptoManager(parentCryptoManager: CollectionCryptoManager) {
-    const encryptionKey = parentCryptoManager.decrypt(this.encryptionKey);
+    const encryptionKey = (this.encryptionKey) ?
+      parentCryptoManager.decrypt(this.encryptionKey) :
+      parentCryptoManager.deriveSubkey(fromString(this.uid));
 
     return new CollectionItemCryptoManager(encryptionKey, this.version);
   }
