@@ -83,7 +83,7 @@ export interface SignedInvitationRead extends SignedInvitationWrite {
 }
 
 function genUidBase64(): base64 {
-  return toBase64(randomBytes(32)).substr(0, 24);
+  return toBase64(randomBytes(24));
 }
 
 export class MainCryptoManager extends CryptoManager {
