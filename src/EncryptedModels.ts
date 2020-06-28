@@ -12,13 +12,12 @@ export interface CollectionMetadata extends CollectionItemMetadata {
   name: string;
   description?: string;
   color?: string;
-  extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
 }
 
 export interface CollectionItemMetadata {
   type: string;
   name?: string; // The name of the item, e.g. filename in case of files
-  mtime?: number; // The modification time
+  mtime?: Date; // The modification time
   extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
 }
 
