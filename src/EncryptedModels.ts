@@ -266,18 +266,18 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     await this.setMeta(cryptoManager, additionalData, meta);
   }
 
+  public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
+    return concatArrayBuffersArrays(
+      this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, fromBase64(chunk[0]))))
+    ;
+  }
+
   public async delete(cryptoManager: CM, additionalData: Uint8Array): Promise<void> {
     const meta = await this.decryptMeta(cryptoManager, additionalData);
 
     this.deleted = true;
 
     await this.setMeta(cryptoManager, additionalData, meta);
-  }
-
-  public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
-    return concatArrayBuffersArrays(
-      this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, fromBase64(chunk[0]))))
-    ;
   }
 
   public clone() {
