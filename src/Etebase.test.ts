@@ -7,7 +7,7 @@ import { USER, USER2, sessionStorageKey } from "./TestConstants";
 import { Authenticator } from "./OnlineManagers";
 import { fromBase64, fromString } from "./Helpers";
 
-const testApiBase = "http://localhost:8033";
+const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
 let etebase: Etebase.Account;
 
