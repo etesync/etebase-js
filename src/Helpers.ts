@@ -1,3 +1,5 @@
+import * as msgpack from "@msgpack/msgpack";
+
 import { sodium } from "./Crypto";
 
 export type base64 = string;
@@ -28,6 +30,15 @@ export function fromString(input: string): Uint8Array {
 
 export function memcmp(b1: Uint8Array, b2: Uint8Array): boolean {
   return sodium.memcmp(b1, b2);
+}
+
+export function msgpackEncode(value: unknown): Uint8Array {
+  const options = { ignoreUndefined: true };
+  return msgpack.encode(value, options);
+}
+
+export function msgpackDecode(buffer: ArrayLike<number> | ArrayBuffer): unknown {
+  return msgpack.decode(buffer);
 }
 
 export function numToUint8Array(num: number): Uint8Array {

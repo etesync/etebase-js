@@ -5,7 +5,7 @@ import * as Constants from "./Constants";
 import { deriveKey, concatArrayBuffers, AsymmetricCryptoManager, ready } from "./Crypto";
 export { ready, getPrettyFingerprint } from "./Crypto";
 export * from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode } from "./Helpers";
 export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
 
 import {
@@ -42,7 +42,7 @@ export { CURRENT_VERSION } from "./Constants";
 
 export interface AccountData {
   version: number;
-  key: base64;
+  key: Uint8Array;
   user: LoginResponseUser;
   serverUrl: string;
   authToken?: string;
@@ -50,7 +50,7 @@ export interface AccountData {
 
 export interface AccountDataStored {
   version: number;
-  encryptedData: base64;
+  encryptedData: Uint8Array;
 }
 
 export class Account {
@@ -196,33 +196,30 @@ export class Account {
       authToken: this.authToken!!,
       serverUrl: this.serverUrl,
       version: this.version,
-      key: toBase64(cryptoManager.encrypt(this.mainKey)),
+      key: cryptoManager.encrypt(this.mainKey),
     };
 
     const ret: AccountDataStored = {
       version,
-      encryptedData: toBase64(
-        cryptoManager.encrypt(fromString(JSON.stringify(content)), Uint8Array.from([version]))
-      ),
+      encryptedData: cryptoManager.encrypt(msgpackEncode(content), Uint8Array.from([version])),
     };
 
-    return toBase64(JSON.stringify(ret));
+    return toBase64(msgpackEncode(ret));
   }
 
   public static async restore(accountDataStored_: base64, encryptionKey_?: Uint8Array) {
     await ready;
 
     const encryptionKey = encryptionKey_ ?? new Uint8Array(32);
-    const accountDataStored: AccountDataStored = JSON.parse(toString(fromBase64(accountDataStored_)));
-    const encryptedData = fromBase64(accountDataStored.encryptedData);
+    const accountDataStored = msgpackDecode(fromBase64(accountDataStored_)) as AccountDataStored;
 
     const cryptoManager = new StorageCryptoManager(encryptionKey, accountDataStored.version);
 
-    const accountData: AccountData = JSON.parse(toString(
-      cryptoManager.decrypt(encryptedData, Uint8Array.from([accountDataStored.version]))
-    ));
+    const accountData = msgpackDecode(
+      cryptoManager.decrypt(accountDataStored.encryptedData, Uint8Array.from([accountDataStored.version]))
+    ) as AccountData;
 
-    const ret = new this(cryptoManager.decrypt(fromBase64(accountData.key)), accountData.version);
+    const ret = new this(cryptoManager.decrypt(accountData.key), accountData.version);
     ret.user = accountData.user;
     ret.authToken = accountData.authToken ?? null;
     ret.serverUrl = accountData.serverUrl;

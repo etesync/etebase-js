@@ -15,6 +15,7 @@
     "prepublishOnly": "yarn test && yarn lint"
   },
   "dependencies": {
+    "@msgpack/msgpack": "^1.12.2",
     "libsodium-wrappers": "^0.7.6",
     "urijs": "^1.19.1"
   },
