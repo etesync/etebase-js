@@ -1396,6 +1396,57 @@ it("Session store and restore", async () => {
   }
 });
 
+it("Cache collections and items", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+  };
+
+  const col = await collectionManager.create(colMeta, "test");
+  await collectionManager.upload(col);
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: Etebase.CollectionItemMetadata = {
+    type: "ITEMTYPE",
+  };
+  const content = Uint8Array.from([1, 2, 3, 6]);
+
+  const item = await itemManager.create(meta, content);
+  await itemManager.batch([item]);
+
+  const optionsArray = [
+    { saveContent: true },
+    { saveContent: false },
+  ];
+  for (const options of optionsArray) {
+    const savedCachedCollection = await collectionManager.cacheSave(col, options);
+    const cachedCollection = await collectionManager.cacheLoad(savedCachedCollection);
+
+    expect(col.uid).toEqual(cachedCollection.uid);
+    expect(col.etag).toEqual(cachedCollection.etag);
+    expect(await col.getMeta()).toEqual(await cachedCollection.getMeta());
+
+
+    const savedCachedItem = await itemManager.cacheSave(item, options);
+    const cachedItem = await itemManager.cacheLoad(savedCachedItem);
+
+    expect(item.uid).toEqual(cachedItem.uid);
+    expect(item.etag).toEqual(cachedItem.etag);
+    expect(await item.getMeta()).toEqual(await cachedItem.getMeta());
+  }
+
+  // Verify content
+  {
+    const options = { saveContent: true };
+    const savedCachedItem = await itemManager.cacheSave(item, options);
+    const cachedItem = await itemManager.cacheLoad(savedCachedItem);
+
+    expect(await item.getContent()).toEqual(await cachedItem.getContent());
+  }
+});
+
 it.skip("Login and password change", async () => {
   const anotherPassword = "AnotherPassword";
   const etebase2 = await Etebase.Account.login(USER2.username, USER2.password, testApiBase);

@@ -246,6 +246,10 @@ export class Account {
   }
 }
 
+const defaultCacheOptions = {
+  saveContent: true,
+};
+
 export class CollectionManager {
   private readonly etebase: Account;
   private readonly onlineManager: CollectionManagerOnline;
@@ -299,6 +303,16 @@ export class CollectionManager {
       await this.onlineManager.create(col, { ...options, stoken: col.stoken });
     }
     col.__markSaved();
+  }
+
+  public async cacheSave(collection: Collection, options = defaultCacheOptions): Promise<Uint8Array> {
+    return collection.encryptedCollection.cacheSave(options.saveContent);
+  }
+
+  public async cacheLoad(cache: Uint8Array): Promise<Collection> {
+    const encCol = EncryptedCollection.cacheLoad(cache);
+    const mainCryptoManager = this.etebase._getCryptoManager();
+    return new Collection(encCol.getCryptoManager(mainCryptoManager), encCol);
   }
 
   public getItemManager(col: Collection) {
@@ -376,6 +390,15 @@ export class CollectionItemManager {
     items.forEach((item) => {
       item.encryptedItem.__markSaved();
     });
+  }
+
+  public async cacheSave(item: CollectionItem, options = defaultCacheOptions): Promise<Uint8Array> {
+    return item.encryptedItem.cacheSave(options.saveContent);
+  }
+
+  public async cacheLoad(cache: Uint8Array): Promise<CollectionItem> {
+    const encItem = EncryptedCollectionItem.cacheLoad(cache);
+    return new CollectionItem(this.collectionUid, encItem.getCryptoManager(this.collectionCryptoManager), encItem);
   }
 }
 export interface SignedInvitation {

@@ -187,6 +187,33 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     return ret;
   }
 
+  public static cacheLoad<CM extends CollectionItemCryptoManager>(cached_: Uint8Array) {
+    const cached = msgpackDecode(cached_) as any[];
+
+    const ret = new EncryptedRevision<CM>();
+    ret.uid = toBase64(cached[0]);
+    ret.meta = cached[1];
+    ret.deleted = cached[2];
+    ret.chunks = cached[3].map((chunk: Uint8Array[]) => [
+      toBase64(chunk[0]),
+      chunk[1] ?? undefined,
+    ]);
+
+    return ret;
+  }
+
+  public cacheSave(saveContent: boolean): Uint8Array {
+    return msgpackEncode([
+      fromBase64(this.uid),
+      this.meta,
+      this.deleted,
+      ((saveContent) ?
+        this.chunks.map((chunk) => [fromBase64(chunk[0]), chunk[1] ?? null]) :
+        this.chunks.map((chunk) => [fromBase64(chunk[0])])
+      ),
+    ]);
+  }
+
   public async verify(cryptoManager: CM, additionalData: Uint8Array) {
     const adHash = await this.calculateAdHash(cryptoManager, additionalData);
     const mac = fromBase64(this.uid);
@@ -306,6 +333,29 @@ export class EncryptedCollection {
     };
 
     return ret;
+  }
+
+  public static cacheLoad(cached_: Uint8Array) {
+    const cached = msgpackDecode(cached_) as any[];
+
+    const ret = new EncryptedCollection();
+    ret.collectionKey = cached[1];
+    ret.accessLevel = cached[2];
+    ret.stoken = cached[3];
+    ret.item = EncryptedCollectionItem.cacheLoad(cached[4]);
+
+    return ret;
+  }
+
+  public cacheSave(saveContent: boolean) {
+    return msgpackEncode([
+      1, // Cache version format
+      this.collectionKey,
+      this.accessLevel,
+      this.stoken,
+
+      this.item.cacheSave(saveContent),
+    ]);
   }
 
   public __markSaved() {
@@ -433,6 +483,32 @@ export class EncryptedCollectionItem {
     };
 
     return ret;
+  }
+
+  public static cacheLoad(cached_: Uint8Array) {
+    const cached = msgpackDecode(cached_) as any[];
+
+    const ret = new EncryptedCollectionItem();
+    ret.uid = toBase64(cached[1]);
+    ret.version = cached[2];
+    ret.encryptionKey = cached[3];
+    ret.etag = (cached[4]) ? toBase64(cached[4]) : null;
+
+    ret.content = EncryptedRevision.cacheLoad(cached[5]);
+
+    return ret;
+  }
+
+  public cacheSave(saveContent: boolean) {
+    return msgpackEncode([
+      1, // Cache version format
+      fromBase64(this.uid),
+      this.version,
+      this.encryptionKey,
+      (this.etag) ? fromBase64(this.etag) : null,
+
+      this.content.cacheSave(saveContent),
+    ]);
   }
 
   public __markSaved() {
