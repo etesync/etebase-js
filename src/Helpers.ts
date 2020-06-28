@@ -32,6 +32,36 @@ export function memcmp(b1: Uint8Array, b2: Uint8Array): boolean {
   return sodium.memcmp(b1, b2);
 }
 
+function padme(length: number): number {
+  // Use the padme padding scheme for efficiently
+  // https://www.petsymposium.org/2019/files/papers/issue4/popets-2019-0056.pdf
+
+  // We have a minimum padding of 32 (padme(512) == 32)
+  const minPad = 512;
+  if (length < minPad) {
+    return 32;
+  }
+
+  const e = Math.floor(Math.log2(length));
+  const s = Math.floor(Math.log2(e)) + 1;
+  const lastBits = e - s;
+  const bitMask = Math.pow(2, lastBits) - 1;
+  return (length + bitMask) & ~bitMask;
+}
+
+export function padmePad(buf: Uint8Array): Uint8Array {
+  return sodium.pad(buf, padme(buf.length));
+}
+
+export function padmeUnpad(buf: Uint8Array): Uint8Array {
+  if (buf.length === 0) {
+    return buf;
+  }
+
+  // We pass the buffer's length as the block size because due to padme there's always some variable-sized padding.
+  return sodium.unpad(buf, buf.length);
+}
+
 export function msgpackEncode(value: unknown): Uint8Array {
   const options = { ignoreUndefined: true };
   return msgpack.encode(value, options);

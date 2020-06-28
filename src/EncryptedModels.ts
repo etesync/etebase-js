@@ -2,7 +2,7 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, padmePad, padmeUnpad } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -256,8 +256,12 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     const meta = await this.decryptMeta(cryptoManager, additionalData);
 
     if (content.length > 0) {
+      // XXX: if we ever add an option to change padding size, always make sure to at least pad with 1 byte.
+      // If we don't do that, unpad will fail with some inputs.
+      const buf = padmePad(content);
+
       // FIXME: need to actually chunkify
-      const encContent = cryptoManager.encryptDetached(content);
+      const encContent = cryptoManager.encryptDetached(buf);
       this.chunks = [[toBase64(encContent[0]), encContent[1]]];
     } else {
       this.chunks = [];
@@ -267,9 +271,11 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
-    return concatArrayBuffersArrays(
+    const ret = concatArrayBuffersArrays(
       this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, fromBase64(chunk[0]))))
     ;
+
+    return padmeUnpad(ret);
   }
 
   public async delete(cryptoManager: CM, additionalData: Uint8Array): Promise<void> {
