@@ -1394,7 +1394,7 @@ it("Session store and restore", async () => {
     expect(collections.data.length).toBe(1);
     expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
   }
-}, 30000);
+});
 
 it.skip("Login and password change", async () => {
   const anotherPassword = "AnotherPassword";
