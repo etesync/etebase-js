@@ -1,3 +1,5 @@
+import request from "./Request";
+
 import URI from "urijs";
 
 export { deriveKey, ready } from "./Crypto";
@@ -140,12 +142,12 @@ class BaseNetwork {
 
     let response;
     try {
-      response = await fetch(apiBase.toString(), extra);
+      response = await request(apiBase.toString(), extra);
     } catch (e) {
       throw new NetworkError(e.message);
     }
 
-    const body = await response.arrayBuffer();
+    const body = response.body;
     let data: any;
     let bodyStr;
     try {

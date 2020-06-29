@@ -1,4 +1,4 @@
-import "whatwg-fetch";
+import request from "./Request";
 
 import * as Etebase from "./Etebase";
 
@@ -28,9 +28,10 @@ async function verifyItem(item: Etebase.CollectionItem, meta: Etebase.Collection
 }
 
 async function prepareUserForTest(user: typeof USER) {
-  await fetch(testApiBase + "/api/v1/test/authentication/reset/", {
+  await request(testApiBase + "/api/v1/test/authentication/reset/", {
     method: "post",
     headers: {
+      "Accept": "application/msgpack",
       "Content-Type": "application/msgpack",
     },
 
