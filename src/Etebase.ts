@@ -105,12 +105,12 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
-    const response = fromString(JSON.stringify({
+    const response = msgpackEncode({
       username,
-      challenge: loginChallenge.challenge,
+      challenge: fromBase64(loginChallenge.challenge),
       host: URI(serverUrl).host(),
       action: "login",
-    }));
+    });
 
     const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(response));
 
@@ -133,12 +133,12 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
-    const response = fromString(JSON.stringify({
+    const response = msgpackEncode({
       username,
-      challenge: loginChallenge.challenge,
+      challenge: fromBase64(loginChallenge.challenge),
       host: URI(serverUrl).host(),
       action: "login",
-    }));
+    });
 
     const loginResponse = await authenticator.login(response, loginCryptoManager.signDetached(response));
 
@@ -170,15 +170,15 @@ export class Account {
 
     const encryptedContent = mainCryptoManager.encrypt(content);
 
-    const response = fromString(JSON.stringify({
+    const response = msgpackEncode({
       username,
-      challenge: loginChallenge.challenge,
+      challenge: fromBase64(loginChallenge.challenge),
       host: URI(serverUrl).host(),
       action: "changePassword",
 
       loginPubkey: toBase64(loginCryptoManager.pubkey),
       encryptedContent: toBase64(encryptedContent),
-    }));
+    });
 
     await authenticator.changePassword(this.authToken!, response, oldLoginCryptoManager.signDetached(response));
 
