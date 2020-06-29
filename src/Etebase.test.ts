@@ -5,7 +5,7 @@ import * as Etebase from "./Etebase";
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
 
 import { Authenticator } from "./OnlineManagers";
-import { fromBase64, fromString, padmePad } from "./Helpers";
+import { fromBase64, fromString, padmePad, msgpackEncode } from "./Helpers";
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
@@ -31,10 +31,10 @@ async function prepareUserForTest(user: typeof USER) {
   await fetch(testApiBase + "/api/v1/test/authentication/reset/", {
     method: "post",
     headers: {
-      "Content-Type": "application/json;charset=UTF-8",
+      "Content-Type": "application/msgpack",
     },
 
-    body: JSON.stringify({
+    body: msgpackEncode({
       user: {
         username: user.username,
         email: user.email,
