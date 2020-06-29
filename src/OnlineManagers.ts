@@ -3,7 +3,7 @@ import URI from "urijs";
 export { deriveKey, ready } from "./Crypto";
 import { HTTPError, NetworkError, EncryptionPasswordError } from "./Exceptions";
 export * from "./Exceptions";
-import { base64, toBase64 } from "./Helpers";
+import { base64, msgpackEncode, msgpackDecode, toBase64, toString } from "./Helpers";
 
 import {
   CollectionAccessLevel,
@@ -22,18 +22,18 @@ export interface User {
 }
 
 export interface LoginResponseUser extends User {
-  pubkey: base64;
-  encryptedContent: base64;
+  pubkey: Uint8Array;
+  encryptedContent: Uint8Array;
 }
 
 export interface UserProfile {
-  pubkey: base64;
+  pubkey: Uint8Array;
 }
 
 export type LoginChallange = {
   username: string;
   challenge: string;
-  salt: base64;
+  salt: Uint8Array;
   version: number;
 };
 
@@ -78,7 +78,7 @@ export interface CollectionMember {
 }
 
 export interface AcceptedInvitation {
-  encryptionKey: base64;
+  encryptionKey: Uint8Array;
 }
 
 export interface ListFetchOptions {
@@ -133,7 +133,7 @@ class BaseNetwork {
     extra = {
       ...extra,
       headers: {
-        Accept: "application/json",
+        Accept: "application/msgpack",
         ...extra.headers,
       },
     };
@@ -145,23 +145,29 @@ class BaseNetwork {
       throw new NetworkError(e.message);
     }
 
-    const text = await response.text();
-    let json: any;
-    let body: any = text;
+    const body = await response.arrayBuffer();
+    let data: any;
+    let bodyStr;
     try {
-      json = JSON.parse(text);
-      body = json;
+      data = msgpackDecode(body);
     } catch (e) {
-      body = text;
+      const uintbody = new Uint8Array(body);
+      try {
+        bodyStr = toString(uintbody);
+        // Try falling back to json (e.g. in case the server errored in json)
+        data = JSON.parse(data);
+      } catch (e) {
+        bodyStr = bodyStr ?? toBase64(uintbody);
+      }
     }
 
     if (response.ok) {
-      return body;
+      return data;
     } else {
-      if (json) {
-        throw new HTTPError(response.status, json.detail || json.non_field_errors || JSON.stringify(json), json);
+      if (data) {
+        throw new HTTPError(response.status, data.detail || data.non_field_errors || JSON.stringify(data), data);
       } else {
-        throw new HTTPError(response.status, body);
+        throw new HTTPError(response.status, bodyStr);
       }
     }
   }
@@ -195,14 +201,14 @@ export class Authenticator extends BaseNetwork {
     const extra = {
       method: "post",
       headers: {
-        "Content-Type": "application/json;charset=UTF-8",
+        "Content-Type": "application/msgpack",
       },
-      body: JSON.stringify({
+      body: msgpackEncode({
         user,
-        salt: toBase64(salt),
-        loginPubkey: toBase64(loginPubkey),
-        pubkey: toBase64(pubkey),
-        encryptedContent: toBase64(encryptedContent),
+        salt: salt,
+        loginPubkey: loginPubkey,
+        pubkey: pubkey,
+        encryptedContent: encryptedContent,
       }),
     };
 
@@ -213,9 +219,9 @@ export class Authenticator extends BaseNetwork {
     const extra = {
       method: "post",
       headers: {
-        "Content-Type": "application/json;charset=UTF-8",
+        "Content-Type": "application/msgpack",
       },
-      body: JSON.stringify({ username }),
+      body: msgpackEncode({ username }),
     };
 
     return this.newCall<LoginChallange>(["login_challenge"], extra);
@@ -225,11 +231,11 @@ export class Authenticator extends BaseNetwork {
     const extra = {
       method: "post",
       headers: {
-        "Content-Type": "application/json;charset=UTF-8",
+        "Content-Type": "application/msgpack",
       },
-      body: JSON.stringify({
-        response: toBase64(response),
-        signature: toBase64(signature),
+      body: msgpackEncode({
+        response: response,
+        signature: signature,
       }),
     };
 
@@ -240,7 +246,7 @@ export class Authenticator extends BaseNetwork {
     const extra = {
       method: "post",
       headers: {
-        "Content-Type": "application/json;charset=UTF-8",
+        "Content-Type": "application/msgpack",
         "Authorization": "Token " + authToken,
       },
     };
@@ -252,12 +258,12 @@ export class Authenticator extends BaseNetwork {
     const extra = {
       method: "post",
       headers: {
-        "Content-Type": "application/json;charset=UTF-8",
+        "Content-Type": "application/msgpack",
         "Authorization": "Token " + authToken,
       },
-      body: JSON.stringify({
-        response: toBase64(response),
-        signature: toBase64(signature),
+      body: msgpackEncode({
+        response: response,
+        signature: signature,
       }),
     };
 
@@ -278,7 +284,7 @@ class BaseManager extends BaseNetwork {
     extra = {
       ...extra,
       headers: {
-        "Content-Type": "application/json;charset=UTF-8",
+        "Content-Type": "application/msgpack",
         "Authorization": "Token " + this.etebase.authToken,
         ...extra.headers,
       },
@@ -331,7 +337,7 @@ export class CollectionManagerOnline extends BaseManager {
 
     const extra = {
       method: "post",
-      body: JSON.stringify(collection.serialize()),
+      body: msgpackEncode(collection.serialize()),
     };
 
     return this.newCall(undefined, extra, apiBase);
@@ -381,7 +387,7 @@ export class CollectionItemManagerOnline extends BaseManager {
   public create(item: EncryptedCollectionItem): Promise<{}> {
     const extra = {
       method: "post",
-      body: JSON.stringify(item.serialize()),
+      body: msgpackEncode(item.serialize()),
     };
 
     return this.newCall(undefined, extra);
@@ -394,7 +400,7 @@ export class CollectionItemManagerOnline extends BaseManager {
 
     const extra = {
       method: "post",
-      body: JSON.stringify(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.etag : undefined) }))),
+      body: msgpackEncode(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.etag : undefined) }))),
     };
 
     const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(["fetch_updates"], extra, apiBase);
@@ -410,7 +416,7 @@ export class CollectionItemManagerOnline extends BaseManager {
 
     const extra = {
       method: "post",
-      body: JSON.stringify({
+      body: msgpackEncode({
         items: items.map((x) => x.serialize()),
         deps: deps?.map((x) => ({ uid: x.uid, etag: x.etag })),
       }),
@@ -424,7 +430,7 @@ export class CollectionItemManagerOnline extends BaseManager {
 
     const extra = {
       method: "post",
-      body: JSON.stringify({
+      body: msgpackEncode({
         items: items.map((x) => x.serialize()),
         deps: deps?.map((x) => ({ uid: x.uid, etag: x.etag })),
       }),
@@ -462,8 +468,8 @@ export class CollectionInvitationManagerOnline extends BaseManager {
   public async accept(invitation: SignedInvitationRead, encryptionKey: Uint8Array): Promise<{}> {
     const extra = {
       method: "post",
-      body: JSON.stringify({
-        encryptionKey: toBase64(encryptionKey),
+      body: msgpackEncode({
+        encryptionKey,
       }),
     };
 
@@ -489,7 +495,7 @@ export class CollectionInvitationManagerOnline extends BaseManager {
   public async invite(invitation: SignedInvitationWrite): Promise<{}> {
     const extra = {
       method: "post",
-      body: JSON.stringify(invitation),
+      body: msgpackEncode(invitation),
     };
 
     return this.newCall(["outgoing"], extra);
@@ -534,7 +540,7 @@ export class CollectionMemberManagerOnline extends BaseManager {
   public async modifyAccessLevel(username: string, accessLevel: CollectionAccessLevel): Promise<{}> {
     const extra = {
       method: "patch",
-      body: JSON.stringify({
+      body: msgpackEncode({
         accessLevel,
       }),
     };

@@ -21,11 +21,11 @@ export interface CollectionItemMetadata {
   extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
 }
 
-export type ChunkJson = [base64, base64?];
+export type ChunkJson = [base64, Uint8Array?];
 
 export interface CollectionItemRevisionJsonWrite {
   uid: base64;
-  meta: base64;
+  meta: Uint8Array;
 
   chunks: ChunkJson[];
   deleted: boolean;
@@ -39,7 +39,7 @@ export interface CollectionItemJsonWrite {
   uid: base64;
   version: number;
 
-  encryptionKey?: base64;
+  encryptionKey?: Uint8Array;
   content: CollectionItemRevisionJsonWrite;
 
   etag: string | null;
@@ -56,7 +56,7 @@ export enum CollectionAccessLevel {
 }
 
 export interface CollectionJsonWrite extends CollectionItemJsonWrite {
-  collectionKey: base64;
+  collectionKey: Uint8Array;
 }
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
@@ -74,11 +74,11 @@ export interface SignedInvitationWrite {
   collection: base64;
   accessLevel: CollectionAccessLevel;
 
-  signedEncryptionKey: base64;
+  signedEncryptionKey: Uint8Array;
 }
 
 export interface SignedInvitationRead extends SignedInvitationWrite {
-  fromPubkey: base64;
+  fromPubkey: Uint8Array;
 }
 
 function genUidBase64(): base64 {
@@ -165,10 +165,10 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     const { uid, meta, chunks, deleted } = json;
     const ret = new EncryptedRevision<CM>();
     ret.uid = uid;
-    ret.meta = fromBase64(meta);
+    ret.meta = meta;
     ret.deleted = deleted;
     ret.chunks = chunks.map((chunk) => {
-      return [chunk[0], (chunk[1]) ? fromBase64(chunk[1]) : undefined];
+      return [chunk[0], chunk[1] ?? undefined];
     });
 
     return ret;
@@ -177,10 +177,10 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public serialize() {
     const ret: CollectionItemRevisionJsonWrite = {
       uid: this.uid,
-      meta: toBase64(this.meta),
+      meta: this.meta,
       deleted: this.deleted,
 
-      chunks: this.chunks.map((chunk) => [chunk[0], (chunk[1]) ? toBase64(chunk[1]) : undefined]),
+      chunks: this.chunks.map((chunk) => [chunk[0], chunk[1] ?? undefined]),
     };
 
     return ret;
@@ -320,7 +320,7 @@ export class EncryptedCollection {
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
     const { stoken, accessLevel, collectionKey } = json;
     const ret = new EncryptedCollection();
-    ret.collectionKey = fromBase64(collectionKey);
+    ret.collectionKey = collectionKey;
 
     ret.item = EncryptedCollectionItem.deserialize(json);
 
@@ -334,7 +334,7 @@ export class EncryptedCollection {
     const ret: CollectionJsonWrite = {
       ...this.item.serialize(),
 
-      collectionKey: toBase64(this.collectionKey),
+      collectionKey: this.collectionKey,
     };
 
     return ret;
@@ -427,7 +427,7 @@ export class EncryptedCollection {
       collection: this.uid,
       accessLevel,
 
-      signedEncryptionKey: toBase64(signedEncryptionKey),
+      signedEncryptionKey: signedEncryptionKey,
     };
 
     return ret;
@@ -468,7 +468,7 @@ export class EncryptedCollectionItem {
     const ret = new EncryptedCollectionItem();
     ret.uid = uid;
     ret.version = version;
-    ret.encryptionKey = encryptionKey ? fromBase64(encryptionKey) : null;
+    ret.encryptionKey = encryptionKey ?? null;
 
     ret.content = EncryptedRevision.deserialize(content);
 
@@ -481,7 +481,7 @@ export class EncryptedCollectionItem {
     const ret: CollectionItemJsonWrite = {
       uid: this.uid,
       version: this.version,
-      encryptionKey: this.encryptionKey ? toBase64(this.encryptionKey) : undefined,
+      encryptionKey: this.encryptionKey ?? undefined,
       etag: this.etag,
 
       content: this.content.serialize(),

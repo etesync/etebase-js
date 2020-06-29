@@ -101,13 +101,13 @@ export class Account {
     const authenticator = new Authenticator(serverUrl);
     const loginChallenge = await authenticator.getLoginChallenge(username);
 
-    const mainKey = await deriveKey(fromBase64(loginChallenge.salt), password);
+    const mainKey = await deriveKey(loginChallenge.salt, password);
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
     const response = msgpackEncode({
       username,
-      challenge: fromBase64(loginChallenge.challenge),
+      challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
       action: "login",
     });
@@ -135,7 +135,7 @@ export class Account {
 
     const response = msgpackEncode({
       username,
-      challenge: fromBase64(loginChallenge.challenge),
+      challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
       action: "login",
     });
@@ -161,10 +161,10 @@ export class Account {
     const loginChallenge = await authenticator.getLoginChallenge(username);
 
     const oldMainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
-    const content = oldMainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
+    const content = oldMainCryptoManager.decrypt(this.user.encryptedContent);
     const oldLoginCryptoManager = oldMainCryptoManager.getLoginCryptoManager();
 
-    const mainKey = await deriveKey(fromBase64(loginChallenge.salt), password);
+    const mainKey = await deriveKey(loginChallenge.salt, password);
     const mainCryptoManager = getMainCryptoManager(mainKey, this.version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
@@ -172,18 +172,18 @@ export class Account {
 
     const response = msgpackEncode({
       username,
-      challenge: fromBase64(loginChallenge.challenge),
+      challenge: loginChallenge.challenge,
       host: URI(serverUrl).host(),
       action: "changePassword",
 
-      loginPubkey: toBase64(loginCryptoManager.pubkey),
-      encryptedContent: toBase64(encryptedContent),
+      loginPubkey: loginCryptoManager.pubkey,
+      encryptedContent: encryptedContent,
     });
 
     await authenticator.changePassword(this.authToken!, response, oldLoginCryptoManager.signDetached(response));
 
     this.mainKey = mainKey;
-    this.user.encryptedContent = toBase64(encryptedContent);
+    this.user.encryptedContent = encryptedContent;
   }
 
   public async save(encryptionKey_?: Uint8Array): Promise<base64> {
@@ -234,14 +234,14 @@ export class Account {
   public _getCryptoManager() {
     // FIXME: cache this
     const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
-    const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
+    const content = mainCryptoManager.decrypt(this.user.encryptedContent);
     return mainCryptoManager.getAccountCryptoManager(content.subarray(0, symmetricKeyLength));
   }
 
   public _getIdentityCryptoManager() {
     // FIXME: cache this
     const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
-    const content = mainCryptoManager.decrypt(fromBase64(this.user.encryptedContent));
+    const content = mainCryptoManager.decrypt(this.user.encryptedContent);
     return mainCryptoManager.getIdentityCryptoManager(content.subarray(symmetricKeyLength));
   }
 }
@@ -428,8 +428,8 @@ export class CollectionInvitationManager {
       ...ret,
       data: ret.data.map((x) => ({
         ...x,
-        fromPubkey: fromBase64(x.fromPubkey),
-        signedEncryptionKey: fromBase64(x.signedEncryptionKey),
+        fromPubkey: x.fromPubkey,
+        signedEncryptionKey: x.signedEncryptionKey,
       })),
     };
   }
@@ -440,8 +440,8 @@ export class CollectionInvitationManager {
       ...ret,
       data: ret.data.map((x) => ({
         ...x,
-        fromPubkey: fromBase64(x.fromPubkey),
-        signedEncryptionKey: fromBase64(x.signedEncryptionKey),
+        fromPubkey: x.fromPubkey,
+        signedEncryptionKey: x.signedEncryptionKey,
       })),
     };
   }
@@ -453,8 +453,8 @@ export class CollectionInvitationManager {
     const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
     const innerInvitation = {
       ...invitation,
-      fromPubkey: toBase64(invitation.fromPubkey),
-      signedEncryptionKey: toBase64(invitation.signedEncryptionKey),
+      fromPubkey: invitation.fromPubkey,
+      signedEncryptionKey: invitation.signedEncryptionKey,
     };
     return this.onlineManager.accept(innerInvitation, encryptedEncryptionKey);
   }
@@ -462,8 +462,8 @@ export class CollectionInvitationManager {
   public async reject(invitation: SignedInvitation) {
     const innerInvitation = {
       ...invitation,
-      fromPubkey: toBase64(invitation.fromPubkey),
-      signedEncryptionKey: toBase64(invitation.signedEncryptionKey),
+      fromPubkey: invitation.fromPubkey,
+      signedEncryptionKey: invitation.signedEncryptionKey,
     };
     return this.onlineManager.reject(innerInvitation);
   }
@@ -472,7 +472,7 @@ export class CollectionInvitationManager {
     const profile = await this.onlineManager.fetchUserProfile(username);
     return {
       ...profile,
-      pubkey: fromBase64(profile.pubkey),
+      pubkey: profile.pubkey,
     };
   }
 
