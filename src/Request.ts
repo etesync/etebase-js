@@ -19,17 +19,15 @@ export default async function request(url: string, options: RequestInit = {}): P
     }
 
     xhr.onload = () => {
-      const arrayBuffer = xhr.response; // Note: not oReq.responseText
-      if (arrayBuffer) {
-        const byteArray = new Uint8Array(arrayBuffer);
-        resolve({
-          type: "default",
-          status: xhr.status,
-          statusText: xhr.statusText,
-          ok: xhr.status >= 200 && xhr.status < 300,
-          body: byteArray,
-        });
-      }
+      const body = xhr.response;
+
+      resolve({
+        type: "default",
+        status: xhr.status,
+        statusText: xhr.statusText,
+        ok: xhr.status >= 200 && xhr.status < 300,
+        body,
+      });
     };
 
     xhr.onerror = () => {
