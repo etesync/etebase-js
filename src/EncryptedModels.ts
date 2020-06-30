@@ -9,13 +9,14 @@ export type CollectionType = string;
 export type ContentType = File | Blob | Uint8Array | string | null;
 
 export interface CollectionMetadata extends CollectionItemMetadata {
+  type: string;
   name: string;
   description?: string;
   color?: string;
 }
 
 export interface CollectionItemMetadata {
-  type: string;
+  type?: string;
   name?: string; // The name of the item, e.g. filename in case of files
   mtime?: Date; // The modification time
   extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
