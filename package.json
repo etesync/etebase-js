@@ -9,7 +9,7 @@
   "types": "dist/Etebase.d.ts",
   "scripts": {
     "build": "tsc",
-    "lint": "eslint --ext .js,.jsx,.ts,.tsx --ignore-pattern '*.d.ts' src",
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx src",
     "test": "jest",
     "prepare": "yarn build",
     "prepublishOnly": "yarn test && yarn lint"
