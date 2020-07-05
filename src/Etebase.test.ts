@@ -1110,7 +1110,7 @@ it("Collection invitations", async () => {
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
 
-  let stoken;
+  let stoken: string;
   {
     const newCol = await collectionManager.fetch(col.uid);
     stoken = newCol.stoken;
