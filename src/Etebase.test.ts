@@ -28,7 +28,7 @@ async function verifyItem(item: Etebase.CollectionItem, meta: Etebase.Collection
 }
 
 async function prepareUserForTest(user: typeof USER) {
-  await request(testApiBase + "/api/v1/test/authentication/reset/", {
+  const response = await request(testApiBase + "/api/v1/test/authentication/reset/", {
     method: "post",
     headers: {
       "Accept": "application/msgpack",
@@ -46,6 +46,10 @@ async function prepareUserForTest(user: typeof USER) {
       pubkey: user.pubkey,
     }),
   });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
 
   const etebase = await Etebase.Account.restore(user.storedSession, fromBase64(sessionStorageKey));
   etebase.serverUrl = testApiBase;
