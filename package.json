@@ -42,7 +42,7 @@
     "eslint": "^6.6.0",
     "jest": "^24.9.0",
     "react-native-sodium": "^0.3.8",
-    "typescript": "^3.7.1"
+    "typescript": "^3.9.6"
   },
   "jest": {
     "testPathIgnorePatterns": [
