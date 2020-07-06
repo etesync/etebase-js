@@ -65,7 +65,6 @@ export async function deriveKey(salt: Uint8Array, password: string): Promise<Uin
 export class CryptoManager {
   protected version: number;
   protected cipherKey: Uint8Array;
-  protected macKey: Uint8Array;
   protected asymKeySeed: Uint8Array;
   protected subDerivationKey: Uint8Array;
 
@@ -75,7 +74,6 @@ export class CryptoManager {
     this.version = version;
 
     this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
-    this.macKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
     this.asymKeySeed = sodium.crypto_kdf_derive_from_key(32, 3, keyContext, key);
     this.subDerivationKey = sodium.crypto_kdf_derive_from_key(32, 4, keyContext, key);
   }
@@ -115,8 +113,8 @@ export class CryptoManager {
     return sodium.crypto_generichash(32, this.subDerivationKey, salt);
   }
 
-  public getCryptoMac() {
-    return new CryptoMac(this.macKey);
+  public getCryptoMac(key: Uint8Array | null) {
+    return new CryptoMac(key);
   }
 }
 
@@ -185,13 +183,17 @@ export class CryptoMac {
   private state: _sodium.StateAddress;
   private length: number;
 
-  constructor(key: Uint8Array, length = 32) {
+  constructor(key: Uint8Array | null, length = 32) {
     this.length = length;
     this.state = sodium.crypto_generichash_init(key, length);
   }
 
   public updateWithLenPrefix(messageChunk: Uint8Array) {
     sodium.crypto_generichash_update(this.state, numToUint8Array(messageChunk.length));
+    sodium.crypto_generichash_update(this.state, messageChunk);
+  }
+
+  public update(messageChunk: Uint8Array) {
     sodium.crypto_generichash_update(this.state, messageChunk);
   }
 

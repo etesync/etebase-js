@@ -227,12 +227,18 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   private async calculateAdHash(cryptoManager: CM, additionalData: Uint8Array) {
-    const cryptoMac = cryptoManager.getCryptoMac();
-    cryptoMac.updateWithLenPrefix(Uint8Array.from([(this.deleted) ? 1 : 0]));
+    const cryptoMac = cryptoManager.getCryptoMac(null);
+    cryptoMac.update(Uint8Array.from([(this.deleted) ? 1 : 0]));
     cryptoMac.updateWithLenPrefix(additionalData);
+
+    // We hash the chunks separately so that the server can (in the future) return just the hash instead of the full
+    // chunk list if requested - useful for asking for collection updates
+    const chunksHash = cryptoManager.getCryptoMac(null);
     this.chunks.forEach((chunk) =>
-      cryptoMac.updateWithLenPrefix(fromBase64(chunk[0]))
+      chunksHash.update(fromBase64(chunk[0]))
     );
+
+    cryptoMac.update(chunksHash.finalize());
 
     return cryptoMac.finalize();
   }
