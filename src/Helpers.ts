@@ -80,3 +80,16 @@ export function numToUint8Array(num: number): Uint8Array {
     (num >> 24) & 255,
   ]);
 }
+
+export function numFromUint8Array(buf: Uint8Array): number {
+  if (buf.length !== 4) {
+    throw new Error("numFromUint8Array: buffer should be of length 4.");
+  }
+
+  return (
+    buf[0] +
+    (buf[1] << 8) +
+    (buf[2] << 16) +
+    (((buf[3] << 23) >>> 0) * 2)
+  );
+}
