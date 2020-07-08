@@ -86,6 +86,11 @@ export function getPadding(length: number): number {
   return (length + bitMask) & ~bitMask;
 }
 
+// FIXME: we should properly pad the meta and probably change these functions
+export function bufferPadMeta(buf: Uint8Array): Uint8Array {
+  return sodium.pad(buf, buf.length + 1);
+}
+
 export function bufferPad(buf: Uint8Array): Uint8Array {
   return sodium.pad(buf, getPadding(buf.length));
 }

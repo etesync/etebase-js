@@ -2,7 +2,7 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadMeta } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -246,7 +246,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public async setMeta(cryptoManager: CM, additionalData: Uint8Array, meta: any): Promise<void> {
     const adHash = await this.calculateAdHash(cryptoManager, additionalData);
 
-    const encContent = cryptoManager.encryptDetached(msgpackEncode(meta), adHash);
+    const encContent = cryptoManager.encryptDetached(bufferPadMeta(msgpackEncode(meta)), adHash);
 
     this.meta = encContent[1];
     this.uid = toBase64(encContent[0]);
@@ -256,7 +256,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     const mac = fromBase64(this.uid);
     const adHash = await this.calculateAdHash(cryptoManager, additionalData);
 
-    return msgpackDecode(cryptoManager.decryptDetached(this.meta, mac, adHash));
+    return msgpackDecode(bufferUnpad(cryptoManager.decryptDetached(this.meta, mac, adHash)));
   }
 
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
