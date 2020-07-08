@@ -5,7 +5,7 @@ import * as Etebase from "./Etebase";
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
 
 import { Authenticator } from "./OnlineManagers";
-import { fromBase64, fromString, msgpackEncode } from "./Helpers";
+import { fromBase64, fromString, msgpackEncode, msgpackDecode, randomBytesDeterministic, toBase64 } from "./Helpers";
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
@@ -16,7 +16,7 @@ async function verifyCollection(col: Etebase.Collection, meta: Etebase.Collectio
   const decryptedMeta = await col.getMeta();
   expect(decryptedMeta).toEqual(meta);
   const decryptedContent = await col.getContent();
-  expect(decryptedContent).toEqual(content);
+  expect(toBase64(decryptedContent)).toEqual(toBase64(content));
 }
 
 async function verifyItem(item: Etebase.CollectionItem, meta: Etebase.CollectionItemMetadata, content: Uint8Array) {
@@ -24,7 +24,7 @@ async function verifyItem(item: Etebase.CollectionItem, meta: Etebase.Collection
   const decryptedMeta = await item.getMeta();
   expect(decryptedMeta).toEqual(meta);
   const decryptedContent = await item.getContent();
-  expect(decryptedContent).toEqual(content);
+  expect(toBase64(decryptedContent)).toEqual(toBase64(content));
 }
 
 async function prepareUserForTest(user: typeof USER) {
@@ -1449,6 +1449,70 @@ it("Cache collections and items", async () => {
     const cachedItem = await itemManager.cacheLoad(savedCachedItem);
 
     expect(await item.getContent()).toEqual(await cachedItem.getContent());
+  }
+});
+
+it("Chunking large data", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+  };
+
+  const buf = randomBytesDeterministic(120 * 1024, new Uint8Array(32)); // 120kb of psuedorandom data
+  const col = await collectionManager.create(colMeta, "");
+  const itemManager = collectionManager.getItemManager(col);
+  const item = await itemManager.create({}, buf);
+  await verifyItem(item, {}, buf);
+
+  async function itemGetChunkUids(it: Etebase.CollectionItem): Promise<string[]> {
+    // XXX: hack - get the chunk uids from the cached saving
+    const cachedItem = msgpackDecode(await itemManager.cacheSave(it, { saveContent: false })) as any[];
+    const cachedRevision = (msgpackDecode(cachedItem[cachedItem.length - 1]) as any[]);
+    const cachedChunks = cachedRevision[cachedRevision.length - 1] as [Uint8Array][];
+    return cachedChunks.map((x) => toBase64(x[0]));
+  }
+
+  const uidSet = new Set<string>();
+
+  // Get the first chunks and init uidSet
+  {
+    const chunkUids = await itemGetChunkUids(item);
+    expect(chunkUids.length).toEqual(7);
+
+    chunkUids.forEach((x) => uidSet.add(x));
+  }
+
+  // Bite a chunk off the new buffer
+  const biteStart = 10000;
+  const biteSize = 210;
+  const newBuf = new Uint8Array(buf.length - biteSize);
+  newBuf.set(buf.subarray(0, biteStart));
+  newBuf.set(buf.subarray(biteStart + biteSize), biteStart);
+
+  newBuf[39000] = 0;
+  newBuf[39001] = 1;
+  newBuf[39002] = 2;
+  newBuf[39003] = 3;
+  newBuf[39004] = 4;
+
+  await item.setContent(newBuf);
+  await verifyItem(item, {}, newBuf);
+
+  // Verify how much has changed
+  {
+    const chunkUids = await itemGetChunkUids(item);
+    expect(chunkUids.length).toEqual(7);
+
+    let reused = 0;
+
+    chunkUids.forEach((x) => {
+      if (uidSet.has(x)) {
+        reused++;
+      }
+    });
+
+    expect(reused).toEqual(5);
   }
 });
 

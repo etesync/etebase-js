@@ -1,4 +1,5 @@
-import { numToUint8Array, numFromUint8Array, getPadding } from "./Helpers";
+import { numToUint8Array, numFromUint8Array, getPadding, shuffle } from "./Helpers";
+import { ready } from "./Crypto";
 
 it("Buffer to number", () => {
   const numbers = [
@@ -30,4 +31,23 @@ it("Padding is larger than content", async () => {
   }
 
   expect(bufsize).toEqual(0);
+});
+
+it("Shuffle", async () => {
+  await ready;
+
+  const len = 200;
+  const shuffled = new Array(len);
+
+  // Fill up with the indices
+  for (let i = 0 ; i < len ; i++) {
+    shuffled[i] = i;
+  }
+
+  const indices = shuffle(shuffled);
+
+  // Unshuffle
+  for (let i = 0 ; i < len ; i++) {
+    expect(shuffled[indices[i]]).toEqual(i);
+  }
 });

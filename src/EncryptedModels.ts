@@ -2,7 +2,7 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -262,7 +262,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
     const meta = await this.decryptMeta(cryptoManager, additionalData);
 
-    const chunks: [base64, Uint8Array?][] = [];
+    let chunks: [base64, Uint8Array][] = [];
 
     const minChunk = 1 << 14;
     const maxChunk = 1 << 16;
@@ -281,8 +281,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
           if ((pos - chunkStart >= maxChunk) || (buzhash.split(mask))) {
             const buf = content.subarray(chunkStart, pos);
             const hash = toBase64(cryptoManager.calculateMac(buf));
-            const encContent = cryptoManager.encrypt(bufferPad(buf));
-            chunks.push([hash, encContent]);
+            chunks.push([hash, buf]);
             chunkStart = pos;
           }
         }
@@ -293,28 +292,68 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     if (chunkStart < content.length) {
       const buf = content.subarray(chunkStart);
       const hash = toBase64(cryptoManager.calculateMac(buf));
-      const encContent = cryptoManager.encrypt(bufferPad(buf));
-      chunks.push([hash, encContent]);
+      chunks.push([hash, buf]);
     }
 
-    this.chunks = chunks;
+    // Shuffle the items and save the ordering if we have more than one
+    if (chunks.length > 1) {
+      const indices = shuffle(chunks);
+
+      // Filter duplicates and construct the indice list.
+      const uidIndices = new Map<string, number>();
+      chunks = chunks.filter((chunk, i) => {
+        const uid = chunk[0];
+        const previousIndex = uidIndices.get(uid);
+        if (previousIndex !== undefined) {
+          indices[i] = previousIndex;
+          return false;
+        } else {
+          uidIndices.set(uid, i);
+          return true;
+        }
+      });
+
+      // Encode the indice list in the first chunk:
+      chunks[0][1] = msgpackEncode([indices, chunks[0][1]]);
+    }
+
+    // Encrypt all of the chunks
+    this.chunks = chunks.map((chunk) => [chunk[0], cryptoManager.encrypt(bufferPad(chunk[1]))]);
 
     await this.setMeta(cryptoManager, additionalData, meta);
   }
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
-    const ret = concatArrayBuffersArrays(
-      this.chunks.map((chunk) => {
-        const buf = bufferUnpad(cryptoManager.decrypt(chunk[1]!));
-        const hash = cryptoManager.calculateMac(buf);
-        if (!memcmp(hash, fromBase64(chunk[0]))) {
-          throw new IntegrityError(`The content's mac is different to the expected mac (${chunk[0]})`);
-        }
-        return buf;
-      }))
-    ;
+    let indices: number[] = [];
+    const decryptedChunks: Uint8Array[] = this.chunks.map((chunk, index, arr) => {
+      let buf = bufferUnpad(cryptoManager.decrypt(chunk[1]!));
+      // If we have the header, remove it before calculating the mac
+      if ((index === 0) && (arr.length > 1)) {
+        const firstChunk = msgpackDecode(buf) as [number[], Uint8Array];
+        indices = firstChunk[0];
+        buf = firstChunk[1];
+      }
 
-    return ret;
+      const hash = cryptoManager.calculateMac(buf);
+      if (!memcmp(hash, fromBase64(chunk[0]))) {
+        throw new IntegrityError(`The content's mac is different to the expected mac (${chunk[0]})`);
+      }
+      return buf;
+    });
+
+    // We need to unshuffle the chunks
+    if (decryptedChunks.length > 1) {
+      const sortedChunks: Uint8Array[] = [];
+      for (const index of indices) {
+        sortedChunks.push(decryptedChunks[index]);
+      }
+
+      return concatArrayBuffersArrays(sortedChunks);
+    } else if (decryptedChunks.length > 0) {
+      return decryptedChunks[0];
+    } else {
+      return new Uint8Array();
+    }
   }
 
   public async delete(cryptoManager: CM, additionalData: Uint8Array): Promise<void> {

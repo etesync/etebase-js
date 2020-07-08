@@ -12,6 +12,10 @@ export function randomBytes(length: number): Uint8Array {
   return sodium.randombytes_buf(length);
 }
 
+export function randomBytesDeterministic(length: number, seed: Uint8Array): Uint8Array {
+  return sodium.randombytes_buf_deterministic(length, seed);
+}
+
 export function toBase64(input: string | Uint8Array): string {
   return sodium.to_base64(input);
 }
@@ -30,6 +34,38 @@ export function fromString(input: string): Uint8Array {
 
 export function memcmp(b1: Uint8Array, b2: Uint8Array): boolean {
   return sodium.memcmp(b1, b2);
+}
+
+// Fisher–Yates shuffle - an unbiased shuffler
+// The returend indices of where item is now.
+// So if the first item moved to position 3: ret[0] = 3
+export function shuffle<T>(a: T[]): number[] {
+  const len = a.length;
+  const shuffledIndices = new Array(len);
+
+  // Fill up with the indices
+  for (let i = 0 ; i < len ; i++) {
+    shuffledIndices[i] = i;
+  }
+
+  for (let i = 0 ; i < len ; i++) {
+    const j = i + sodium.randombytes_uniform(len - i);
+    const tmp = a[i];
+    a[i] = a[j];
+    a[j] = tmp;
+
+    // Also swap the index array
+    const tmp2 = shuffledIndices[i];
+    shuffledIndices[i] = shuffledIndices[j];
+    shuffledIndices[j] = tmp2;
+  }
+
+  const ret = new Array(len);
+  for (let i = 0 ; i < len ; i++) {
+    ret[shuffledIndices[i]] = i;
+  }
+
+  return ret;
 }
 
 export function getPadding(length: number): number {
