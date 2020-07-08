@@ -2,7 +2,7 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp } from "./Helpers";
 
 export type CollectionType = string;
 
@@ -279,9 +279,10 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
         buzhash.update(content[pos]);
         if (pos - chunkStart >= minChunk) {
           if ((pos - chunkStart >= maxChunk) || (buzhash.split(mask))) {
-            const buf = bufferPad(content.subarray(chunkStart, pos));
-            const encContent = cryptoManager.encryptDetached(buf);
-            chunks.push([toBase64(encContent[0]), encContent[1]]);
+            const buf = content.subarray(chunkStart, pos);
+            const hash = toBase64(cryptoManager.calculateMac(buf));
+            const encContent = cryptoManager.encrypt(bufferPad(buf));
+            chunks.push([hash, encContent]);
             chunkStart = pos;
           }
         }
@@ -290,9 +291,10 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     }
 
     if (chunkStart < content.length) {
-      const buf = bufferPad(content.subarray(chunkStart));
-      const encContent = cryptoManager.encryptDetached(buf);
-      chunks.push([toBase64(encContent[0]), encContent[1]]);
+      const buf = content.subarray(chunkStart);
+      const hash = toBase64(cryptoManager.calculateMac(buf));
+      const encContent = cryptoManager.encrypt(bufferPad(buf));
+      chunks.push([hash, encContent]);
     }
 
     this.chunks = chunks;
@@ -302,10 +304,17 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
     const ret = concatArrayBuffersArrays(
-      this.chunks.map((chunk) => cryptoManager.decryptDetached(chunk[1]!, fromBase64(chunk[0]))))
+      this.chunks.map((chunk) => {
+        const buf = bufferUnpad(cryptoManager.decrypt(chunk[1]!));
+        const hash = cryptoManager.calculateMac(buf);
+        if (!memcmp(hash, fromBase64(chunk[0]))) {
+          throw new IntegrityError(`The content's mac is different to the expected mac (${chunk[0]})`);
+        }
+        return buf;
+      }))
     ;
 
-    return bufferUnpad(ret);
+    return ret;
   }
 
   public async delete(cryptoManager: CM, additionalData: Uint8Array): Promise<void> {

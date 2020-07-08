@@ -67,6 +67,7 @@ export async function deriveKey(salt: Uint8Array, password: string): Promise<Uin
 export class CryptoManager {
   protected version: number;
   protected cipherKey: Uint8Array;
+  protected macKey: Uint8Array;
   protected asymKeySeed: Uint8Array;
   protected subDerivationKey: Uint8Array;
 
@@ -76,6 +77,7 @@ export class CryptoManager {
     this.version = version;
 
     this.cipherKey = sodium.crypto_kdf_derive_from_key(32, 1, keyContext, key);
+    this.macKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
     this.asymKeySeed = sodium.crypto_kdf_derive_from_key(32, 3, keyContext, key);
     this.subDerivationKey = sodium.crypto_kdf_derive_from_key(32, 4, keyContext, key);
   }
@@ -115,8 +117,14 @@ export class CryptoManager {
     return sodium.crypto_generichash(32, this.subDerivationKey, salt);
   }
 
-  public getCryptoMac(key: Uint8Array | null) {
+  public getCryptoMac(key?: Uint8Array | null) {
+    key = (key !== undefined) ? key : this.macKey;
     return new CryptoMac(key);
+  }
+
+  public calculateMac(message: Uint8Array, key?: Uint8Array | null) {
+    key = (key !== undefined) ? key : this.macKey;
+    return sodium.crypto_generichash(32, message, key);
   }
 
   public getChunker() {
