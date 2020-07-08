@@ -23,14 +23,12 @@ it("Padding is larger than content", async () => {
   // Because of how we use padding (unpadding) we need to make sure padding is always larger than the content
   // Otherwise we risk the unpadder to fail thinking it should unpad when it shouldn't.
 
-  let bufsize = 0;
   for (let i = 1 ; i < (1 << 14) ; i++) {
-    if (getPadding(i) === i) {
-      bufsize = i;
+    if (getPadding(i) <= i) {
+      // Always fail here.
+      expect(i).toEqual(-1);
     }
   }
-
-  expect(bufsize).toEqual(0);
 });
 
 it("Shuffle", async () => {
