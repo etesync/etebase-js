@@ -32,7 +32,7 @@ export function memcmp(b1: Uint8Array, b2: Uint8Array): boolean {
   return sodium.memcmp(b1, b2);
 }
 
-function padme(length: number): number {
+export function getPadding(length: number): number {
   // Use the padme padding scheme for efficiently
   // https://www.petsymposium.org/2019/files/papers/issue4/popets-2019-0056.pdf
 
@@ -49,11 +49,11 @@ function padme(length: number): number {
   return (length + bitMask) & ~bitMask;
 }
 
-export function padmePad(buf: Uint8Array): Uint8Array {
-  return sodium.pad(buf, padme(buf.length));
+export function bufferPad(buf: Uint8Array): Uint8Array {
+  return sodium.pad(buf, getPadding(buf.length));
 }
 
-export function padmeUnpad(buf: Uint8Array): Uint8Array {
+export function bufferUnpad(buf: Uint8Array): Uint8Array {
   if (buf.length === 0) {
     return buf;
   }

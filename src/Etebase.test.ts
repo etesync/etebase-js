@@ -5,7 +5,7 @@ import * as Etebase from "./Etebase";
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
 
 import { Authenticator } from "./OnlineManagers";
-import { fromBase64, fromString, padmePad, msgpackEncode } from "./Helpers";
+import { fromBase64, fromString, msgpackEncode } from "./Helpers";
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
@@ -399,24 +399,6 @@ it("Collection as item", async () => {
     const updates = await itemManager.fetchUpdates([colItemOld, item]);
     expect(updates.data.length).toBe(1);
     await verifyItem(updates.data[0], colMeta, fromString("test2"));
-  }
-});
-
-it("Padding content works", async () => {
-  const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
-    name: "Calendar",
-  };
-
-  const col = await collectionManager.create(meta, "");
-
-  for (let i = 1 ; i < 513 ; i++) {
-    // We first pad the content so that it's "padding-like" so if in the future we allow configuring turning padding
-    // off, we can be certain nothing breaks.
-    const buf = padmePad(Etebase.randomBytes(i));
-    await col.setContent(buf);
-    expect(buf).toEqual(await col.getContent());
   }
 });
 
