@@ -262,17 +262,40 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
     const meta = await this.decryptMeta(cryptoManager, additionalData);
 
-    if (content.length > 0) {
-      // XXX: if we ever add an option to change padding size, always make sure to at least pad with 1 byte.
-      // If we don't do that, unpad will fail with some inputs.
-      const buf = bufferPad(content);
+    const chunks: [base64, Uint8Array?][] = [];
 
-      // FIXME: need to actually chunkify
-      const encContent = cryptoManager.encryptDetached(buf);
-      this.chunks = [[toBase64(encContent[0]), encContent[1]]];
-    } else {
-      this.chunks = [];
+    const minChunk = 1 << 14;
+    const maxChunk = 1 << 16;
+    let chunkStart = 0;
+
+    // Only try chunking if our content is larger than the minimum chunk size
+    if (content.length > minChunk) {
+      // FIXME: figure out what to do with mask - should it be configurable?
+      const buzhash = cryptoManager.getChunker();
+      const mask = (1 << 12) - 1;
+
+      let pos = 0;
+      while (pos < content.length) {
+        buzhash.update(content[pos]);
+        if (pos - chunkStart >= minChunk) {
+          if ((pos - chunkStart >= maxChunk) || (buzhash.split(mask))) {
+            const buf = bufferPad(content.subarray(chunkStart, pos));
+            const encContent = cryptoManager.encryptDetached(buf);
+            chunks.push([toBase64(encContent[0]), encContent[1]]);
+            chunkStart = pos;
+          }
+        }
+        pos++;
+      }
     }
+
+    if (chunkStart < content.length) {
+      const buf = bufferPad(content.subarray(chunkStart));
+      const encContent = cryptoManager.encryptDetached(buf);
+      chunks.push([toBase64(encContent[0]), encContent[1]]);
+    }
+
+    this.chunks = chunks;
 
     await this.setMeta(cryptoManager, additionalData, meta);
   }

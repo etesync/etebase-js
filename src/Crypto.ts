@@ -5,6 +5,8 @@ import _sodium from "libsodium-wrappers";
 import * as Constants from "./Constants";
 import { numToUint8Array, symmetricNonceSize } from "./Helpers";
 
+import { Rollsum } from "./Chunker";
+
 import type rnsodiumType from "react-native-sodium";
 
 export const sodium = _sodium;
@@ -115,6 +117,10 @@ export class CryptoManager {
 
   public getCryptoMac(key: Uint8Array | null) {
     return new CryptoMac(key);
+  }
+
+  public getChunker() {
+    return new Rollsum();
   }
 }
 

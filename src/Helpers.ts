@@ -36,10 +36,11 @@ export function getPadding(length: number): number {
   // Use the padme padding scheme for efficiently
   // https://www.petsymposium.org/2019/files/papers/issue4/popets-2019-0056.pdf
 
-  // We have a minimum padding of 32 (padme(512) == 32)
-  const minPad = 512;
-  if (length < minPad) {
-    return 32;
+  // We want a minimum pad size of 4k
+  if (length < (1 << 18)) {
+    const size = (1 << 12) - 1;
+    // We add 1 so we always have some padding
+    return (length | size) + 1;
   }
 
   const e = Math.floor(Math.log2(length));
