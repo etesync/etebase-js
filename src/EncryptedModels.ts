@@ -227,7 +227,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   private async calculateAdHash(cryptoManager: CM, additionalData: Uint8Array) {
-    const cryptoMac = cryptoManager.getCryptoMac(null);
+    const cryptoMac = cryptoManager.getCryptoMac();
     cryptoMac.update(Uint8Array.from([(this.deleted) ? 1 : 0]));
     cryptoMac.updateWithLenPrefix(additionalData);
 
