@@ -233,7 +233,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
     // We hash the chunks separately so that the server can (in the future) return just the hash instead of the full
     // chunk list if requested - useful for asking for collection updates
-    const chunksHash = cryptoManager.getCryptoMac(null);
+    const chunksHash = cryptoManager.getCryptoMac(false);
     this.chunks.forEach((chunk) =>
       chunksHash.update(fromBase64(chunk[0]))
     );

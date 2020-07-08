@@ -117,13 +117,13 @@ export class CryptoManager {
     return sodium.crypto_generichash(32, this.subDerivationKey, salt);
   }
 
-  public getCryptoMac(key?: Uint8Array | null) {
-    key = (key !== undefined) ? key : this.macKey;
+  public getCryptoMac(withKey = true) {
+    const key = (withKey) ? this.macKey : null;
     return new CryptoMac(key);
   }
 
-  public calculateMac(message: Uint8Array, key?: Uint8Array | null) {
-    key = (key !== undefined) ? key : this.macKey;
+  public calculateMac(message: Uint8Array, withKey = true) {
+    const key = (withKey) ? this.macKey : null;
     return sodium.crypto_generichash(32, message, key);
   }
 
