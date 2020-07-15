@@ -6,7 +6,7 @@ interface Response {
   body: Uint8Array;
 }
 
-export default async function request(url: string, options: RequestInit = {}): Promise<Response> {
+async function request(url: string, options: RequestInit = {}): Promise<Response> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(options.method?.toUpperCase() ?? "GET", url, true);
@@ -46,3 +46,17 @@ export default async function request(url: string, options: RequestInit = {}): P
   });
 }
 
+async function requestNode(url: string, options: RequestInit = {}): Promise<Response> {
+  const fetch = await require("node-fetch");
+  const response = await fetch(url, options as any);
+  const ret = {
+    type: "default",
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok,
+    body: new Uint8Array(await response.arrayBuffer()),
+  };
+  return ret;
+}
+
+export default (global as any).XMLHttpRequest ? request : requestNode;
