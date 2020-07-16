@@ -1,6 +1,8 @@
 import * as msgpack from "@msgpack/msgpack";
 
-import { sodium } from "./Crypto";
+import _sodium from "libsodium-wrappers";
+
+export const sodium = _sodium;
 
 export type base64 = string;
 
