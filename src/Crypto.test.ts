@@ -22,6 +22,12 @@ it("Symmetric encryption", () => {
   const [mac, onlyCipher] = cryptoManager.encryptDetached(clearText);
   expect(clearText).toEqual(cryptoManager.decryptDetached(onlyCipher, mac));
 
-  const derived = cryptoManager.deriveSubkey(new Uint8Array(32));
+  let derived = cryptoManager.deriveSubkey(new Uint8Array(32));
   expect(derived).toEqual(fromBase64("4w-VCSTETv26JjVlVlD2VaACcb6aQSD2JbF-e89xnaA"));
+
+  derived = cryptoManager.calculateMac(new Uint8Array(32));
+  expect(derived).toEqual(fromBase64("bz6eMZdAkIuiLUuFDiVwuH3IFs4hYkRfhzang_JzHr8"));
+
+  derived = cryptoManager.calculateMac(new Uint8Array(32), false);
+  expect(derived).toEqual(fromBase64("iesNaoppHa4s0V7QNpkxzgqUnsr6XD-T-BIYM2RuFcM"));
 });
