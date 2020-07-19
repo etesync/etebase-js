@@ -132,28 +132,15 @@ export class CryptoManager {
   }
 }
 
-export class AsymmetricCryptoManager {
+export class LoginCryptoManager {
   private keypair: _sodium.KeyPair;
 
   private constructor(keypair: _sodium.KeyPair) {
     this.keypair = keypair;
   }
 
-  public static keygen(seed?: Uint8Array) {
-    if (seed) {
-      return new this(sodium.crypto_sign_seed_keypair(seed));
-    } else {
-      return new this(sodium.crypto_sign_keypair());
-    }
-  }
-
-  public static fromPrivkey(privkey: Uint8Array) {
-    return new this({
-      keyType: "ed25519",
-      privateKey: privkey,
-      // The public key is embedded in the secret key and the function to extract it is not exposed in libsodium-wrappers.
-      publicKey: privkey.subarray(sodium.crypto_sign_SEEDBYTES, sodium.crypto_sign_SEEDBYTES + sodium.crypto_sign_PUBLICKEYBYTES),
-    });
+  public static keygen(seed: Uint8Array) {
+    return new this(sodium.crypto_sign_seed_keypair(seed));
   }
 
   public signDetached(message: Uint8Array): Uint8Array {
@@ -164,24 +151,47 @@ export class AsymmetricCryptoManager {
     return sodium.crypto_sign_verify_detached(signature, message, pubkey);
   }
 
-  public encryptSign(message: Uint8Array, pubkey: Uint8Array): Uint8Array {
+  public get pubkey() {
+    return this.keypair.publicKey;
+  }
+}
+
+export class BoxCryptoManager {
+  private keypair: _sodium.KeyPair;
+
+  private constructor(keypair: _sodium.KeyPair) {
+    this.keypair = keypair;
+  }
+
+  public static keygen(seed?: Uint8Array) {
+    if (seed) {
+      return new this(sodium.crypto_box_seed_keypair(seed));
+    } else {
+      return new this(sodium.crypto_box_keypair());
+    }
+  }
+
+  public static fromPrivkey(privkey: Uint8Array) {
+    return new this({
+      keyType: "x25519",
+      privateKey: privkey,
+      publicKey: sodium.crypto_scalarmult_base(privkey),
+    });
+  }
+
+  public encrypt(message: Uint8Array, pubkey: Uint8Array): Uint8Array {
     const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
-    const sk = sodium.crypto_sign_ed25519_sk_to_curve25519(this.keypair.privateKey);
-    const pk = sodium.crypto_sign_ed25519_pk_to_curve25519(pubkey);
-    const ret = sodium.crypto_box_easy(message, nonce, pk, sk);
+    const ret = sodium.crypto_box_easy(message, nonce, pubkey, this.keypair.privateKey);
 
     return concatArrayBuffers(nonce, ret);
   }
 
-  public decryptVerify(nonceCiphertext: Uint8Array, pubkey: Uint8Array): Uint8Array {
+  public decrypt(nonceCiphertext: Uint8Array, pubkey: Uint8Array): Uint8Array {
     const nonceSize = sodium.crypto_box_NONCEBYTES;
     const nonce = nonceCiphertext.subarray(0, nonceSize);
     const ciphertext = nonceCiphertext.subarray(nonceSize);
 
-    const sk = sodium.crypto_sign_ed25519_sk_to_curve25519(this.keypair.privateKey);
-    const pk = sodium.crypto_sign_ed25519_pk_to_curve25519(pubkey);
-
-    return sodium.crypto_box_open_easy(ciphertext, nonce, pk, sk);
+    return sodium.crypto_box_open_easy(ciphertext, nonce, pubkey, this.keypair.privateKey);
   }
 
   public get pubkey() {

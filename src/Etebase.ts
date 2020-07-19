@@ -2,7 +2,7 @@ import URI from "urijs";
 
 import * as Constants from "./Constants";
 
-import { deriveKey, concatArrayBuffers, AsymmetricCryptoManager, ready } from "./Crypto";
+import { deriveKey, concatArrayBuffers, BoxCryptoManager, ready } from "./Crypto";
 export { ready, getPrettyFingerprint } from "./Crypto";
 export * from "./Exceptions";
 import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode } from "./Helpers";
@@ -78,7 +78,7 @@ export class Account {
     const mainCryptoManager = getMainCryptoManager(mainKey, version);
     const loginCryptoManager = mainCryptoManager.getLoginCryptoManager();
 
-    const identityCryptoManager = AsymmetricCryptoManager.keygen();
+    const identityCryptoManager = BoxCryptoManager.keygen();
 
     const accountKey = randomBytes(symmetricKeyLength);
     const encryptedContent = mainCryptoManager.encrypt(concatArrayBuffers(accountKey, identityCryptoManager.privkey));
@@ -449,7 +449,7 @@ export class CollectionInvitationManager {
   public async accept(invitation: SignedInvitation) {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
-    const encryptionKey = identCryptoManager.decryptVerify(invitation.signedEncryptionKey, invitation.fromPubkey);
+    const encryptionKey = identCryptoManager.decrypt(invitation.signedEncryptionKey, invitation.fromPubkey);
     const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
     const innerInvitation = {
       ...invitation,

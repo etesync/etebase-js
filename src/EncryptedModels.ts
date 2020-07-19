@@ -1,6 +1,6 @@
 import * as Constants from "./Constants";
 
-import { CryptoManager, AsymmetricCryptoManager, concatArrayBuffersArrays } from "./Crypto";
+import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError } from "./Exceptions";
 import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadMeta } from "./Helpers";
 
@@ -93,16 +93,16 @@ export class MainCryptoManager extends CryptoManager {
     super(key, "Main", version);
   }
 
-  public getLoginCryptoManager(): AsymmetricCryptoManager {
-    return AsymmetricCryptoManager.keygen(this.asymKeySeed);
+  public getLoginCryptoManager(): LoginCryptoManager {
+    return LoginCryptoManager.keygen(this.asymKeySeed);
   }
 
   public getAccountCryptoManager(privkey: Uint8Array): AccountCryptoManager {
     return new AccountCryptoManager(privkey, this.version);
   }
 
-  public getIdentityCryptoManager(privkey: Uint8Array): AsymmetricCryptoManager {
-    return AsymmetricCryptoManager.fromPrivkey(privkey);
+  public getIdentityCryptoManager(privkey: Uint8Array): BoxCryptoManager {
+    return BoxCryptoManager.fromPrivkey(privkey);
   }
 }
 
@@ -494,10 +494,10 @@ export class EncryptedCollection {
   }
 
 
-  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: AsymmetricCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
+  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = randomBytes(32);
     const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
-    const signedEncryptionKey = identCryptoManager.encryptSign(encryptionKey, pubkey);
+    const signedEncryptionKey = identCryptoManager.encrypt(encryptionKey, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
       uid: toBase64(uid),
