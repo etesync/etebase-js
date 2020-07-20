@@ -34,13 +34,13 @@ export interface UserProfile {
 
 export type LoginChallange = {
   username: string;
-  challenge: string;
+  challenge: Uint8Array;
   salt: Uint8Array;
   version: number;
 };
 
 export type LoginChallangeResponse = {
-  challenge: string;
+  challenge: Uint8Array;
   host: string;
 };
 
