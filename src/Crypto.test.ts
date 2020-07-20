@@ -1,4 +1,4 @@
-import { CryptoManager, deriveKey, ready, getPrettyFingerprint } from "./Crypto";
+import { CryptoManager, deriveKey, ready, getPrettyFingerprint, CryptoMac } from "./Crypto";
 import { USER } from "./TestConstants";
 
 import { fromBase64, toBase64, fromString } from "./Helpers";
@@ -30,6 +30,24 @@ it("Symmetric encryption", () => {
 
   derived = cryptoManager.calculateMac(new Uint8Array(32), false);
   expect(derived).toEqual(fromBase64("iesNaoppHa4s0V7QNpkxzgqUnsr6XD-T-BIYM2RuFcM"));
+
+  const cryptoMac = cryptoManager.getCryptoMac();
+  cryptoMac.update(new Uint8Array(4));
+  expect(cryptoMac.finalize()).toEqual(fromBase64("y5nYZ75gDUna4bnaAHobXUlgQoTKOnueNW_KCYxcAg4"));
+});
+
+it("Crypto mac", () => {
+  const key = fromBase64(USER.key);
+
+  let cryptoMac = new CryptoMac(null);
+  cryptoMac.update(new Uint8Array(4));
+  cryptoMac.updateWithLenPrefix(new Uint8Array(8));
+  expect(cryptoMac.finalize()).toEqual(fromBase64("P-Hpzo86RG6Ps4R1gGXmQrzmdJC2OotqqreKmB8G45A"));
+
+  cryptoMac = new CryptoMac(key);
+  cryptoMac.update(new Uint8Array(4));
+  cryptoMac.updateWithLenPrefix(new Uint8Array(8));
+  expect(cryptoMac.finalize()).toEqual(fromBase64("rgL6d_XDiBfbzevFdtktc61XB5-PkS1uQ1cj5DgfFc8"));
 });
 
 it("Pretty fingerprint", () => {
