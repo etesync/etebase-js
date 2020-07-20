@@ -32,9 +32,7 @@ export interface CollectionItemRevisionJsonWrite {
   deleted: boolean;
 }
 
-export interface CollectionItemRevisionJsonRead extends CollectionItemRevisionJsonWrite {
-  chunks: ChunkJson[];
-}
+export type CollectionItemRevisionJsonRead = CollectionItemRevisionJsonWrite;
 
 export interface CollectionItemJsonWrite {
   uid: base64;
@@ -46,9 +44,7 @@ export interface CollectionItemJsonWrite {
   etag: string | null;
 }
 
-export interface CollectionItemJsonRead extends CollectionItemJsonWrite {
-  content: CollectionItemRevisionJsonRead;
-}
+export type CollectionItemJsonRead = CollectionItemJsonWrite;
 
 export enum CollectionAccessLevel {
   Admin = "adm",
