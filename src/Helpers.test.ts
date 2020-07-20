@@ -29,6 +29,8 @@ it("Padding is larger than content", async () => {
       expect(i).toEqual(-1);
     }
   }
+
+  expect(getPadding(2343242)).toEqual(2359296);
 });
 
 it("Shuffle", async () => {
