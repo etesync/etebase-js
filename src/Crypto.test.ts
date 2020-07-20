@@ -1,4 +1,4 @@
-import { CryptoManager, deriveKey, ready } from "./Crypto";
+import { CryptoManager, deriveKey, ready, getPrettyFingerprint } from "./Crypto";
 import { USER } from "./TestConstants";
 
 import { fromBase64, toBase64, fromString } from "./Helpers";
@@ -30,4 +30,11 @@ it("Symmetric encryption", () => {
 
   derived = cryptoManager.calculateMac(new Uint8Array(32), false);
   expect(derived).toEqual(fromBase64("iesNaoppHa4s0V7QNpkxzgqUnsr6XD-T-BIYM2RuFcM"));
+});
+
+it("Pretty fingerprint", () => {
+  const pubkey = fromBase64(USER.pubkey);
+
+  const fingerprint = getPrettyFingerprint(pubkey);
+  expect(fingerprint).toEqual("17756   37089   25897   42924\n06835   62184   63746   54689\n32947   01272   14138   19749\n00577   54359   44439   58177");
 });

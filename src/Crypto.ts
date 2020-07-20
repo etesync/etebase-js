@@ -236,5 +236,5 @@ export function getPrettyFingerprint(content: Uint8Array, delimiter = "   ") {
     const suffix = ((i + 2) % 8 === 0) ? "\n" : delimiter;
     ret += num.toString().padStart(5, "0") + suffix;
   }
-  return ret;
+  return ret.trim();
 }
