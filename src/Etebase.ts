@@ -321,15 +321,13 @@ export class CollectionManager {
 }
 
 export class CollectionItemManager {
-  private readonly etebase: Account;
   private readonly collectionCryptoManager: CollectionCryptoManager;
   private readonly onlineManager: CollectionItemManagerOnline;
   private readonly collectionUid: string; // The uid of the collection this item belongs to
 
   constructor(etebase: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
-    this.etebase = etebase;
-    this.collectionCryptoManager = col.getCryptoManager(this.etebase._getCryptoManager());
-    this.onlineManager = new CollectionItemManagerOnline(this.etebase, col);
+    this.collectionCryptoManager = col.getCryptoManager(etebase._getCryptoManager());
+    this.onlineManager = new CollectionItemManagerOnline(etebase, col);
     this.collectionUid = col.uid;
   }
 
