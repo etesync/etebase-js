@@ -52,15 +52,16 @@ export enum CollectionAccessLevel {
   ReadOnly = "ro",
 }
 
-export interface CollectionJsonWrite extends CollectionItemJsonWrite {
+export interface CollectionJsonWrite {
   collectionKey: Uint8Array;
+  item: CollectionItemJsonWrite;
 }
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
   accessLevel: CollectionAccessLevel;
   stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
-  content: CollectionItemRevisionJsonRead;
+  item: CollectionItemJsonRead;
 }
 
 export interface SignedInvitationWrite {
@@ -396,7 +397,7 @@ export class EncryptedCollection {
     const ret = new EncryptedCollection();
     ret.collectionKey = collectionKey;
 
-    ret.item = EncryptedCollectionItem.deserialize(json);
+    ret.item = EncryptedCollectionItem.deserialize(json.item);
 
     ret.accessLevel = accessLevel;
     ret.stoken = stoken;
@@ -406,7 +407,7 @@ export class EncryptedCollection {
 
   public serialize() {
     const ret: CollectionJsonWrite = {
-      ...this.item.serialize(),
+      item: this.item.serialize(),
 
       collectionKey: this.collectionKey,
     };
