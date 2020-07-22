@@ -298,9 +298,9 @@ export class CollectionManager {
     // If we have a etag, it means we previously fetched it.
     if (col.etag) {
       const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col);
-      await itemOnlineManager.batch([col.item], undefined, { ...options, stoken: col.stoken });
+      await itemOnlineManager.transaction([col.item], undefined, options);
     } else {
-      await this.onlineManager.create(col, { ...options, stoken: col.stoken });
+      await this.onlineManager.create(col, options);
     }
     col.__markSaved();
   }
