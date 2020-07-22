@@ -20,18 +20,10 @@ export class Rollsum {
   private wofs: number;
 
   constructor() {
-
     this.window = new Uint8Array(windowSize);
-    this.reset();
-  }
-
-  reset(): this {
-    this.window.fill(0);
     this.s1 = windowSize * charOffset;
     this.s2 = windowSize * (windowSize - 1) * charOffset;
     this.wofs = 0;
-
-    return this;
   }
 
   update(ch: number) {
@@ -45,19 +37,11 @@ export class Rollsum {
     this.s2 = (this.s2 + this.s1 - (windowSize * (drop + charOffset))) >>> 0;
   }
 
-  digest(): number {
-    return ((this.s1 << 16) | (this.s2 & 0xffff)) >>> 0;
-  }
-
   /**
    * Returns true if splitting is needed, that is when the current digest
    * reaches the given number of the same consecutive low bits.
    */
   split(mask: number): boolean {
     return ((this.s2 & (mask)) === mask);
-  }
-
-  clean() {
-    this.reset();
   }
 }
