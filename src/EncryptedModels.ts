@@ -339,7 +339,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     });
 
     // We need to unshuffle the chunks
-    if (decryptedChunks.length > 1) {
+    if (indices.length > 1) {
       const sortedChunks: Uint8Array[] = [];
       for (const index of indices) {
         sortedChunks.push(decryptedChunks[index]);
