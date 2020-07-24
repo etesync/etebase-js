@@ -451,6 +451,10 @@ export class CollectionInvitationManager {
     await this.onlineManager.invite(invitation);
   }
 
+  public async disinvite(invitation: SignedInvitation) {
+    return this.onlineManager.disinvite(invitation);
+  }
+
   public get pubkey() {
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
     return identCryptoManager.pubkey;
