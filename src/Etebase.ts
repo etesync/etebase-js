@@ -421,27 +421,11 @@ export class CollectionInvitationManager {
   }
 
   public async listIncoming(options?: InvitationFetchOptions) {
-    const ret = await this.onlineManager.listIncoming(options);
-    return {
-      ...ret,
-      data: ret.data.map((x) => ({
-        ...x,
-        fromPubkey: x.fromPubkey,
-        signedEncryptionKey: x.signedEncryptionKey,
-      })),
-    };
+    return await this.onlineManager.listIncoming(options);
   }
 
   public async listOutgoing(options?: InvitationFetchOptions) {
-    const ret = await this.onlineManager.listOutgoing(options);
-    return {
-      ...ret,
-      data: ret.data.map((x) => ({
-        ...x,
-        fromPubkey: x.fromPubkey,
-        signedEncryptionKey: x.signedEncryptionKey,
-      })),
-    };
+    return await this.onlineManager.listOutgoing(options);
   }
 
   public async accept(invitation: SignedInvitation) {
