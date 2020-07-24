@@ -449,29 +449,15 @@ export class CollectionInvitationManager {
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
     const encryptionKey = identCryptoManager.decrypt(invitation.signedEncryptionKey, invitation.fromPubkey);
     const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
-    const innerInvitation = {
-      ...invitation,
-      fromPubkey: invitation.fromPubkey,
-      signedEncryptionKey: invitation.signedEncryptionKey,
-    };
-    return this.onlineManager.accept(innerInvitation, encryptedEncryptionKey);
+    return this.onlineManager.accept(invitation, encryptedEncryptionKey);
   }
 
   public async reject(invitation: SignedInvitation) {
-    const innerInvitation = {
-      ...invitation,
-      fromPubkey: invitation.fromPubkey,
-      signedEncryptionKey: invitation.signedEncryptionKey,
-    };
-    return this.onlineManager.reject(innerInvitation);
+    return this.onlineManager.reject(invitation);
   }
 
   public async fetchUserProfile(username: string) {
-    const profile = await this.onlineManager.fetchUserProfile(username);
-    return {
-      ...profile,
-      pubkey: profile.pubkey,
-    };
+    return await this.onlineManager.fetchUserProfile(username);
   }
 
   public async invite(col: Collection, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<void> {
