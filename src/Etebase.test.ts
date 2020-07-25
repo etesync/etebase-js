@@ -1391,6 +1391,9 @@ it("Session store and restore", async () => {
   {
     const encryptionKey = Etebase.randomBytes(32);
     const saved = await etebase.save(encryptionKey);
+    // Fail without an encryption key
+    // FIXME: Test for the correct error value
+    await expect(Etebase.Account.restore(saved)).rejects.toBeTruthy();
     const etebase2 = await Etebase.Account.restore(saved, encryptionKey);
 
     // Verify we can access the data
