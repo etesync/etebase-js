@@ -1205,7 +1205,7 @@ it("Iterating invitations", async () => {
 
   {
     let iterator: string | null = null;
-    for (let i = 0 ; i < 1 ; i++) {
+    for (let i = 0 ; i < 2 ; i++) {
       const invitations = await collectionInvitationManager2.listIncoming({ limit: 2, iterator });
       expect(invitations.done).toBe(i === 1);
       iterator = invitations.iterator as string;
@@ -1220,7 +1220,7 @@ it("Iterating invitations", async () => {
 
   {
     let iterator: string | null = null;
-    for (let i = 0 ; i < 1 ; i++) {
+    for (let i = 0 ; i < 2 ; i++) {
       const invitations = await collectionInvitationManager.listOutgoing({ limit: 2, iterator });
       expect(invitations.done).toBe(i === 1);
       iterator = invitations.iterator as string;
