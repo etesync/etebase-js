@@ -231,6 +231,11 @@ export class Account {
     return new CollectionManager(this);
   }
 
+  public getInvitationManager() {
+    return new CollectionInvitationManager(this);
+
+  }
+
   public _getCryptoManager() {
     // FIXME: cache this
     const mainCryptoManager = getMainCryptoManager(this.mainKey, this.version);
@@ -317,6 +322,10 @@ export class CollectionManager {
 
   public getItemManager(col: Collection) {
     return new CollectionItemManager(this.etebase, this, col.encryptedCollection);
+  }
+
+  public getMemberManager(col: Collection) {
+    return new CollectionMemberManager(this.etebase, this, col.encryptedCollection);
   }
 }
 
@@ -465,9 +474,9 @@ export class CollectionMemberManager {
   private readonly etebase: Account;
   private readonly onlineManager: CollectionMemberManagerOnline;
 
-  constructor(etebase: Account, _collectionManager: CollectionManager, col: Collection) {
+  constructor(etebase: Account, _collectionManager: CollectionManager, encryptedCollection: EncryptedCollection) {
     this.etebase = etebase;
-    this.onlineManager = new CollectionMemberManagerOnline(this.etebase, col.encryptedCollection);
+    this.onlineManager = new CollectionMemberManagerOnline(this.etebase, encryptedCollection);
   }
 
   public async list(options?: MemberFetchOptions) {

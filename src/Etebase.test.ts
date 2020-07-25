@@ -1040,11 +1040,11 @@ it("Collection invitations", async () => {
 
   await itemManager.batch(items);
 
-  const collectionInvitationManager = new Etebase.CollectionInvitationManager(etebase);
+  const collectionInvitationManager = etebase.getInvitationManager();
 
   const etebase2 = await prepareUserForTest(USER2);
   const collectionManager2 = etebase2.getCollectionManager();
-  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
+  const collectionInvitationManager2 = etebase2.getInvitationManager();
 
   const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
@@ -1121,7 +1121,7 @@ it("Collection invitations", async () => {
   }
 
   const col2 = await collectionManager2.fetch(col.uid);
-  const collectionMemberManager2 = new Etebase.CollectionMemberManager(etebase2, collectionManager2, col2);
+  const collectionMemberManager2 = collectionManager2.getMemberManager(col2);
 
   await collectionMemberManager2.leave();
 
@@ -1153,7 +1153,7 @@ it("Collection invitations", async () => {
     const newCol = await collectionManager.fetch(col.uid);
     expect(stoken).not.toEqual(newCol.stoken);
 
-    const collectionMemberManager = new Etebase.CollectionMemberManager(etebase, collectionManager, col);
+    const collectionMemberManager = collectionManager.getMemberManager(col);
     await collectionMemberManager.remove(USER2.username);
 
     const collections = await collectionManager2.list({ stoken });
@@ -1176,7 +1176,7 @@ it("Iterating invitations", async () => {
   const etebase2 = await prepareUserForTest(USER2);
   const collectionManager = etebase.getCollectionManager();
 
-  const collectionInvitationManager = new Etebase.CollectionInvitationManager(etebase);
+  const collectionInvitationManager = etebase.getInvitationManager();
   const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
   const collections = [];
@@ -1195,7 +1195,7 @@ it("Iterating invitations", async () => {
     collections.push(col);
   }
 
-  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
+  const collectionInvitationManager2 = etebase2.getInvitationManager();
 
   // Check incoming
   {
@@ -1266,8 +1266,8 @@ it("Collection access level", async () => {
 
   await itemManager.batch(items);
 
-  const collectionMemberManager = new Etebase.CollectionMemberManager(etebase, collectionManager, col);
-  const collectionInvitationManager = new Etebase.CollectionInvitationManager(etebase);
+  const collectionMemberManager = collectionManager.getMemberManager(col);
+  const collectionInvitationManager = etebase.getInvitationManager();
 
   const etebase2 = await prepareUserForTest(USER2);
   const collectionManager2 = etebase2.getCollectionManager();
@@ -1277,7 +1277,7 @@ it("Collection access level", async () => {
 
   await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
-  const collectionInvitationManager2 = new Etebase.CollectionInvitationManager(etebase2);
+  const collectionInvitationManager2 = etebase2.getInvitationManager();
 
   const invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
