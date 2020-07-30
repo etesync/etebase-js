@@ -249,7 +249,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     this.uid = toBase64(encContent[0]);
   }
 
-  public async decryptMeta(cryptoManager: CM, additionalData: Uint8Array): Promise<any> {
+  public async getMeta(cryptoManager: CM, additionalData: Uint8Array): Promise<any> {
     const mac = fromBase64(this.uid);
     const adHash = await this.calculateAdHash(cryptoManager, additionalData);
 
@@ -257,7 +257,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
-    const meta = await this.decryptMeta(cryptoManager, additionalData);
+    const meta = await this.getMeta(cryptoManager, additionalData);
 
     let chunks: [base64, Uint8Array][] = [];
 
@@ -320,7 +320,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     await this.setMeta(cryptoManager, additionalData, meta);
   }
 
-  public async decryptContent(cryptoManager: CM): Promise<Uint8Array> {
+  public async getContent(cryptoManager: CM): Promise<Uint8Array> {
     let indices: number[] = [];
     const decryptedChunks: Uint8Array[] = this.chunks.map((chunk, index) => {
       let buf = bufferUnpad(cryptoManager.decrypt(chunk[1]!));
@@ -354,7 +354,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   public async delete(cryptoManager: CM, additionalData: Uint8Array): Promise<void> {
-    const meta = await this.decryptMeta(cryptoManager, additionalData);
+    const meta = await this.getMeta(cryptoManager, additionalData);
 
     this.deleted = true;
 
@@ -452,10 +452,10 @@ export class EncryptedCollection {
     return this.item.setMeta(itemCryptoManager, meta);
   }
 
-  public async decryptMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
+  public async getMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
-    return this.item.decryptMeta(itemCryptoManager) as Promise<CollectionMetadata>;
+    return this.item.getMeta(itemCryptoManager) as Promise<CollectionMetadata>;
   }
 
   public async setContent(cryptoManager: CollectionCryptoManager, content: Uint8Array): Promise<void> {
@@ -463,10 +463,10 @@ export class EncryptedCollection {
     return this.item.setContent(itemCryptoManager, content);
   }
 
-  public async decryptContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
+  public async getContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
-    return this.item.decryptContent(itemCryptoManager);
+    return this.item.getContent(itemCryptoManager);
   }
 
   public async delete(cryptoManager: CollectionCryptoManager): Promise<void> {
@@ -613,9 +613,9 @@ export class EncryptedCollectionItem {
     this.content = rev;
   }
 
-  public async decryptMeta(cryptoManager: CollectionItemCryptoManager): Promise<CollectionItemMetadata> {
+  public async getMeta(cryptoManager: CollectionItemCryptoManager): Promise<CollectionItemMetadata> {
     this.verify(cryptoManager);
-    return this.content.decryptMeta(cryptoManager, this.getAdditionalMacData());
+    return this.content.getMeta(cryptoManager, this.getAdditionalMacData());
   }
 
   public async setContent(cryptoManager: CollectionItemCryptoManager, content: Uint8Array): Promise<void> {
@@ -628,9 +628,9 @@ export class EncryptedCollectionItem {
     this.content = rev;
   }
 
-  public async decryptContent(cryptoManager: CollectionItemCryptoManager): Promise<Uint8Array> {
+  public async getContent(cryptoManager: CollectionItemCryptoManager): Promise<Uint8Array> {
     this.verify(cryptoManager);
-    return this.content.decryptContent(cryptoManager);
+    return this.content.getContent(cryptoManager);
   }
 
   public async delete(cryptoManager: CollectionItemCryptoManager): Promise<void> {

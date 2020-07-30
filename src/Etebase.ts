@@ -519,7 +519,7 @@ export class Collection {
   }
 
   public async getMeta(): Promise<CollectionMetadata> {
-    return this.encryptedCollection.decryptMeta(this.cryptoManager);
+    return this.encryptedCollection.getMeta(this.cryptoManager);
   }
 
   public async setContent(content: Uint8Array | string): Promise<void> {
@@ -530,7 +530,7 @@ export class Collection {
   public async getContent(outputFormat?: OutputFormat.Uint8Array): Promise<Uint8Array>;
   public async getContent(outputFormat?: OutputFormat.String): Promise<string>;
   public async getContent(outputFormat: OutputFormat = OutputFormat.Uint8Array): Promise<any> {
-    const ret = await this.encryptedCollection.decryptContent(this.cryptoManager);
+    const ret = await this.encryptedCollection.getContent(this.cryptoManager);
     switch (outputFormat) {
       case OutputFormat.Uint8Array:
         return ret;
@@ -590,7 +590,7 @@ export class CollectionItem {
   }
 
   public async getMeta(): Promise<CollectionItemMetadata> {
-    return this.encryptedItem.decryptMeta(this.cryptoManager);
+    return this.encryptedItem.getMeta(this.cryptoManager);
   }
 
   public async setContent(content: Uint8Array | string): Promise<void> {
@@ -601,7 +601,7 @@ export class CollectionItem {
   public async getContent(outputFormat?: OutputFormat.Uint8Array): Promise<Uint8Array>;
   public async getContent(outputFormat?: OutputFormat.String): Promise<string>;
   public async getContent(outputFormat: OutputFormat = OutputFormat.Uint8Array): Promise<any> {
-    const ret = await this.encryptedItem.decryptContent(this.cryptoManager);
+    const ret = await this.encryptedItem.getContent(this.cryptoManager);
     switch (outputFormat) {
       case OutputFormat.Uint8Array:
         return ret;
