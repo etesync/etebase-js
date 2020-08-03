@@ -311,7 +311,8 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       });
 
       // Encode the indice list in the first chunk:
-      chunks[0][1] = msgpackEncode([indices, chunks[0][1]]);
+      const lastIndex = chunks.length - 1;
+      chunks[lastIndex][1] = msgpackEncode([indices, chunks[lastIndex][1]]);
     }
 
     // Encrypt all of the chunks
@@ -322,10 +323,11 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   public async getContent(cryptoManager: CM): Promise<Uint8Array> {
     let indices: number[] = [];
+    const lastIndex = this.chunks.length - 1;
     const decryptedChunks: Uint8Array[] = this.chunks.map((chunk, index) => {
       let buf = bufferUnpad(cryptoManager.decrypt(chunk[1]!));
       // If we have the header, remove it before calculating the mac
-      if (index === 0) {
+      if (index === lastIndex) {
         const firstChunk = msgpackDecode(buf) as [number[], Uint8Array];
         indices = firstChunk[0];
         buf = firstChunk[1];
