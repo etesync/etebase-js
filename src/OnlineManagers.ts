@@ -82,13 +82,18 @@ export interface AcceptedInvitation {
   encryptionKey: Uint8Array;
 }
 
+export enum PrefetchOption {
+  Auto = "auto",
+  Medium = "medium",
+}
+
 export interface ListFetchOptions {
   limit?: number;
 }
 
 export interface FetchOptions extends ListFetchOptions {
   stoken?: string | null;
-  prefetch?: boolean;
+  prefetch?: PrefetchOption;
 }
 
 export interface ItemFetchOptions extends FetchOptions {
@@ -104,7 +109,7 @@ export type MemberFetchOptions = IteratorFetchOptions;
 export type InvitationFetchOptions = IteratorFetchOptions;
 
 export interface RevisionsFetchOptions extends IteratorFetchOptions {
-  prefetch?: boolean;
+  prefetch?: PrefetchOption;
 }
 
 interface AccountOnlineData {
