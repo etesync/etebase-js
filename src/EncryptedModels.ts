@@ -1,7 +1,7 @@
 import * as Constants from "./Constants";
 
 import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
-import { IntegrityError } from "./Exceptions";
+import { IntegrityError, MissingContentError } from "./Exceptions";
 import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadMeta } from "./Helpers";
 
 export type CollectionType = string;
@@ -325,7 +325,10 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     let indices: number[] = [];
     const lastIndex = this.chunks.length - 1;
     const decryptedChunks: Uint8Array[] = this.chunks.map((chunk, index) => {
-      let buf = bufferUnpad(cryptoManager.decrypt(chunk[1]!));
+      if (!chunk[1]) {
+        throw new MissingContentError("Missing content for item. Please download it using `downloadMissingContent`");
+      }
+      let buf = bufferUnpad(cryptoManager.decrypt(chunk[1]));
       // If we have the header, remove it before calculating the mac
       if (index === lastIndex) {
         const firstChunk = msgpackDecode(buf) as [number[], Uint8Array];

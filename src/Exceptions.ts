@@ -42,6 +42,14 @@ export class IntegrityError extends ExtendableError {
   }
 }
 
+export class MissingContentError extends ExtendableError {
+  constructor(message: any) {
+    super(message);
+    Object.setPrototypeOf(this, MissingContentError.prototype);
+    this.name = "MissingContentError";
+  }
+}
+
 export class EncryptionPasswordError extends ExtendableError {
   constructor(message: any) {
     super(message);
