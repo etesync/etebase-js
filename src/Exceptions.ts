@@ -50,6 +50,30 @@ export class MissingContentError extends ExtendableError {
   }
 }
 
+export class UnauthorizedError extends ExtendableError {
+  constructor(message: any) {
+    super(message);
+    Object.setPrototypeOf(this, UnauthorizedError.prototype);
+    this.name = "UnauthorizedError";
+  }
+}
+
+export class PermissionDeniedError extends ExtendableError {
+  constructor(message: any) {
+    super(message);
+    Object.setPrototypeOf(this, PermissionDeniedError.prototype);
+    this.name = "PermissionDeniedError";
+  }
+}
+
+export class ConflictError extends ExtendableError {
+  constructor(message: any) {
+    super(message);
+    Object.setPrototypeOf(this, ConflictError.prototype);
+    this.name = "ConflictError";
+  }
+}
+
 export class EncryptionPasswordError extends ExtendableError {
   constructor(message: any) {
     super(message);

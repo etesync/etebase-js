@@ -3,7 +3,7 @@ import request from "./Request";
 import URI from "urijs";
 
 export { deriveKey, ready } from "./Crypto";
-import { HTTPError, NetworkError, EncryptionPasswordError } from "./Exceptions";
+import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, EncryptionPasswordError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, msgpackEncode, msgpackDecode, toString } from "./Helpers";
 
@@ -169,7 +169,13 @@ class BaseNetwork {
     if (response.ok) {
       return data;
     } else {
-      throw new HTTPError(response.status, data.detail || data.non_field_errors || strError, data);
+      const content = data.detail || data.non_field_errors || strError;
+      switch (response.status) {
+        case 401: throw new UnauthorizedError(content);
+        case 403: throw new PermissionDeniedError(content);
+        case 409: throw new ConflictError(content);
+        default: throw new HTTPError(response.status, content, data);
+      }
     }
   }
 }

@@ -244,9 +244,9 @@ it("Simple collection sync", async () => {
     const content2 = Uint8Array.from([7, 2, 3, 5]);
     await colOld.setContent(content2);
 
-    await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(Etebase.ConflictError);
 
-    await expect(collectionManager.upload(colOld, { stoken: colOld.stoken })).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(collectionManager.upload(colOld, { stoken: colOld.stoken })).rejects.toBeInstanceOf(Etebase.ConflictError);
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
@@ -714,7 +714,7 @@ it("Item transactions", async () => {
     await item.setMeta(meta3);
 
     // Old in the deps
-    await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     const itemOld2 = itemOld._clone();
 
@@ -723,7 +723,7 @@ it("Item transactions", async () => {
     await itemOld2.setMeta(meta3);
 
     // Old stoken in the item itself
-    await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(Etebase.ConflictError);
   }
 
   {
@@ -735,7 +735,7 @@ it("Item transactions", async () => {
     await itemOld2.setMeta(meta3);
 
     // Part of the transaction is bad, and part is good
-    await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     // Verify it hasn't changed after the transaction above failed
     const item2Fetch = await itemManager.fetch(item2.uid);
@@ -751,7 +751,7 @@ it("Item transactions", async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.transaction([item], undefined, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.transaction([item], undefined, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     await itemManager.transaction([item], undefined, { stoken });
   }
@@ -818,8 +818,8 @@ it("Item batch stoken", async () => {
     await item.setMeta(meta3);
 
     // Old stoken in the item itself should work for batch and fail for transaction or batch with deps
-    await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(Etebase.HTTPError);
-    await expect(itemManager.batch([item], [item])).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(itemManager.batch([item], [item])).rejects.toBeInstanceOf(Etebase.ConflictError);
     await itemManager.batch([item]);
   }
 
@@ -832,7 +832,7 @@ it("Item batch stoken", async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.batch([item], null, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager.batch([item], null, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     await itemManager.batch([item], null, { stoken });
   }
@@ -1325,7 +1325,7 @@ it("Collection access level", async () => {
     const content = Uint8Array.from([1, 2, 3, 6]);
 
     const item = await itemManager2.create(meta, content);
-    await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(Etebase.HTTPError);
+    await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(Etebase.PermissionDeniedError);
   }
 
   await collectionMemberManager.modifyAccessLevel(USER2.username, Etebase.CollectionAccessLevel.Admin);
