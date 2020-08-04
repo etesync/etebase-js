@@ -5,7 +5,7 @@ import URI from "urijs";
 export { deriveKey, ready } from "./Crypto";
 import { HTTPError, NetworkError, EncryptionPasswordError } from "./Exceptions";
 export * from "./Exceptions";
-import { base64, msgpackEncode, msgpackDecode, toBase64, toString } from "./Helpers";
+import { base64, msgpackEncode, msgpackDecode, toString } from "./Helpers";
 
 import {
   CollectionAccessLevel,
@@ -148,28 +148,23 @@ class BaseNetwork {
 
     const body = response.body;
     let data: any;
-    let bodyStr;
+    let strError: string | undefined = undefined;
+
     try {
       data = msgpackDecode(body);
     } catch (e) {
-      const uintbody = new Uint8Array(body);
+      data = new Uint8Array(body);
       try {
-        bodyStr = toString(uintbody);
-        // Try falling back to json (e.g. in case the server errored in json)
-        data = JSON.parse(data);
-      } catch (e) {
-        bodyStr = bodyStr ?? toBase64(uintbody);
+        strError = toString(data);
+      } catch {
+        // Ignore
       }
     }
 
     if (response.ok) {
       return data;
     } else {
-      if (data) {
-        throw new HTTPError(response.status, data.detail || data.non_field_errors || JSON.stringify(data), data);
-      } else {
-        throw new HTTPError(response.status, bodyStr);
-      }
+      throw new HTTPError(response.status, data.detail || data.non_field_errors || strError, data);
     }
   }
 }
