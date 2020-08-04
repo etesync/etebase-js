@@ -4,6 +4,7 @@ import * as Constants from "./Constants";
 
 import { deriveKey, concatArrayBuffers, BoxCryptoManager, ready } from "./Crypto";
 export { ready, getPrettyFingerprint } from "./Crypto";
+import { ConflictError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode } from "./Helpers";
 export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
@@ -399,6 +400,34 @@ export class CollectionItemManager {
     });
   }
 
+  public async preUploadContent(item: CollectionItem) {
+    const [encryptedItem] = this.itemsPrepareForUpload([item])!;
+    const pendingChunks = encryptedItem.__getPendingChunks();
+    for (const chunk of pendingChunks) {
+      // FIXME: Upload multiple in parallel
+      try {
+        await this.onlineManager.chunkUpload(encryptedItem, chunk);
+      } catch (e) {
+        if (e instanceof ConflictError) {
+          // Skip if we arleady have the chunk
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  public async downloadMissingContent(item: CollectionItem) {
+    const [encryptedItem] = this.itemsPrepareForUpload([item])!;
+    const missingChunks = encryptedItem.__getMissingChunks();
+    for (const chunk of missingChunks) {
+      if (!chunk[1]) {
+        // FIXME: Download in parallel
+        chunk[1] = await this.onlineManager.chunkDownload(encryptedItem, chunk[0]);
+      }
+    }
+  }
+
   public async cacheSave(item: CollectionItem, options = defaultCacheOptions): Promise<Uint8Array> {
     return item.encryptedItem.cacheSave(options.saveContent);
   }
@@ -629,6 +658,10 @@ export class CollectionItem {
 
   public get isDeleted() {
     return this.encryptedItem.isDeleted;
+  }
+
+  public get isMissingContent() {
+    return this.encryptedItem.isMissingContent;
   }
 
   public _clone() {

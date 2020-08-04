@@ -3,7 +3,7 @@ import request from "./Request";
 import URI from "urijs";
 
 export { deriveKey, ready } from "./Crypto";
-import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, EncryptionPasswordError } from "./Exceptions";
+import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, EncryptionPasswordError, ProgrammingError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, msgpackEncode, msgpackDecode, toString } from "./Helpers";
 
@@ -16,6 +16,7 @@ import {
   SignedInvitationRead,
   SignedInvitationWrite,
   CollectionItemRevisionJsonRead,
+  ChunkJson,
 } from "./EncryptedModels";
 
 export interface User {
@@ -444,6 +445,32 @@ export class CollectionItemManagerOnline extends BaseManager {
     };
 
     return this.newCall(["transaction"], extra, apiBase);
+  }
+
+  public chunkUpload(item: EncryptedCollectionItem, chunk: ChunkJson, options?: ItemFetchOptions): Promise<{}> {
+    const apiBase = this.urlFromFetchOptions(options);
+
+    const [chunkUid, chunkContent] = chunk;
+
+    if (chunkContent === undefined) {
+      throw new ProgrammingError("Tried uploading a missing chunk.");
+    }
+
+    const extra = {
+      method: "put",
+      headers: {
+        "Content-Type": "application/octet-stream",
+      },
+      body: chunkContent,
+    };
+
+    return this.newCall([item.uid, "chunk", chunkUid], extra, apiBase);
+  }
+
+  public chunkDownload(item: EncryptedCollectionItem, chunkUid: base64, options?: ItemFetchOptions): Promise<Uint8Array> {
+    const apiBase = this.urlFromFetchOptions(options);
+
+    return this.newCall([item.uid, "chunk", chunkUid, "download"], undefined, apiBase);
   }
 }
 

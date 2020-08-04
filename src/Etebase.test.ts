@@ -4,7 +4,7 @@ import * as Etebase from "./Etebase";
 
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
 
-import { Authenticator } from "./OnlineManagers";
+import { Authenticator, PrefetchOption } from "./OnlineManagers";
 import { fromBase64, fromString, msgpackEncode, msgpackDecode, randomBytesDeterministic, toBase64 } from "./Helpers";
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
@@ -1452,6 +1452,42 @@ it("Cache collections and items", async () => {
     const cachedItem = await itemManager.cacheLoad(savedCachedItem);
 
     expect(await item.getContent()).toEqual(await cachedItem.getContent());
+  }
+});
+
+it("Chunk pre-upload and download-missing", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.CollectionMetadata = {
+    type: "COLTYPE",
+    name: "Calendar",
+  };
+
+  const col = await collectionManager.create(colMeta, "");
+  await collectionManager.upload(col);
+
+  const itemManager = collectionManager.getItemManager(col);
+  const meta: Etebase.CollectionItemMetadata = {
+    type: "itemtype",
+  };
+  const content = "Something";
+  const item = await itemManager.create(meta, content);
+  expect(item.isMissingContent).not.toBeTruthy();
+  await itemManager.preUploadContent(item);
+  // Verify we don't fail even when already uploaded
+  await itemManager.preUploadContent(item);
+  await itemManager.batch([item]);
+
+  {
+    const item2 = await itemManager.fetch(item.uid, { prefetch: PrefetchOption.Medium });
+    const meta2 = await item2.getMeta();
+    expect(meta2).toEqual(meta);
+    // We can't get the content of partial item
+    await expect(item2.getContent()).rejects.toBeInstanceOf(Etebase.MissingContentError);
+    expect(item2.isMissingContent).toBeTruthy();
+    // Fetch the content and then try to get it
+    await itemManager.downloadMissingContent(item2);
+    expect(item2.isMissingContent).not.toBeTruthy();
+    expect(await item2.getContent(Etebase.OutputFormat.String)).toEqual(content);
   }
 });
 

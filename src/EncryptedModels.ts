@@ -600,6 +600,14 @@ export class EncryptedCollectionItem {
     this.etag = this.content.uid;
   }
 
+  public __getPendingChunks(): ChunkJson[] {
+    return this.content.chunks;
+  }
+
+  public __getMissingChunks(): ChunkJson[] {
+    return this.content.chunks.filter(([_uid, content]) => !content);
+  }
+
   private isLocallyChanged() {
     return this.etag !== this.content.uid;
   }
@@ -650,6 +658,10 @@ export class EncryptedCollectionItem {
 
   public get isDeleted() {
     return this.content.deleted;
+  }
+
+  public get isMissingContent() {
+    return this.content.chunks.some(([_uid, content]) => !content);
   }
 
   public getCryptoManager(parentCryptoManager: CollectionCryptoManager) {
