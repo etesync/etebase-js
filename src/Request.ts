@@ -47,13 +47,7 @@ async function request(url: string, options: RequestInit = {}): Promise<Response
 }
 
 async function requestNode(url: string, options: RequestInit = {}): Promise<Response> {
-  let fetch;
-  try {
-    fetch = await require("node-fetch");
-  } catch (e) {
-    console.error("Failed loading needed node-fetch peer dep.");
-    throw e;
-  }
+  const fetch = await require("node-fetch");
   const response = await fetch(url, options as any);
   const ret = {
     type: "default",
