@@ -17,6 +17,7 @@
   "dependencies": {
     "@msgpack/msgpack": "^1.12.2",
     "libsodium-wrappers": "^0.7.6",
+    "node-fetch": "^2.6.0",
     "urijs": "^1.19.1"
   },
   "optionalDependencies": {
