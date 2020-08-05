@@ -10,13 +10,14 @@ import { numToUint8Array, symmetricNonceSize } from "./Helpers";
 import { Rollsum } from "./Chunker";
 
 import type rnsodiumType from "react-native-sodium";
+import optionalRequire from "./optional-require";
 
 export const sodium = _sodium;
 
 let rnsodium: typeof rnsodiumType;
 export const ready = (async () => {
   try {
-    rnsodium = (await require("react-native-sodium")).default;
+    rnsodium = optionalRequire("react-native-sodium").default;
   } catch (e) {
     //
   }
