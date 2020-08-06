@@ -593,6 +593,10 @@ export class Collection {
     return this.encryptedCollection.stoken;
   }
 
+  public get accessLevel() {
+    return this.encryptedCollection.accessLevel;
+  }
+
   public get item() {
     const encryptedItem = this.encryptedCollection.item;
     return new CollectionItem(this.uid, encryptedItem.getCryptoManager(this.cryptoManager), encryptedItem);
