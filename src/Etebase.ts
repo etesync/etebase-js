@@ -36,7 +36,7 @@ import {
   RevisionsFetchOptions,
 } from "./OnlineManagers";
 import { ProgrammingError } from "./Exceptions";
-export { User, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
+export { User, CollectionMember, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
 
 import { CURRENT_VERSION } from "./Constants";
 export { CURRENT_VERSION } from "./Constants";
