@@ -19,10 +19,10 @@
     "etebase": "^0.9.0",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
-    "react-native-get-random-values": "^1.4.0",
     "react-native-sodium": "^0.3.8"
   },
   "peerDependencies": {
+    "react-native-get-random-values": ">=1.4.0",
     "react-native": ">=0.56"
   },
   "devDependencies": {
