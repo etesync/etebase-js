@@ -23,7 +23,7 @@
     "react-native-sodium": "^0.3.8"
   },
   "peerDependencies": {
-    "react-native": "^0.60.0"
+    "react-native": ">=0.56"
   },
   "devDependencies": {
     "@babel/core": "^7.9.0",
