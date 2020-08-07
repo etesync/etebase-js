@@ -14,17 +14,12 @@ import type rnsodiumType from "react-native-sodium";
 export const sodium = _sodium;
 
 let rnsodium: typeof rnsodiumType;
+
+export function _setRnSodium(rnsodium_: typeof rnsodiumType) {
+  rnsodium = rnsodium_;
+}
+
 export const ready = (async () => {
-  // Need this extra variable because otherwise webpack fails
-  let mod;
-  try {
-    mod = require("react-native-sodium");
-  } catch (e) {
-    //
-  }
-  if (mod) {
-    rnsodium = (await mod).default;
-  }
   await sodium.ready;
 })();
 
