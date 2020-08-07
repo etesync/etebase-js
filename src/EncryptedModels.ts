@@ -310,9 +310,13 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
         }
       });
 
-      // Encode the indice list in the first chunk:
-      const lastIndex = chunks.length - 1;
-      chunks[lastIndex][1] = msgpackEncode([indices, chunks[lastIndex][1]]);
+      // If we have more than one chunk we need to encode the mapping header in the last chunk
+      if (indices.length > 1) {
+        // We encode it in an array so we can extend it later on if needed
+        const buf = msgpackEncode([indices]);
+        const hash = toBase64(cryptoManager.calculateMac(buf));
+        chunks.push([hash, buf]);
+      }
     }
 
     // Encrypt all of the chunks
@@ -322,26 +326,25 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   public async getContent(cryptoManager: CM): Promise<Uint8Array> {
-    let indices: number[] = [];
-    const lastIndex = this.chunks.length - 1;
-    const decryptedChunks: Uint8Array[] = this.chunks.map((chunk, index) => {
+    let indices: number[] = [0];
+    const decryptedChunks: Uint8Array[] = this.chunks.map((chunk) => {
       if (!chunk[1]) {
         throw new MissingContentError("Missing content for item. Please download it using `downloadMissingContent`");
       }
-      let buf = bufferUnpad(cryptoManager.decrypt(chunk[1]));
-      // If we have the header, remove it before calculating the mac
-      if (index === lastIndex) {
-        const firstChunk = msgpackDecode(buf) as [number[], Uint8Array];
-        indices = firstChunk[0];
-        buf = firstChunk[1];
-      }
 
+      const buf = bufferUnpad(cryptoManager.decrypt(chunk[1]));
       const hash = cryptoManager.calculateMac(buf);
       if (!memcmp(hash, fromBase64(chunk[0]))) {
         throw new IntegrityError(`The content's mac is different to the expected mac (${chunk[0]})`);
       }
       return buf;
     });
+
+    // If we have more than one chunk we have the mapping header in the last chunk
+    if (this.chunks.length > 1) {
+      const lastChunk = msgpackDecode(decryptedChunks.pop()!) as [number[]];
+      indices = lastChunk[0];
+    }
 
     // We need to unshuffle the chunks
     if (indices.length > 1) {

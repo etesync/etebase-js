@@ -1517,7 +1517,7 @@ it("Chunking large data", async () => {
   // Get the first chunks and init uidSet
   {
     const chunkUids = await itemGetChunkUids(item);
-    expect(chunkUids.length).toEqual(7);
+    expect(chunkUids.length).toEqual(8);
 
     chunkUids.forEach((x) => uidSet.add(x));
   }
@@ -1541,7 +1541,7 @@ it("Chunking large data", async () => {
   // Verify how much has changed
   {
     const chunkUids = await itemGetChunkUids(item);
-    expect(chunkUids.length).toEqual(7);
+    expect(chunkUids.length).toEqual(8);
 
     let reused = 0;
 
