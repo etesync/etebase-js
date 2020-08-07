@@ -15,10 +15,15 @@ export const sodium = _sodium;
 
 let rnsodium: typeof rnsodiumType;
 export const ready = (async () => {
+  // Need this extra variable because otherwise webpack fails
+  let mod;
   try {
-    rnsodium = (await require("react-native-sodium")).default;
+    mod = require("react-native-sodium");
   } catch (e) {
     //
+  }
+  if (mod) {
+    rnsodium = (await mod).default;
   }
   await sodium.ready;
 })();

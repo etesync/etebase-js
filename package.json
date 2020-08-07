@@ -20,9 +20,6 @@
     "node-fetch": "^2.6.0",
     "urijs": "^1.19.1"
   },
-  "optionalDependencies": {
-    "react-native-sodium": "^0.3.8"
-  },
   "devDependencies": {
     "@babel/core": "^7.9.0",
     "@babel/plugin-proposal-class-properties": "^7.8.3",
