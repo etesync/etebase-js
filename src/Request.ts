@@ -1,5 +1,3 @@
-import optionalRequire from "./optional-require";
-
 interface Response {
   type: string;
   status: number;
@@ -49,7 +47,7 @@ async function request(url: string, options: RequestInit = {}): Promise<Response
 }
 
 async function requestNode(url: string, options: RequestInit = {}): Promise<Response> {
-  const fetch = optionalRequire("node-fetch");
+  const fetch = await require("node-fetch");
   const response = await fetch(url, options as any);
   const ret = {
     type: "default",
