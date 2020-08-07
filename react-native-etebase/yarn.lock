@@ -2168,17 +2168,15 @@ esutils@^2.0.2:
   resolved "https://registry.yarnpkg.com/esutils/-/esutils-2.0.3.tgz#74d2eb4de0b8da1293711910d50775b9b710ef64"
   integrity sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==
 
-etebase@^0.8.0:
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/etebase/-/etebase-0.8.0.tgz#b0c4d90f741c769789de9d5d73d01caeb819442e"
-  integrity sha512-RYptjBeDTwMm+piZjPqg80ymOl6+5hbObhrk2mnsK9D4XcwhVaoWnnivaAUgVK7k5k9ODHR8uK1fLQsIC2nszg==
+etebase@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/etebase/-/etebase-0.9.0.tgz#78bf791064de071c733520ff5b7bf45dafdd533e"
+  integrity sha512-KxFhtaFfsz/zmCDbynveWD+NWDAEVlt57IPR1FEb3Rm8F67tIxTOwyJUjY9QMDAYkG+Koy4mk2z+gclcNXPYFQ==
   dependencies:
     "@msgpack/msgpack" "^1.12.2"
     libsodium-wrappers "^0.7.6"
     node-fetch "^2.6.0"
     urijs "^1.19.1"
-  optionalDependencies:
-    react-native-sodium "^0.3.8"
 
 exec-sh@^0.3.2:
   version "0.3.4"
