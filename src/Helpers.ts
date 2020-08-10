@@ -75,8 +75,8 @@ export function getPadding(length: number): number {
   // https://www.petsymposium.org/2019/files/papers/issue4/popets-2019-0056.pdf
 
   // We want a minimum pad size of 4k
-  if (length < (1 << 18)) {
-    const size = (1 << 12) - 1;
+  if (length < (1 << 14)) {
+    const size = (1 << 10) - 1;
     // We add 1 so we always have some padding
     return (length | size) + 1;
   }
