@@ -1,6 +1,6 @@
 {
   "name": "react-native-etebase",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Etebase TypeScript API for react-native",
   "main": "dist/Etebase.js",
   "files": [
@@ -16,11 +16,11 @@
   },
   "dependencies": {
     "crypto": "npm:leftpad",
-    "etebase": "^0.9.0",
     "fs": "^0.0.1-security",
     "path": "^0.12.7"
   },
   "peerDependencies": {
+    "etebase": ">=0.9.0",
     "react-native-get-random-values": ">=1.4.0",
     "react-native-sodium": ">=0.3.8",
     "react-native": ">=0.56"
