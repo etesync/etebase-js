@@ -290,7 +290,7 @@ export class CollectionManager {
   public async upload(collection: Collection, options?: FetchOptions) {
     const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
-    if (col.etag) {
+    if (col.lastEtag) {
       const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col);
       await itemOnlineManager.batch([col.item], undefined, options);
     } else {
@@ -302,7 +302,7 @@ export class CollectionManager {
   public async transaction(collection: Collection, options?: FetchOptions) {
     const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
-    if (col.etag) {
+    if (col.lastEtag) {
       const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col);
       await itemOnlineManager.transaction([col.item], undefined, options);
     } else {

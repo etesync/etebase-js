@@ -408,7 +408,7 @@ export class CollectionItemManagerOnline extends BaseManager {
 
     const extra = {
       method: "post",
-      body: msgpackEncode(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.etag : undefined) }))),
+      body: msgpackEncode(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.lastEtag : undefined) }))),
     };
 
     const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(["fetch_updates"], extra, apiBase);
@@ -426,7 +426,7 @@ export class CollectionItemManagerOnline extends BaseManager {
       method: "post",
       body: msgpackEncode({
         items: items.map((x) => x.serialize()),
-        deps: deps?.map((x) => ({ uid: x.uid, etag: x.etag })),
+        deps: deps?.map((x) => ({ uid: x.uid, etag: x.lastEtag })),
       }),
     };
 
@@ -440,7 +440,7 @@ export class CollectionItemManagerOnline extends BaseManager {
       method: "post",
       body: msgpackEncode({
         items: items.map((x) => x.serialize()),
-        deps: deps?.map((x) => ({ uid: x.uid, etag: x.etag })),
+        deps: deps?.map((x) => ({ uid: x.uid, etag: x.lastEtag })),
       }),
     };
 

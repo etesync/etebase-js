@@ -494,6 +494,10 @@ export class EncryptedCollection {
     return this.item.etag;
   }
 
+  public get lastEtag() {
+    return this.item.lastEtag;
+  }
+
   public get version() {
     return this.item.version;
   }
@@ -529,7 +533,7 @@ export class EncryptedCollectionItem {
   private encryptionKey: Uint8Array | null;
   private content: EncryptedRevision<CollectionItemCryptoManager>;
 
-  public etag: string | null;
+  public lastEtag: string | null;
 
   public static async create(parentCryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
@@ -537,7 +541,7 @@ export class EncryptedCollectionItem {
     ret.version = Constants.CURRENT_VERSION;
     ret.encryptionKey = null;
 
-    ret.etag = null;
+    ret.lastEtag = null;
 
     const cryptoManager = ret.getCryptoManager(parentCryptoManager);
 
@@ -555,7 +559,7 @@ export class EncryptedCollectionItem {
 
     ret.content = EncryptedRevision.deserialize(content);
 
-    ret.etag = ret.content.uid;
+    ret.lastEtag = ret.content.uid;
 
     return ret;
   }
@@ -565,7 +569,7 @@ export class EncryptedCollectionItem {
       uid: this.uid,
       version: this.version,
       encryptionKey: this.encryptionKey ?? undefined,
-      etag: this.etag,
+      etag: this.lastEtag,
 
       content: this.content.serialize(),
     };
@@ -580,7 +584,7 @@ export class EncryptedCollectionItem {
     ret.uid = toBase64(cached[1]);
     ret.version = cached[2];
     ret.encryptionKey = cached[3];
-    ret.etag = (cached[4]) ? toBase64(cached[4]) : null;
+    ret.lastEtag = (cached[4]) ? toBase64(cached[4]) : null;
 
     ret.content = EncryptedRevision.cacheLoad(cached[5]);
 
@@ -593,14 +597,14 @@ export class EncryptedCollectionItem {
       fromBase64(this.uid),
       this.version,
       this.encryptionKey,
-      (this.etag) ? fromBase64(this.etag) : null,
+      (this.lastEtag) ? fromBase64(this.lastEtag) : null,
 
       this.content.cacheSave(saveContent),
     ]);
   }
 
   public __markSaved() {
-    this.etag = this.content.uid;
+    this.lastEtag = this.content.uid;
   }
 
   public __getPendingChunks(): ChunkJson[] {
@@ -612,7 +616,7 @@ export class EncryptedCollectionItem {
   }
 
   private isLocallyChanged() {
-    return this.etag !== this.content.uid;
+    return this.lastEtag !== this.content.uid;
   }
 
   public async verify(cryptoManager: CollectionItemCryptoManager) {
@@ -661,6 +665,10 @@ export class EncryptedCollectionItem {
 
   public get isDeleted() {
     return this.content.deleted;
+  }
+
+  public get etag() {
+    return this.content.uid;
   }
 
   public get isMissingContent() {
