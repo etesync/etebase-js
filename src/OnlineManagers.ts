@@ -3,7 +3,7 @@ import request from "./Request";
 import URI from "urijs";
 
 export { deriveKey, ready } from "./Crypto";
-import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, EncryptionPasswordError, ProgrammingError } from "./Exceptions";
+import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, ProgrammingError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, msgpackEncode, msgpackDecode, toString } from "./Helpers";
 
@@ -185,19 +185,6 @@ export class Authenticator extends BaseNetwork {
   constructor(apiBase: string) {
     super(apiBase);
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1", "authentication"]);
-  }
-
-  public async newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBase: URI = this.apiBase): Promise<T> {
-    try {
-      return await super.newCall(segments, extra, apiBase);
-    } catch (e) {
-      if (e instanceof HTTPError) {
-        if (e.content?.code === "login_bad_signature") {
-          throw new EncryptionPasswordError(e.content.detail || e.message);
-        }
-      }
-      throw e;
-    }
   }
 
   public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedContent: Uint8Array): Promise<LoginResponse> {

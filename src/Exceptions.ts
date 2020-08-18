@@ -74,14 +74,6 @@ export class ConflictError extends ExtendableError {
   }
 }
 
-export class EncryptionPasswordError extends ExtendableError {
-  constructor(message: any) {
-    super(message);
-    Object.setPrototypeOf(this, EncryptionPasswordError.prototype);
-    this.name = "EncryptionPasswordError";
-  }
-}
-
 export class ProgrammingError extends ExtendableError {
   constructor(message: any) {
     super(message);
