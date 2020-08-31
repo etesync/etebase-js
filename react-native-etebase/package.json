@@ -1,0 +1,64 @@
+{
+  "name": "react-native-etebase",
+  "version": "0.1.5",
+  "description": "Etebase TypeScript API for react-native",
+  "main": "dist/Etebase.js",
+  "files": [
+    "dist/**/*"
+  ],
+  "types": "dist/Etebase.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx src",
+    "test": "jest --passWithNoTests",
+    "prepare": "yarn build",
+    "prepublishOnly": "yarn test && yarn lint"
+  },
+  "dependencies": {
+    "crypto": "npm:leftpad",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
+  },
+  "peerDependencies": {
+    "etebase": ">=0.9.0",
+    "react-native-get-random-values": ">=1.4.0",
+    "react-native-sodium": ">=0.3.8",
+    "react-native": ">=0.56"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.9.0",
+    "@babel/plugin-proposal-class-properties": "^7.8.3",
+    "@babel/plugin-transform-runtime": "^7.9.0",
+    "@babel/preset-env": "^7.9.5",
+    "@babel/preset-typescript": "^7.9.0",
+    "@babel/runtime": "^7.9.2",
+    "@types/jest": "^24.0.22",
+    "@types/libsodium-wrappers": "^0.7.7",
+    "@types/node": "^13.9.1",
+    "@types/urijs": "^1.15.38",
+    "@typescript-eslint/eslint-plugin": "^2.6.1",
+    "@typescript-eslint/parser": "^2.6.1",
+    "@typescript-eslint/typescript-estree": "^2.6.1",
+    "babel-jest": "^25.3.0",
+    "babel-plugin-syntax-async-functions": "^6.13.0",
+    "core-js": "3",
+    "eslint": "^6.6.0",
+    "jest": "^24.9.0",
+    "typescript": "^3.9.6"
+  },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "dist"
+    ]
+  },
+  "keywords": [
+    "Etebase",
+    "react native",
+    "encryption",
+    "crypto",
+    "synchronization"
+  ],
+  "author": "Tom Hacohen <tom@stosb.com> (https://stosb.com)",
+  "repository": "https://www.github.com/etesync/etesync-js",
+  "license": "LGPL-3.0-only"
+}
