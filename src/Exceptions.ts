@@ -74,6 +74,30 @@ export class ConflictError extends ExtendableError {
   }
 }
 
+export class NotFoundError extends ExtendableError {
+  constructor(message: any) {
+    super(message);
+    Object.setPrototypeOf(this, NotFoundError.prototype);
+    this.name = "NotFoundError";
+  }
+}
+
+export class TemporaryServerError extends HTTPError {
+  constructor(status: number, message: any, content?: HTTPErrorContent) {
+    super(status, message, content);
+    Object.setPrototypeOf(this, TemporaryServerError.prototype);
+    this.name = "TemporaryServerError";
+  }
+}
+
+export class ServerError extends HTTPError {
+  constructor(status: number, message: any, content?: HTTPErrorContent) {
+    super(status, message, content);
+    Object.setPrototypeOf(this, ServerError.prototype);
+    this.name = "ServerError";
+  }
+}
+
 export class ProgrammingError extends ExtendableError {
   constructor(message: any) {
     super(message);

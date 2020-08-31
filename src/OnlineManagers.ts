@@ -3,7 +3,7 @@ import request from "./Request";
 import URI from "urijs";
 
 export { deriveKey, ready } from "./Crypto";
-import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, ProgrammingError } from "./Exceptions";
+import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, ProgrammingError, NotFoundError, TemporaryServerError, ServerError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, msgpackEncode, msgpackDecode, toString } from "./Helpers";
 
@@ -174,8 +174,19 @@ class BaseNetwork {
       switch (response.status) {
         case 401: throw new UnauthorizedError(content);
         case 403: throw new PermissionDeniedError(content);
+        case 404: throw new NotFoundError(content);
         case 409: throw new ConflictError(content);
-        default: throw new HTTPError(response.status, content, data);
+        case 502:
+        case 503:
+        case 504:
+          throw new TemporaryServerError(response.status, content, data);
+        default: {
+          if ((response.status >= 500) && (response.status <= 599)) {
+            throw new ServerError(response.status, content, data);
+          } else {
+            throw new HTTPError(response.status, content, data);
+          }
+        }
       }
     }
   }
