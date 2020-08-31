@@ -81,6 +81,12 @@ afterEach(async () => {
   await etebase.logout();
 });
 
+it("Check server is etebase", async () => {
+  expect(await Etebase.Account.isEtebaseServer(testApiBase)).toBeTruthy();
+  expect(await Etebase.Account.isEtebaseServer(testApiBase + "/a")).toBeFalsy();
+  expect(Etebase.Account.isEtebaseServer("http://doesnotexist")).rejects.toBeInstanceOf(Error);
+});
+
 it("Simple collection handling", async () => {
   const collectionManager = etebase.getCollectionManager();
   const meta: Etebase.CollectionMetadata = {

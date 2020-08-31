@@ -198,6 +198,18 @@ export class Authenticator extends BaseNetwork {
     this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1", "authentication"]);
   }
 
+  public async isEtebase(): Promise<boolean> {
+    try {
+      await this.newCall(["is_etebase"]);
+      return true;
+    } catch (e) {
+      if (e instanceof NotFoundError) {
+        return false;
+      }
+      throw e;
+    }
+  }
+
   public async signup(user: User, salt: Uint8Array, loginPubkey: Uint8Array, pubkey: Uint8Array, encryptedContent: Uint8Array): Promise<LoginResponse> {
     user = {
       username: user.username,

@@ -67,6 +67,11 @@ export class Account {
     this.authToken = null;
   }
 
+  public static async isEtebaseServer(serverUrl: string) {
+    const authenticator = new Authenticator(serverUrl);
+    return authenticator.isEtebase();
+  }
+
   public static async signup(user: User, password: string, serverUrl?: string) {
     await ready;
 
