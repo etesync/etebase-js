@@ -19,7 +19,7 @@ async function verifyCollection(col: Etebase.Collection, meta: Etebase.Collectio
   expect(toBase64(decryptedContent)).toEqual(toBase64(content));
 }
 
-async function verifyItem(item: Etebase.CollectionItem, meta: Etebase.CollectionItemMetadata, content: Uint8Array) {
+async function verifyItem(item: Etebase.Item, meta: Etebase.CollectionItemMetadata, content: Uint8Array) {
   item.verify();
   const decryptedMeta = await item.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -590,7 +590,7 @@ it("List response correctness", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const items: Etebase.CollectionItem[] = [];
+  const items: Etebase.Item[] = [];
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
@@ -673,12 +673,12 @@ it("Item transactions", async () => {
 
   const item = await itemManager.create(meta, content);
 
-  const deps: Etebase.CollectionItem[] = [item];
+  const deps: Etebase.Item[] = [item];
 
   await itemManager.transaction(deps);
   const itemOld = await itemManager.fetch(item.uid);
 
-  const items: Etebase.CollectionItem[] = [];
+  const items: Etebase.Item[] = [];
 
   {
     const items = await itemManager.list();
@@ -793,7 +793,7 @@ it("Item batch stoken", async () => {
 
   await itemManager.batch([item]);
 
-  const items: Etebase.CollectionItem[] = [];
+  const items: Etebase.Item[] = [];
 
   {
     const items = await itemManager.list();
@@ -874,7 +874,7 @@ it("Item fetch updates", async () => {
 
   await itemManager.batch([item]);
 
-  const items: Etebase.CollectionItem[] = [];
+  const items: Etebase.Item[] = [];
 
   {
     const items = await itemManager.list();
@@ -1031,7 +1031,7 @@ it("Collection invitations", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const items: Etebase.CollectionItem[] = [];
+  const items: Etebase.Item[] = [];
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
@@ -1257,7 +1257,7 @@ it("Collection access level", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const items: Etebase.CollectionItem[] = [];
+  const items: Etebase.Item[] = [];
 
   for (let i = 0 ; i < 5 ; i++) {
     const meta2 = {
@@ -1510,7 +1510,7 @@ it("Chunking large data", async () => {
   const item = await itemManager.create({}, buf);
   await verifyItem(item, {}, buf);
 
-  async function itemGetChunkUids(it: Etebase.CollectionItem): Promise<string[]> {
+  async function itemGetChunkUids(it: Etebase.Item): Promise<string[]> {
     // XXX: hack - get the chunk uids from the cached saving
     const cachedItem = msgpackDecode(await itemManager.cacheSave(it, { saveContent: false })) as any[];
     const cachedRevision = (msgpackDecode(cachedItem[cachedItem.length - 1]) as any[]);

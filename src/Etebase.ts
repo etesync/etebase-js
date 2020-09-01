@@ -327,7 +327,7 @@ export class CollectionManager {
   }
 
   public getItemManager(col: Collection) {
-    return new CollectionItemManager(this.etebase, this, col.encryptedCollection);
+    return new ItemManager(this.etebase, this, col.encryptedCollection);
   }
 
   public getMemberManager(col: Collection) {
@@ -335,7 +335,7 @@ export class CollectionManager {
   }
 }
 
-export class CollectionItemManager {
+export class ItemManager {
   private readonly collectionCryptoManager: CollectionCryptoManager;
   private readonly onlineManager: CollectionItemManagerOnline;
   private readonly collectionUid: string; // The uid of the collection this item belongs to
@@ -346,35 +346,35 @@ export class CollectionItemManager {
     this.collectionUid = col.uid;
   }
 
-  public async create(meta: CollectionItemMetadata, content: Uint8Array | string): Promise<CollectionItem> {
+  public async create(meta: CollectionItemMetadata, content: Uint8Array | string): Promise<Item> {
     const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const encryptedItem = await EncryptedCollectionItem.create(this.collectionCryptoManager, meta, uintcontent);
-    return new CollectionItem(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
+    return new Item(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
 
   public async fetch(itemUid: base64, options?: ItemFetchOptions) {
     const encryptedItem = await this.onlineManager.fetch(itemUid, options);
-    return new CollectionItem(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
+    return new Item(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
   }
 
   public async list(options?: ItemFetchOptions) {
     const ret = await this.onlineManager.list(options);
     return {
       ...ret,
-      data: ret.data.map((x) => new CollectionItem(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
+      data: ret.data.map((x) => new Item(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
     };
   }
 
-  public async itemRevisions(item: CollectionItem, options?: RevisionsFetchOptions) {
+  public async itemRevisions(item: Item, options?: RevisionsFetchOptions) {
     const ret = await this.onlineManager.itemRevisions(item.encryptedItem, options);
     return {
       ...ret,
-      data: ret.data.map((x) => new CollectionItem(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
+      data: ret.data.map((x) => new Item(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
     };
   }
 
   // Prepare the items for upload and verify they belong to the right collection
-  private itemsPrepareForUpload(items?: CollectionItem[] | null) {
+  private itemsPrepareForUpload(items?: Item[] | null) {
     return items?.map((x) => {
       if (x.collectionUid !== this.collectionUid) {
         throw new ProgrammingError(`Uploading an item belonging to collection ${x.collectionUid} to another collection (${this.collectionUid}) is not allowed!`);
@@ -383,29 +383,29 @@ export class CollectionItemManager {
     });
   }
 
-  public async fetchUpdates(items: CollectionItem[], options?: ItemFetchOptions) {
+  public async fetchUpdates(items: Item[], options?: ItemFetchOptions) {
     const ret = await this.onlineManager.fetchUpdates(this.itemsPrepareForUpload(items)!, options);
     return {
       ...ret,
-      data: ret.data.map((x) => new CollectionItem(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
+      data: ret.data.map((x) => new Item(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
     };
   }
 
-  public async batch(items: CollectionItem[], deps?: CollectionItem[] | null, options?: ItemFetchOptions) {
+  public async batch(items: Item[], deps?: Item[] | null, options?: ItemFetchOptions) {
     await this.onlineManager.batch(this.itemsPrepareForUpload(items)!, this.itemsPrepareForUpload(deps), options);
     items.forEach((item) => {
       item.encryptedItem.__markSaved();
     });
   }
 
-  public async transaction(items: CollectionItem[], deps?: CollectionItem[] | null, options?: ItemFetchOptions) {
+  public async transaction(items: Item[], deps?: Item[] | null, options?: ItemFetchOptions) {
     await this.onlineManager.transaction(this.itemsPrepareForUpload(items)!, this.itemsPrepareForUpload(deps), options);
     items.forEach((item) => {
       item.encryptedItem.__markSaved();
     });
   }
 
-  public async preUploadContent(item: CollectionItem) {
+  public async preUploadContent(item: Item) {
     const [encryptedItem] = this.itemsPrepareForUpload([item])!;
     const pendingChunks = encryptedItem.__getPendingChunks();
     for (const chunk of pendingChunks) {
@@ -422,7 +422,7 @@ export class CollectionItemManager {
     }
   }
 
-  public async downloadMissingContent(item: CollectionItem) {
+  public async downloadMissingContent(item: Item) {
     const [encryptedItem] = this.itemsPrepareForUpload([item])!;
     const missingChunks = encryptedItem.__getMissingChunks();
     for (const chunk of missingChunks) {
@@ -433,13 +433,13 @@ export class CollectionItemManager {
     }
   }
 
-  public async cacheSave(item: CollectionItem, options = defaultCacheOptions): Promise<Uint8Array> {
+  public async cacheSave(item: Item, options = defaultCacheOptions): Promise<Uint8Array> {
     return item.encryptedItem.cacheSave(options.saveContent);
   }
 
-  public async cacheLoad(cache: Uint8Array): Promise<CollectionItem> {
+  public async cacheLoad(cache: Uint8Array): Promise<Item> {
     const encItem = EncryptedCollectionItem.cacheLoad(cache);
-    return new CollectionItem(this.collectionUid, encItem.getCryptoManager(this.collectionCryptoManager), encItem);
+    return new Item(this.collectionUid, encItem.getCryptoManager(this.collectionCryptoManager), encItem);
   }
 }
 export interface SignedInvitation {
@@ -604,11 +604,11 @@ export class Collection {
 
   public get item() {
     const encryptedItem = this.encryptedCollection.item;
-    return new CollectionItem(this.uid, encryptedItem.getCryptoManager(this.cryptoManager), encryptedItem);
+    return new Item(this.uid, encryptedItem.getCryptoManager(this.cryptoManager), encryptedItem);
   }
 }
 
-export class CollectionItem {
+export class Item {
   private readonly cryptoManager: CollectionItemCryptoManager;
   public readonly encryptedItem: EncryptedCollectionItem;
   public readonly collectionUid: string; // The uid of the collection this item belongs to
@@ -674,6 +674,6 @@ export class CollectionItem {
   }
 
   public _clone() {
-    return new CollectionItem(this.collectionUid, this.cryptoManager, EncryptedCollectionItem.deserialize(this.encryptedItem.serialize()));
+    return new Item(this.collectionUid, this.cryptoManager, EncryptedCollectionItem.deserialize(this.encryptedItem.serialize()));
   }
 }
