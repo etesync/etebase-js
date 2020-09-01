@@ -14,7 +14,7 @@ import {
   CollectionCryptoManager,
   CollectionItemCryptoManager,
   CollectionMetadata,
-  CollectionItemMetadata,
+  ItemMetadata,
   EncryptedCollection,
   EncryptedCollectionItem,
   getMainCryptoManager,
@@ -346,7 +346,7 @@ export class ItemManager {
     this.collectionUid = col.uid;
   }
 
-  public async create(meta: CollectionItemMetadata, content: Uint8Array | string): Promise<Item> {
+  public async create(meta: ItemMetadata, content: Uint8Array | string): Promise<Item> {
     const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const encryptedItem = await EncryptedCollectionItem.create(this.collectionCryptoManager, meta, uintcontent);
     return new Item(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
@@ -623,11 +623,11 @@ export class Item {
     return this.encryptedItem.verify(this.cryptoManager);
   }
 
-  public async setMeta(meta: CollectionItemMetadata): Promise<void> {
+  public async setMeta(meta: ItemMetadata): Promise<void> {
     await this.encryptedItem.setMeta(this.cryptoManager, meta);
   }
 
-  public async getMeta(): Promise<CollectionItemMetadata> {
+  public async getMeta(): Promise<ItemMetadata> {
     return this.encryptedItem.getMeta(this.cryptoManager);
   }
 

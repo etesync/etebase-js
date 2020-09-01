@@ -19,7 +19,7 @@ async function verifyCollection(col: Etebase.Collection, meta: Etebase.Collectio
   expect(toBase64(decryptedContent)).toEqual(toBase64(content));
 }
 
-async function verifyItem(item: Etebase.Item, meta: Etebase.CollectionItemMetadata, content: Uint8Array) {
+async function verifyItem(item: Etebase.Item, meta: Etebase.ItemMetadata, content: Uint8Array) {
   item.verify();
   const decryptedMeta = await item.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -131,7 +131,7 @@ it("Simple item handling", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -175,7 +175,7 @@ it("Content formats", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const metaItem: Etebase.CollectionItemMetadata = {
+  const metaItem: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content2 = "Hello2";
@@ -288,7 +288,7 @@ it("Simple item sync", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -360,7 +360,7 @@ it("Collection as item", async () => {
     await verifyItem(items.data[0], colMeta, colContent);
   }
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -444,7 +444,7 @@ it("Item multiple collections", async () => {
   const itemManager = collectionManager.getItemManager(col);
   const itemManager2 = collectionManager.getItemManager(col2);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -496,7 +496,7 @@ it("Collection and item deletion", async () => {
   const collections = await collectionManager.list();
 
   const itemManager = collectionManager.getItemManager(col);
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -557,7 +557,7 @@ it("Empty content", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const itemMeta: Etebase.CollectionItemMetadata = {
+  const itemMeta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const item = await itemManager.create(itemMeta, content);
@@ -666,7 +666,7 @@ it("Item transactions", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -784,7 +784,7 @@ it("Item batch stoken", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -865,7 +865,7 @@ it("Item fetch updates", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -966,7 +966,7 @@ it("Item revisions", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
 
@@ -1304,7 +1304,7 @@ it("Collection access level", async () => {
       }
     }
 
-    const meta: Etebase.CollectionItemMetadata = {
+    const meta: Etebase.ItemMetadata = {
       type: "ITEMTYPE2",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
@@ -1325,7 +1325,7 @@ it("Collection access level", async () => {
       }
     }
 
-    const meta: Etebase.CollectionItemMetadata = {
+    const meta: Etebase.ItemMetadata = {
       type: "ITEMTYPE3",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
@@ -1346,7 +1346,7 @@ it("Collection access level", async () => {
       }
     }
 
-    const meta: Etebase.CollectionItemMetadata = {
+    const meta: Etebase.ItemMetadata = {
       type: "ITEMTYPE3",
     };
     const content = Uint8Array.from([1, 2, 3, 6]);
@@ -1422,7 +1422,7 @@ it("Cache collections and items", async () => {
 
   const itemManager = collectionManager.getItemManager(col);
 
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "ITEMTYPE",
   };
   const content = Uint8Array.from([1, 2, 3, 6]);
@@ -1472,7 +1472,7 @@ it("Chunk pre-upload and download-missing", async () => {
   await collectionManager.upload(col);
 
   const itemManager = collectionManager.getItemManager(col);
-  const meta: Etebase.CollectionItemMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "itemtype",
   };
   const content = "Something";

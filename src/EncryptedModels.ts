@@ -8,14 +8,14 @@ export type CollectionType = string;
 
 export type ContentType = File | Blob | Uint8Array | string | null;
 
-export interface CollectionMetadata extends CollectionItemMetadata {
+export interface CollectionMetadata extends ItemMetadata {
   type: string;
   name: string;
   description?: string;
   color?: string;
 }
 
-export interface CollectionItemMetadata {
+export interface ItemMetadata {
   type?: string;
   name?: string; // The name of the item, e.g. filename in case of files
   mtime?: number; // The modification time
@@ -535,7 +535,7 @@ export class EncryptedCollectionItem {
 
   public lastEtag: string | null;
 
-  public static async create(parentCryptoManager: CollectionCryptoManager, meta: CollectionItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
+  public static async create(parentCryptoManager: CollectionCryptoManager, meta: ItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
     ret.uid = genUidBase64();
     ret.version = Constants.CURRENT_VERSION;
@@ -623,7 +623,7 @@ export class EncryptedCollectionItem {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
-  public async setMeta(cryptoManager: CollectionItemCryptoManager, meta: CollectionItemMetadata): Promise<void> {
+  public async setMeta(cryptoManager: CollectionItemCryptoManager, meta: ItemMetadata): Promise<void> {
     let rev = this.content;
     if (!this.isLocallyChanged()) {
       rev = this.content.clone();
@@ -633,7 +633,7 @@ export class EncryptedCollectionItem {
     this.content = rev;
   }
 
-  public async getMeta(cryptoManager: CollectionItemCryptoManager): Promise<CollectionItemMetadata> {
+  public async getMeta(cryptoManager: CollectionItemCryptoManager): Promise<ItemMetadata> {
     this.verify(cryptoManager);
     return this.content.getMeta(cryptoManager, this.getAdditionalMacData());
   }
