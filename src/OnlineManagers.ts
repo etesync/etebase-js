@@ -3,7 +3,7 @@ import request from "./Request";
 import URI from "urijs";
 
 export { deriveKey, ready } from "./Crypto";
-import { HTTPError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, ProgrammingError, NotFoundError, TemporaryServerError, ServerError } from "./Exceptions";
+import { HttpError, UnauthorizedError, PermissionDeniedError, ConflictError, NetworkError, ProgrammingError, NotFoundError, TemporaryServerError, ServerError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, msgpackEncode, msgpackDecode, toString } from "./Helpers";
 
@@ -184,7 +184,7 @@ class BaseNetwork {
           if ((response.status >= 500) && (response.status <= 599)) {
             throw new ServerError(response.status, content, data);
           } else {
-            throw new HTTPError(response.status, content, data);
+            throw new HttpError(response.status, content, data);
           }
         }
       }

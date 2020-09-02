@@ -7,18 +7,25 @@ class ExtendableError extends Error {
   }
 }
 
-export interface HTTPErrorContent {
-  code?: string;
-  detail?: string;
+export interface HttpFieldErrors {
+  code: string;
+  detail: string;
+  field?: string;
 }
 
-export class HTTPError extends ExtendableError {
-  public status: number;
-  public content?: HTTPErrorContent;
+export interface HttpErrorContent {
+  code?: string;
+  detail?: string;
+  errors?: HttpFieldErrors[];
+}
 
-  constructor(status: number, message: any, content?: HTTPErrorContent) {
+export class HttpError extends ExtendableError {
+  public status: number;
+  public content?: HttpErrorContent;
+
+  constructor(status: number, message: any, content?: HttpErrorContent) {
     super(`${status} ${message}`);
-    Object.setPrototypeOf(this, HTTPError.prototype);
+    Object.setPrototypeOf(this, HttpError.prototype);
     this.name = "HTTPError";
 
     this.status = status;
@@ -82,16 +89,16 @@ export class NotFoundError extends ExtendableError {
   }
 }
 
-export class TemporaryServerError extends HTTPError {
-  constructor(status: number, message: any, content?: HTTPErrorContent) {
+export class TemporaryServerError extends HttpError {
+  constructor(status: number, message: any, content?: HttpErrorContent) {
     super(status, message, content);
     Object.setPrototypeOf(this, TemporaryServerError.prototype);
     this.name = "TemporaryServerError";
   }
 }
 
-export class ServerError extends HTTPError {
-  constructor(status: number, message: any, content?: HTTPErrorContent) {
+export class ServerError extends HttpError {
+  constructor(status: number, message: any, content?: HttpErrorContent) {
     super(status, message, content);
     Object.setPrototypeOf(this, ServerError.prototype);
     this.name = "ServerError";
