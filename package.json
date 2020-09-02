@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@msgpack/msgpack": "^1.12.2",
+    "argon2-browser": "^1.14.0",
     "libsodium-wrappers": "0.7.6",
     "node-fetch": "^2.6.0",
     "urijs": "^1.19.1"
