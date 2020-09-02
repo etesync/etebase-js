@@ -2,8 +2,6 @@
 if (!(global as any).document) {
   (global as any).document = {};
 }
-
-import * as argon2 from "argon2-browser";
 import _sodium from "libsodium-wrappers";
 
 import * as Constants from "./Constants";
@@ -47,7 +45,6 @@ export async function deriveKey(salt: Uint8Array, password: string): Promise<Uin
   salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
 
   if (rnsodium) {
-    // RN
     const ret = await rnsodium.crypto_pwhash(
       32,
       sodium.to_base64(sodium.from_string(password), sodium.base64_variants.ORIGINAL),
@@ -57,20 +54,8 @@ export async function deriveKey(salt: Uint8Array, password: string): Promise<Uin
       sodium.crypto_pwhash_ALG_DEFAULT
     );
     return sodium.from_base64(ret, sodium.base64_variants.ORIGINAL);
-  } else if (typeof window !== "undefined") {
-    // Browser
-    const ret = await argon2.hash({
-      hashLen: 32,
-      pass: password,
-      salt: salt,
-      time: sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
-      mem: sodium.crypto_pwhash_MEMLIMIT_MODERATE / 1024,
-      type: argon2.ArgonType.Argon2id,
-    });
-    return ret.hash;
   }
 
-  // Fallback: node
   return sodium.crypto_pwhash(
     32,
     sodium.from_string(password),
