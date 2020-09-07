@@ -47,9 +47,9 @@ export interface CollectionItemJsonWrite {
 export type CollectionItemJsonRead = CollectionItemJsonWrite;
 
 export enum CollectionAccessLevel {
-  Admin = "adm",
-  ReadWrite = "rw",
-  ReadOnly = "ro",
+  ReadOnly = 0,
+  Admin = 1,
+  ReadWrite = 2,
 }
 
 export interface CollectionJsonWrite {
