@@ -1435,16 +1435,16 @@ it("Cache collections and items", async () => {
     { saveContent: false },
   ];
   for (const options of optionsArray) {
-    const savedCachedCollection = await collectionManager.cacheSave(col, options);
-    const cachedCollection = await collectionManager.cacheLoad(savedCachedCollection);
+    const savedCachedCollection = collectionManager.cacheSave(col, options);
+    const cachedCollection = collectionManager.cacheLoad(savedCachedCollection);
 
     expect(col.uid).toEqual(cachedCollection.uid);
     expect(col.etag).toEqual(cachedCollection.etag);
     expect(await col.getMeta()).toEqual(await cachedCollection.getMeta());
 
 
-    const savedCachedItem = await itemManager.cacheSave(item, options);
-    const cachedItem = await itemManager.cacheLoad(savedCachedItem);
+    const savedCachedItem = itemManager.cacheSave(item, options);
+    const cachedItem = itemManager.cacheLoad(savedCachedItem);
 
     expect(item.uid).toEqual(cachedItem.uid);
     expect(item.etag).toEqual(cachedItem.etag);
@@ -1454,8 +1454,8 @@ it("Cache collections and items", async () => {
   // Verify content
   {
     const options = { saveContent: true };
-    const savedCachedItem = await itemManager.cacheSave(item, options);
-    const cachedItem = await itemManager.cacheLoad(savedCachedItem);
+    const savedCachedItem = itemManager.cacheSave(item, options);
+    const cachedItem = itemManager.cacheLoad(savedCachedItem);
 
     expect(await item.getContent()).toEqual(await cachedItem.getContent());
   }
@@ -1512,7 +1512,7 @@ it("Chunking large data", async () => {
 
   async function itemGetChunkUids(it: Etebase.Item): Promise<string[]> {
     // XXX: hack - get the chunk uids from the cached saving
-    const cachedItem = msgpackDecode(await itemManager.cacheSave(it, { saveContent: false })) as any[];
+    const cachedItem = msgpackDecode(itemManager.cacheSave(it, { saveContent: false })) as any[];
     const cachedRevision = (msgpackDecode(cachedItem[cachedItem.length - 1]) as any[]);
     const cachedChunks = cachedRevision[cachedRevision.length - 1] as [Uint8Array][];
     return cachedChunks.map((x) => toBase64(x[0]));

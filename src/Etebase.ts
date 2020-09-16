@@ -316,11 +316,11 @@ export class CollectionManager {
     col.__markSaved();
   }
 
-  public async cacheSave(collection: Collection, options = defaultCacheOptions): Promise<Uint8Array> {
+  public cacheSave(collection: Collection, options = defaultCacheOptions): Uint8Array {
     return collection.encryptedCollection.cacheSave(options.saveContent);
   }
 
-  public async cacheLoad(cache: Uint8Array): Promise<Collection> {
+  public cacheLoad(cache: Uint8Array): Collection {
     const encCol = EncryptedCollection.cacheLoad(cache);
     const mainCryptoManager = this.etebase._getCryptoManager();
     return new Collection(encCol.getCryptoManager(mainCryptoManager), encCol);
@@ -433,11 +433,11 @@ export class ItemManager {
     }
   }
 
-  public async cacheSave(item: Item, options = defaultCacheOptions): Promise<Uint8Array> {
+  public cacheSave(item: Item, options = defaultCacheOptions): Uint8Array {
     return item.encryptedItem.cacheSave(options.saveContent);
   }
 
-  public async cacheLoad(cache: Uint8Array): Promise<Item> {
+  public cacheLoad(cache: Uint8Array): Item {
     const encItem = EncryptedCollectionItem.cacheLoad(cache);
     return new Item(this.collectionUid, encItem.getCryptoManager(this.collectionCryptoManager), encItem);
   }
