@@ -56,5 +56,5 @@ it("Pretty fingerprint", () => {
   const pubkey = fromBase64(USER.pubkey);
 
   const fingerprint = getPrettyFingerprint(pubkey);
-  expect(fingerprint).toEqual("17756   37089   25897   42924\n06835   62184   63746   54689\n32947   01272   14138   19749\n00577   54359   44439   58177");
+  expect(fingerprint).toEqual("45680   71497   88570   93128\n19189   84243   25687   20837\n47924   46071   54113   18789");
 });

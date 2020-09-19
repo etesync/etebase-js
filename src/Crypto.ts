@@ -228,15 +228,27 @@ export class CryptoMac {
   }
 }
 
+function getEncodedChunk(content: Uint8Array, offset: number) {
+  const num = ((content[offset] << 16) +
+    (content[offset + 1] << 8) +
+    content[offset + 2]) % 100000;
+  return num.toString().padStart(5, "0");
+}
+
 export function getPrettyFingerprint(content: Uint8Array, delimiter = "   ") {
   const fingerprint = sodium.crypto_generichash(32, content);
 
-  /* A 5 digit number can be stored in 16 bits, so a 256bit pubkey needs 16 5 digit numbers. */
+  /* We use 3 bytes each time to generate a 5 digit number - this means 10 pairs for bytes 0-29
+   * We then use bytes 29-31 for another number, and then the 3 most significant bits of each first byte for the last.
+   */
   let ret = "";
-  for (let i = 0 ; i < 32 ; i += 2) {
-    const num = (fingerprint[i] << 8) + fingerprint[i + 1];
-    const suffix = ((i + 2) % 8 === 0) ? "\n" : delimiter;
-    ret += num.toString().padStart(5, "0") + suffix;
+  let lastNum = 0;
+  for (let i = 0 ; i < 10 ; i++) {
+    const suffix = (i % 4 === 3) ? "\n" : delimiter;
+    ret += getEncodedChunk(fingerprint, i * 3) + suffix;
+    lastNum = (lastNum << 3) | ((fingerprint[i] & 0xE0) >>> 5);
   }
-  return ret.trim();
+  ret += getEncodedChunk(fingerprint, 29) + delimiter;
+  ret += (lastNum % 100000).toString().padStart(5, "0");
+  return ret;
 }
