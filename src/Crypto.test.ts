@@ -4,9 +4,11 @@ import { USER } from "./TestConstants";
 import { fromBase64, toBase64, fromString } from "./Helpers";
 import { CURRENT_VERSION } from "./Constants";
 
-it("Derive key", async () => {
+beforeAll(async () => {
   await ready;
+});
 
+it("Derive key", async () => {
   const derived = await deriveKey(fromBase64(USER.salt), USER.password);
   expect(toBase64(derived)).toBe(USER.key);
 });
