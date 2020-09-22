@@ -265,6 +265,14 @@ it("Simple collection sync", async () => {
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta2, content2);
   }
+
+  // Try uploadign the same collection twice as new
+  col = await collectionManager.create(meta, content);
+  const cachedCollection = collectionManager.cacheSave(col);
+  const colCopy = collectionManager.cacheLoad(cachedCollection);
+  await colCopy.setContent("Something else"); // Just so it has a different revision uid
+  await collectionManager.upload(col);
+  await expect(collectionManager.upload(colCopy)).rejects.toBeInstanceOf(Etebase.ConflictError);
 });
 
 it("Simple item sync", async () => {
