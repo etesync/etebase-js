@@ -1184,7 +1184,7 @@ it("Collection invitations", async () => {
   }
 
   await etebase2.logout();
-});
+}, 10000);
 
 it("Iterating invitations", async () => {
   const etebase2 = await prepareUserForTest(USER2);
