@@ -451,6 +451,7 @@ export interface SignedInvitation {
   accessLevel: CollectionAccessLevel;
 
   signedEncryptionKey: Uint8Array;
+  fromUsername?: string;
   fromPubkey: Uint8Array;
 }
 

@@ -1072,6 +1072,7 @@ it("Collection invitations", async () => {
 
   let invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
+  expect(invitations.data[0].fromUsername).toEqual(USER.username);
 
   await collectionInvitationManager2.reject(invitations.data[0]);
 

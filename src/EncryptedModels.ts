@@ -76,6 +76,7 @@ export interface SignedInvitationWrite {
 }
 
 export interface SignedInvitationRead extends SignedInvitationWrite {
+  fromUsername?: string;
   fromPubkey: Uint8Array;
 }
 
