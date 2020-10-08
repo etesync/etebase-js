@@ -88,6 +88,19 @@ it("Check server is etebase", async () => {
   await expect(Etebase.Account.login(USER2.username, USER2.password, testApiBase + "/api/")).rejects.toBeInstanceOf(Etebase.NotFoundError);
 });
 
+it("Getting dashboard url", async () => {
+  let url: string | undefined;
+  try {
+    url = await etebase.getDashboardUrl();
+  } catch (e) {
+    expect(e).toBeInstanceOf(Etebase.HttpError);
+    expect((e as Etebase.HttpError).content?.code).toEqual("not_supported");
+  }
+  if (url !== undefined) {
+    expect(url).toBeTruthy();
+  }
+});
+
 it("Simple collection handling", async () => {
   const collectionManager = etebase.getCollectionManager();
   const meta: Etebase.CollectionMetadata = {

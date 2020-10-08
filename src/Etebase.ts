@@ -192,6 +192,12 @@ export class Account {
     this.user.encryptedContent = encryptedContent;
   }
 
+  public async getDashboardUrl(): Promise<string> {
+    const serverUrl = this.serverUrl;
+    const authenticator = new Authenticator(serverUrl);
+    return await authenticator.getDashboardUrl(this.authToken!);
+  }
+
   public async save(encryptionKey_?: Uint8Array): Promise<base64> {
     const version = CURRENT_VERSION;
     const encryptionKey = encryptionKey_ ?? new Uint8Array(32);

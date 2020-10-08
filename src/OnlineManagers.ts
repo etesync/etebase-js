@@ -287,6 +287,19 @@ export class Authenticator extends BaseNetwork {
 
     await this.newCall(["change_password"], extra);
   }
+
+  public async getDashboardUrl(authToken: string): Promise<string> {
+    const extra = {
+      method: "post",
+      headers: {
+        "Content-Type": "application/msgpack",
+        "Authorization": "Token " + authToken,
+      },
+    };
+
+    const ret = await this.newCall<{ url: string }>(["dashboard_url"], extra);
+    return ret.url;
+  }
 }
 
 class BaseManager extends BaseNetwork {
