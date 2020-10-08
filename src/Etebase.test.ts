@@ -83,8 +83,9 @@ afterEach(async () => {
 
 it("Check server is etebase", async () => {
   expect(await Etebase.Account.isEtebaseServer(testApiBase)).toBeTruthy();
-  expect(await Etebase.Account.isEtebaseServer(testApiBase + "/a")).toBeFalsy();
-  expect(Etebase.Account.isEtebaseServer("http://doesnotexist")).rejects.toBeInstanceOf(Error);
+  expect(await Etebase.Account.isEtebaseServer(testApiBase + "/api/")).toBeFalsy();
+  await expect(Etebase.Account.isEtebaseServer("http://doesnotexist")).rejects.toBeInstanceOf(Error);
+  await expect(Etebase.Account.login(USER2.username, USER2.password, testApiBase + "/api/")).rejects.toBeInstanceOf(Etebase.NotFoundError);
 });
 
 it("Simple collection handling", async () => {
