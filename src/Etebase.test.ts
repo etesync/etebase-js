@@ -11,6 +11,8 @@ const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
 let etebase: Etebase.Account;
 
+const colType = "some.coltype";
+
 async function verifyCollection(col: Etebase.Collection, meta: Etebase.ItemMetadata, content: Uint8Array) {
   await col.verify();
   const decryptedMeta = await col.getMeta();
@@ -110,8 +112,8 @@ it("Simple collection handling", async () => {
   };
 
   const content = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", meta, content);
-  expect(col.isType("some.coltype")).toBeTruthy();
+  const col = await collectionManager.create(colType, meta, content);
+  expect(col.isType(colType)).toBeTruthy();
   expect(col.isType("bad.coltype")).toBeFalsy();
   await verifyCollection(col, meta, content);
 
@@ -140,7 +142,7 @@ it("Simple item handling", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   const itemManager = collectionManager.getItemManager(col);
 
@@ -176,7 +178,7 @@ it("Content formats", async () => {
   };
 
   const content = "Hello";
-  const col = await collectionManager.create("some.coltype", meta, content);
+  const col = await collectionManager.create(colType, meta, content);
   {
     const decryptedContent = await col.getContent(Etebase.OutputFormat.String);
     expect(decryptedContent).toEqual(content);
@@ -211,7 +213,7 @@ it("Simple collection sync", async () => {
   };
 
   const content = Uint8Array.from([1, 2, 3, 5]);
-  let col = await collectionManager.create("some.coltype", meta, content);
+  let col = await collectionManager.create(colType, meta, content);
   await verifyCollection(col, meta, content);
 
   {
@@ -277,7 +279,7 @@ it("Simple collection sync", async () => {
   }
 
   // Try uploadign the same collection twice as new
-  col = await collectionManager.create("some.coltype", meta, content);
+  col = await collectionManager.create(colType, meta, content);
   const cachedCollection = collectionManager.cacheSave(col);
   const colCopy = collectionManager.cacheLoad(cachedCollection);
   await colCopy.setContent("Something else"); // Just so it has a different revision uid
@@ -294,7 +296,7 @@ it("Simple item sync", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -356,7 +358,7 @@ it("Collection as item", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -435,7 +437,7 @@ it("Item multiple collections", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -446,7 +448,7 @@ it("Item multiple collections", async () => {
   };
 
   const colContent2 = Uint8Array.from([]);
-  const col2 = await collectionManager.create("some.coltype", colMeta2, colContent2);
+  const col2 = await collectionManager.create(colType, colMeta2, colContent2);
 
   await collectionManager.upload(col2);
 
@@ -501,7 +503,7 @@ it("Collection and item deletion", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
   await verifyCollection(col, colMeta, colContent);
 
   await collectionManager.upload(col);
@@ -558,7 +560,7 @@ it("Empty content", async () => {
   };
 
   const content = Uint8Array.from([]);
-  let col = await collectionManager.create("some.coltype", meta, content);
+  let col = await collectionManager.create(colType, meta, content);
   await verifyCollection(col, meta, content);
   await collectionManager.upload(col);
 
@@ -592,7 +594,7 @@ it("List response correctness", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -635,7 +637,7 @@ it("List response correctness", async () => {
   {
     for (let i = 0 ; i < 4 ; i++) {
       const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
-      const col2 = await collectionManager.create("some.coltype", colMeta, content2);
+      const col2 = await collectionManager.create(colType, colMeta, content2);
       await collectionManager.upload(col2);
     }
   }
@@ -665,7 +667,7 @@ it("Item transactions", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -782,7 +784,7 @@ it("Item batch stoken", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -862,7 +864,7 @@ it("Item fetch updates", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -967,7 +969,7 @@ it("Item revisions", async () => {
     color: "#ffffff",
   };
 
-  const col = await collectionManager.create("some.coltype", colMeta, "");
+  const col = await collectionManager.create(colType, colMeta, "");
   await collectionManager.upload(col);
 
 
@@ -1026,7 +1028,7 @@ it("Collection invitations", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -1199,7 +1201,7 @@ it("Iterating invitations", async () => {
       name: `Calendar ${i}`,
     };
 
-    const col = await collectionManager.create("some.coltype", colMeta, "");
+    const col = await collectionManager.create(colType, colMeta, "");
 
     await collectionManager.upload(col);
     await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
@@ -1251,7 +1253,7 @@ it("Collection access level", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
@@ -1382,7 +1384,7 @@ it("Session store and restore", async () => {
     name: "Calendar",
   };
 
-  const col = await collectionManager.create("some.coltype", meta, "test");
+  const col = await collectionManager.create(colType, meta, "test");
   await collectionManager.upload(col);
 
   // Verify we can store and restore without an encryption key
@@ -1420,7 +1422,7 @@ it("Cache collections and items", async () => {
     name: "Calendar",
   };
 
-  const col = await collectionManager.create("some.coltype", colMeta, "test");
+  const col = await collectionManager.create(colType, colMeta, "test");
   await collectionManager.upload(col);
 
   const itemManager = collectionManager.getItemManager(col);
@@ -1470,7 +1472,7 @@ it("Chunk pre-upload and download-missing", async () => {
     name: "Calendar",
   };
 
-  const col = await collectionManager.create("some.coltype", colMeta, "");
+  const col = await collectionManager.create(colType, colMeta, "");
   await collectionManager.upload(col);
 
   const itemManager = collectionManager.getItemManager(col);
@@ -1506,7 +1508,7 @@ it("Chunking large data", async () => {
   };
 
   const buf = randomBytesDeterministic(120 * 1024, new Uint8Array(32)); // 120kb of psuedorandom data
-  const col = await collectionManager.create("some.coltype", colMeta, "");
+  const col = await collectionManager.create(colType, colMeta, "");
   const itemManager = collectionManager.getItemManager(col);
   const item = await itemManager.create({}, buf);
   await verifyItem(item, {}, buf);
@@ -1574,7 +1576,7 @@ it.skip("Login and password change", async () => {
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager2.create("some.coltype", colMeta, colContent);
+  const col = await collectionManager2.create(colType, colMeta, colContent);
 
   await collectionManager2.upload(col);
 
