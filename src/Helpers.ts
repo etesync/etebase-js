@@ -89,7 +89,8 @@ export function getPadding(length: number): number {
 }
 
 // FIXME: we should properly pad the meta and probably change these functions
-export function bufferPadMeta(buf: Uint8Array): Uint8Array {
+// This function is the same as bufferPad, but doesn't enforce a large minimum padding size
+export function bufferPadSmall(buf: Uint8Array): Uint8Array {
   return sodium.pad(buf, buf.length + 1);
 }
 

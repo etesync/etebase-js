@@ -2,7 +2,7 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError, MissingContentError, ProgrammingError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadMeta } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadSmall } from "./Helpers";
 import { SignedInvitationContent } from "./Etebase";
 
 export type CollectionType = string;
@@ -248,7 +248,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public async setMeta(cryptoManager: CM, additionalData: Uint8Array, meta: any): Promise<void> {
     const adHash = await this.calculateAdHash(cryptoManager, additionalData);
 
-    const encContent = cryptoManager.encryptDetached(bufferPadMeta(msgpackEncode(meta)), adHash);
+    const encContent = cryptoManager.encryptDetached(bufferPadSmall(msgpackEncode(meta)), adHash);
 
     this.meta = encContent[1];
     this.uid = toBase64(encContent[0]);
@@ -524,7 +524,7 @@ export class EncryptedCollection {
     const uid = randomBytes(32);
     const encryptionKey = this.getCollectionKey(parentCryptoManager);
     const content: SignedInvitationContent = { encryptionKey, collectionType };
-    const rawContent = bufferPadMeta(msgpackEncode(content));
+    const rawContent = bufferPadSmall(msgpackEncode(content));
     const signedEncryptionKey = identCryptoManager.encrypt(rawContent, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
