@@ -8,18 +8,13 @@ export type CollectionType = string;
 
 export type ContentType = File | Blob | Uint8Array | string | null;
 
-export interface CollectionMetadata extends ItemMetadata {
-  type: string;
-  name: string;
-  description?: string;
-  color?: string;
-}
-
 export interface ItemMetadata {
   type?: string;
   name?: string; // The name of the item, e.g. filename in case of files
   mtime?: number; // The modification time
-  extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
+
+  description?: string;
+  color?: string;
 }
 
 export type ChunkJson = [base64, Uint8Array?];
@@ -387,7 +382,7 @@ export class EncryptedCollection {
   public accessLevel: CollectionAccessLevel;
   public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
-  public static async create(parentCryptoManager: AccountCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
+  public static async create(parentCryptoManager: AccountCryptoManager, meta: ItemMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
     ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength));
 
@@ -456,15 +451,15 @@ export class EncryptedCollection {
     return this.item.verify(itemCryptoManager);
   }
 
-  public async setMeta(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata): Promise<void> {
+  public async setMeta(cryptoManager: CollectionCryptoManager, meta: ItemMetadata): Promise<void> {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.setMeta(itemCryptoManager, meta);
   }
 
-  public async getMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
+  public async getMeta(cryptoManager: CollectionCryptoManager): Promise<ItemMetadata> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
-    return this.item.getMeta(itemCryptoManager) as Promise<CollectionMetadata>;
+    return this.item.getMeta(itemCryptoManager) as Promise<ItemMetadata>;
   }
 
   public async setContent(cryptoManager: CollectionCryptoManager, content: Uint8Array): Promise<void> {

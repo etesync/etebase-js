@@ -13,7 +13,6 @@ import {
   CollectionAccessLevel,
   CollectionCryptoManager,
   CollectionItemCryptoManager,
-  CollectionMetadata,
   ItemMetadata,
   EncryptedCollection,
   EncryptedCollectionItem,
@@ -289,7 +288,7 @@ export class CollectionManager {
     this.onlineManager = new CollectionManagerOnline(this.etebase);
   }
 
-  public async create(meta: CollectionMetadata, content: Uint8Array | string): Promise<Collection> {
+  public async create(meta: ItemMetadata, content: Uint8Array | string): Promise<Collection> {
     const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const mainCryptoManager = this.etebase._getCryptoManager();
     const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, meta, uintcontent);
@@ -568,11 +567,11 @@ export class Collection {
     return this.encryptedCollection.verify(this.cryptoManager);
   }
 
-  public async setMeta(meta: CollectionMetadata): Promise<void> {
+  public async setMeta(meta: ItemMetadata): Promise<void> {
     await this.encryptedCollection.setMeta(this.cryptoManager, meta);
   }
 
-  public async getMeta(): Promise<CollectionMetadata> {
+  public async getMeta(): Promise<ItemMetadata> {
     return this.encryptedCollection.getMeta(this.cryptoManager);
   }
 

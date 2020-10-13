@@ -11,7 +11,7 @@ const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
 let etebase: Etebase.Account;
 
-async function verifyCollection(col: Etebase.Collection, meta: Etebase.CollectionMetadata, content: Uint8Array) {
+async function verifyCollection(col: Etebase.Collection, meta: Etebase.ItemMetadata, content: Uint8Array) {
   await col.verify();
   const decryptedMeta = await col.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -103,7 +103,7 @@ it("Getting dashboard url", async () => {
 
 it("Simple collection handling", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -133,7 +133,7 @@ it("Simple collection handling", async () => {
 
 it("Simple item handling", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -170,7 +170,7 @@ it("Simple item handling", async () => {
 
 it("Content formats", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -206,7 +206,7 @@ it("Content formats", async () => {
 
 it("Simple collection sync", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -291,7 +291,7 @@ it("Simple collection sync", async () => {
 
 it("Simple item sync", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -354,7 +354,7 @@ it("Simple item sync", async () => {
 
 it("Collection as item", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -434,7 +434,7 @@ it("Collection as item", async () => {
 it("Item multiple collections", async () => {
   const collectionManager = etebase.getCollectionManager();
 
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -446,7 +446,7 @@ it("Item multiple collections", async () => {
 
   await collectionManager.upload(col);
 
-  const colMeta2: Etebase.CollectionMetadata = {
+  const colMeta2: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar 2",
     description: "Mine",
@@ -502,7 +502,7 @@ it("Item multiple collections", async () => {
 
 it("Collection and item deletion", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -560,7 +560,7 @@ it("Collection and item deletion", async () => {
 
 it("Empty content", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -595,7 +595,7 @@ it("Empty content", async () => {
 
 it("List response correctness", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -669,7 +669,7 @@ it("List response correctness", async () => {
 
 it("Item transactions", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -787,7 +787,7 @@ it("Item transactions", async () => {
 
 it("Item batch stoken", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -868,7 +868,7 @@ it("Item batch stoken", async () => {
 
 it("Item fetch updates", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -975,7 +975,7 @@ it("Item fetch updates", async () => {
 
 it("Item revisions", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -1034,7 +1034,7 @@ it("Item revisions", async () => {
 
 it("Collection invitations", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -1211,7 +1211,7 @@ it("Iterating invitations", async () => {
   const collections = [];
 
   for (let i = 0 ; i < 3 ; i++) {
-    const colMeta: Etebase.CollectionMetadata = {
+    const colMeta: Etebase.ItemMetadata = {
       type: "COLTYPE",
       name: `Calendar ${i}`,
     };
@@ -1261,7 +1261,7 @@ it("Iterating invitations", async () => {
 
 it("Collection access level", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
@@ -1396,7 +1396,7 @@ it("Collection access level", async () => {
 
 it("Session store and restore", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
+  const meta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
   };
@@ -1435,7 +1435,7 @@ it("Session store and restore", async () => {
 
 it("Cache collections and items", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
   };
@@ -1486,7 +1486,7 @@ it("Cache collections and items", async () => {
 
 it("Chunk pre-upload and download-missing", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
   };
@@ -1522,7 +1522,7 @@ it("Chunk pre-upload and download-missing", async () => {
 
 it("Chunking large data", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
   };
@@ -1589,7 +1589,7 @@ it.skip("Login and password change", async () => {
   const etebase2 = await Etebase.Account.login(USER2.username, USER2.password, testApiBase);
 
   const collectionManager2 = etebase2.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
+  const colMeta: Etebase.ItemMetadata = {
     type: "COLTYPE",
     name: "Calendar",
     description: "Mine",
