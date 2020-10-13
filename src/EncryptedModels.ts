@@ -518,7 +518,7 @@ export class EncryptedCollection {
 
   public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = randomBytes(32);
-    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey, this.collectionType);
+    const encryptionKey = this.getCollectionKey(parentCryptoManager);
     const signedEncryptionKey = identCryptoManager.encrypt(encryptionKey, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
@@ -534,9 +534,13 @@ export class EncryptedCollection {
   }
 
   public getCryptoManager(parentCryptoManager: AccountCryptoManager, version?: number) {
-    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey, this.collectionType);
+    const encryptionKey = this.getCollectionKey(parentCryptoManager);
 
     return new CollectionCryptoManager(parentCryptoManager, encryptionKey, version ?? this.version);
+  }
+
+  private getCollectionKey(parentCryptoManager: AccountCryptoManager) {
+    return parentCryptoManager.decrypt(this.collectionKey, this.collectionType).subarray(0, symmetricKeyLength);
   }
 }
 
