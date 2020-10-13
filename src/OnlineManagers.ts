@@ -172,7 +172,7 @@ class BaseNetwork {
     } else {
       const content = data.detail || data.non_field_errors || strError;
       switch (response.status) {
-        case 401: throw new UnauthorizedError(content);
+        case 401: throw new UnauthorizedError(content, data);
         case 403: throw new PermissionDeniedError(content);
         case 404: throw new NotFoundError(content);
         case 409: throw new ConflictError(content);

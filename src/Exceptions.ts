@@ -58,10 +58,13 @@ export class MissingContentError extends ExtendableError {
 }
 
 export class UnauthorizedError extends ExtendableError {
-  constructor(message: any) {
+  public content?: HttpErrorContent;
+  constructor(message: any, content?: HttpErrorContent) {
     super(message);
     Object.setPrototypeOf(this, UnauthorizedError.prototype);
     this.name = "UnauthorizedError";
+
+    this.content = content;
   }
 }
 

@@ -4,7 +4,7 @@ import * as Constants from "./Constants";
 
 import { deriveKey, concatArrayBuffers, BoxCryptoManager, ready } from "./Crypto";
 export { ready, getPrettyFingerprint, _setRnSodium } from "./Crypto";
-import { ConflictError } from "./Exceptions";
+import { ConflictError, UnauthorizedError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode } from "./Helpers";
 export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
@@ -105,7 +105,20 @@ export class Account {
 
     serverUrl = serverUrl ?? Constants.SERVER_URL;
     const authenticator = new Authenticator(serverUrl);
-    const loginChallenge = await authenticator.getLoginChallenge(username);
+    let loginChallenge;
+    try {
+      loginChallenge = await authenticator.getLoginChallenge(username);
+    } catch (e) {
+      if ((e instanceof UnauthorizedError) && (e.content?.code === "user_not_init")) {
+        const user = {
+          username,
+          email: "init@localhost",
+        };
+        return this.signup(user, password, serverUrl);
+      }
+
+      throw e;
+    }
 
     const mainKey = await deriveKey(loginChallenge.salt, password);
     const mainCryptoManager = getMainCryptoManager(mainKey, loginChallenge.version);
