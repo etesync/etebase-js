@@ -217,21 +217,21 @@ it("Simple collection sync", async () => {
   await verifyCollection(col, meta, content);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(0);
   }
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta, content);
   }
 
   {
     col = await collectionManager.fetch(col.uid);
-    const collections = await collectionManager.list({ stoken: col.stoken });
+    const collections = await collectionManager.list(colType, { stoken: col.stoken });
     expect(collections.data.length).toBe(0);
   }
 
@@ -247,13 +247,13 @@ it("Simple collection sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta2, content);
   }
 
   {
-    const collections = await collectionManager.list({ stoken: col.stoken });
+    const collections = await collectionManager.list(colType, { stoken: col.stoken });
     expect(collections.data.length).toBe(1);
   }
 
@@ -273,7 +273,7 @@ it("Simple collection sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta2, content2);
   }
@@ -286,6 +286,48 @@ it("Simple collection sync", async () => {
   await collectionManager.upload(col);
   await expect(collectionManager.upload(colCopy)).rejects.toBeInstanceOf(Etebase.ConflictError);
 });
+
+it("Collection types", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const meta: Etebase.ItemMetadata = {
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const content = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colType, meta, content);
+  await verifyCollection(col, meta, content);
+
+  {
+    const collections = await collectionManager.list(colType);
+    expect(collections.data.length).toBe(0);
+  }
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list(colType);
+    expect(collections.data.length).toBe(1);
+    await verifyCollection(collections.data[0], meta, content);
+  }
+
+  {
+    const collections = await collectionManager.list("bad.coltype");
+    expect(collections.data.length).toBe(0);
+  }
+
+  {
+    const collections = await collectionManager.list(["bad.coltype", colType, "anotherbad"]);
+    expect(collections.data.length).toBe(1);
+  }
+
+  {
+    const collections = await collectionManager.list(["bad.coltype", "anotherbad"]);
+    expect(collections.data.length).toBe(0);
+  }
+});
+
 
 it("Simple item sync", async () => {
   const collectionManager = etebase.getCollectionManager();
@@ -301,7 +343,7 @@ it("Simple item sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -363,7 +405,7 @@ it("Collection as item", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -404,7 +446,7 @@ it("Collection as item", async () => {
   await itemManager.batch([col.item]);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], colMeta, fromString("test"));
   }
@@ -414,7 +456,7 @@ it("Collection as item", async () => {
   await itemManager.transaction([col.item]);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], colMeta, fromString("test2"));
   }
@@ -453,7 +495,7 @@ it("Item multiple collections", async () => {
   await collectionManager.upload(col2);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(2);
   }
 
@@ -508,7 +550,7 @@ it("Collection and item deletion", async () => {
 
   await collectionManager.upload(col);
 
-  const collections = await collectionManager.list();
+  const collections = await collectionManager.list(colType);
 
   const itemManager = collectionManager.getItemManager(col);
   const meta: Etebase.ItemMetadata = {
@@ -541,7 +583,7 @@ it("Collection and item deletion", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections2 = await collectionManager.list({ stoken: collections.stoken });
+    const collections2 = await collectionManager.list(colType, { stoken: collections.stoken });
     expect(collections2.data.length).toBe(1);
 
     const col2 = collections2.data[0];
@@ -598,7 +640,7 @@ it("List response correctness", async () => {
 
   await collectionManager.upload(col);
 
-  const collections = await collectionManager.list();
+  const collections = await collectionManager.list(colType);
   expect(collections.data.length).toBe(1);
 
   const itemManager = collectionManager.getItemManager(col);
@@ -643,16 +685,16 @@ it("List response correctness", async () => {
   }
 
   {
-    let collections = await collectionManager.list();
+    let collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(5);
     expect(collections.done).toBeTruthy();
-    collections = await collectionManager.list({ limit: 5 });
+    collections = await collectionManager.list(colType, { limit: 5 });
     expect(collections.done).toBeTruthy();
   }
 
   stoken = null;
   for (let i = 0 ; i < 3 ; i++) {
-    const collections = await collectionManager.list({ limit: 2, stoken });
+    const collections = await collectionManager.list(colType, { limit: 2, stoken });
     expect(collections.done).toBe(i === 2);
     stoken = collections.stoken as string;
   }
@@ -672,7 +714,7 @@ it("Item transactions", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -789,7 +831,7 @@ it("Item batch stoken", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -869,7 +911,7 @@ it("Item fetch updates", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -1033,7 +1075,7 @@ it("Collection invitations", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -1077,7 +1119,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.reject(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(0);
   }
 
@@ -1095,7 +1137,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager.disinvite(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(0);
   }
 
@@ -1124,7 +1166,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.accept(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
 
     await collections.data[0].getMeta();
@@ -1141,7 +1183,7 @@ it("Collection invitations", async () => {
   await collectionMemberManager2.leave();
 
   {
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
   }
@@ -1157,7 +1199,7 @@ it("Collection invitations", async () => {
     const newCol = await collectionManager.fetch(col.uid);
     expect(stoken).not.toEqual(newCol.stoken);
 
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(1);
     expect(collections.data[0].uid).toEqual(col.uid);
     expect(collections.removedMemberships).not.toBeDefined();
@@ -1171,7 +1213,7 @@ it("Collection invitations", async () => {
     const collectionMemberManager = collectionManager.getMemberManager(col);
     await collectionMemberManager.remove(USER2.username);
 
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
 
@@ -1179,7 +1221,7 @@ it("Collection invitations", async () => {
   }
 
   {
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
   }
@@ -1258,7 +1300,7 @@ it("Collection access level", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -1394,7 +1436,7 @@ it("Session store and restore", async () => {
 
     // Verify we can access the data
     const collectionManager2 = etebase2.getCollectionManager();
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
     expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
   }
@@ -1410,7 +1452,7 @@ it("Session store and restore", async () => {
 
     // Verify we can access the data
     const collectionManager2 = etebase2.getCollectionManager();
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
     expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
   }
@@ -1584,7 +1626,7 @@ it.skip("Login and password change", async () => {
 
   {
     // Verify we can still access the data
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
@@ -1598,7 +1640,7 @@ it.skip("Login and password change", async () => {
 
   {
     // Verify we can still access the data
-    const collections = await collectionManager3.list();
+    const collections = await collectionManager3.list(colType);
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 

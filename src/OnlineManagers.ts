@@ -353,10 +353,15 @@ export class CollectionManagerOnline extends BaseManager {
     return EncryptedCollection.deserialize(json);
   }
 
-  public async list(options?: FetchOptions): Promise<CollectionListResponse<EncryptedCollection>> {
+  public async list(collectionTypes: Uint8Array[], options?: FetchOptions): Promise<CollectionListResponse<EncryptedCollection>> {
     const apiBase = this.urlFromFetchOptions(options);
 
-    const json = await this.newCall<CollectionListResponse<CollectionJsonRead>>(undefined, undefined, apiBase);
+    const extra = {
+      method: "post",
+      body: msgpackEncode({ collectionTypes }),
+    };
+
+    const json = await this.newCall<CollectionListResponse<CollectionJsonRead>>(["list_multi"], extra, apiBase);
     return {
       ...json,
       data: json.data.map((val) => EncryptedCollection.deserialize(val)),

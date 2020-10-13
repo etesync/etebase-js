@@ -301,9 +301,11 @@ export class CollectionManager {
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
-  public async list(options?: FetchOptions) {
+  public async list(colType: string | string[], options?: FetchOptions) {
     const mainCryptoManager = this.etebase._getCryptoManager();
-    const ret = await this.onlineManager.list(options);
+    const colTypes = (Array.isArray(colType)) ? colType : [colType];
+    const collectionTypes = colTypes.map((x) => mainCryptoManager.colTypeToUid(x));
+    const ret = await this.onlineManager.list(collectionTypes, options);
     return {
       ...ret,
       data: ret.data.map((x) => new Collection(x.getCryptoManager(mainCryptoManager), x)),
