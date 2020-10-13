@@ -50,6 +50,8 @@ export enum CollectionAccessLevel {
 export interface CollectionJsonWrite {
   collectionKey: Uint8Array;
   item: CollectionItemJsonWrite;
+
+  collectionType: Uint8Array;
 }
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
@@ -105,13 +107,19 @@ export class AccountCryptoManager extends CryptoManager {
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, "Acct", version);
   }
+
+  public colTypeToUid(colType: string): Uint8Array {
+    return this.calculateMac(fromString(colType));
+  }
 }
 
 export class CollectionCryptoManager extends CryptoManager {
   protected Collection = true; // So classes are different
+  public accountCryptoManager: AccountCryptoManager;
 
-  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+  constructor(accountCryptoManager: AccountCryptoManager, key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, "Col", version);
+    this.accountCryptoManager = accountCryptoManager;
   }
 }
 
@@ -377,14 +385,16 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
 export class EncryptedCollection {
   private collectionKey: Uint8Array;
+  private collectionType: Uint8Array;
   public item: EncryptedCollectionItem;
 
   public accessLevel: CollectionAccessLevel;
   public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
-  public static async create(parentCryptoManager: AccountCryptoManager, meta: ItemMetadata, content: Uint8Array): Promise<EncryptedCollection> {
+  public static async create(parentCryptoManager: AccountCryptoManager, collectionTypeName: string, meta: ItemMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
-    ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength));
+    ret.collectionType = parentCryptoManager.colTypeToUid(collectionTypeName);
+    ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength), ret.collectionType);
 
     ret.accessLevel = CollectionAccessLevel.Admin;
     ret.stoken = null;
@@ -397,11 +407,12 @@ export class EncryptedCollection {
   }
 
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
-    const { stoken, accessLevel, collectionKey } = json;
+    const { stoken, accessLevel, collectionType, collectionKey } = json;
     const ret = new EncryptedCollection();
     ret.collectionKey = collectionKey;
 
     ret.item = EncryptedCollectionItem.deserialize(json.item);
+    ret.collectionType = collectionType;
 
     ret.accessLevel = accessLevel;
     ret.stoken = stoken;
@@ -412,6 +423,7 @@ export class EncryptedCollection {
   public serialize() {
     const ret: CollectionJsonWrite = {
       item: this.item.serialize(),
+      collectionType: this.collectionType,
 
       collectionKey: this.collectionKey,
     };
@@ -427,6 +439,7 @@ export class EncryptedCollection {
     ret.accessLevel = cached[2];
     ret.stoken = cached[3];
     ret.item = EncryptedCollectionItem.cacheLoad(cached[4]);
+    ret.collectionType = cached[5];
 
     return ret;
   }
@@ -439,6 +452,7 @@ export class EncryptedCollection {
       this.stoken,
 
       this.item.cacheSave(saveContent),
+      this.collectionType,
     ]);
   }
 
@@ -498,10 +512,13 @@ export class EncryptedCollection {
     return this.item.version;
   }
 
+  public isType(accountCryptoManager: AccountCryptoManager, colType: string): boolean {
+    return memcmp(accountCryptoManager.colTypeToUid(colType), this.collectionType);
+  }
 
   public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = randomBytes(32);
-    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
+    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey, this.collectionType);
     const signedEncryptionKey = identCryptoManager.encrypt(encryptionKey, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
@@ -517,9 +534,9 @@ export class EncryptedCollection {
   }
 
   public getCryptoManager(parentCryptoManager: AccountCryptoManager, version?: number) {
-    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
+    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey, this.collectionType);
 
-    return new CollectionCryptoManager(encryptionKey, version ?? this.version);
+    return new CollectionCryptoManager(parentCryptoManager, encryptionKey, version ?? this.version);
   }
 }
 
