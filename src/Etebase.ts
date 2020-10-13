@@ -6,7 +6,7 @@ import { deriveKey, concatArrayBuffers, BoxCryptoManager, ready } from "./Crypto
 export { ready, getPrettyFingerprint, _setRnSodium } from "./Crypto";
 import { ConflictError, UnauthorizedError } from "./Exceptions";
 export * from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferUnpad } from "./Helpers";
 export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
 
 import {
@@ -462,6 +462,12 @@ export class ItemManager {
     return new Item(this.collectionUid, encItem.getCryptoManager(this.collectionCryptoManager), encItem);
   }
 }
+
+export interface SignedInvitationContent {
+  encryptionKey: Uint8Array;
+  collectionType: string;
+}
+
 export interface SignedInvitation {
   uid: base64;
   version: number;
@@ -495,9 +501,10 @@ export class CollectionInvitationManager {
   public async accept(invitation: SignedInvitation) {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
-    const encryptionKey = identCryptoManager.decrypt(invitation.signedEncryptionKey, invitation.fromPubkey);
-    const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
-    return this.onlineManager.accept(invitation, encryptedEncryptionKey);
+    const content = msgpackDecode(bufferUnpad(identCryptoManager.decrypt(invitation.signedEncryptionKey, invitation.fromPubkey))) as SignedInvitationContent;
+    const colTypeUid = mainCryptoManager.colTypeToUid(content.collectionType);
+    const encryptedEncryptionKey = mainCryptoManager.encrypt(content.encryptionKey, colTypeUid);
+    return this.onlineManager.accept(invitation, colTypeUid, encryptedEncryptionKey);
   }
 
   public async reject(invitation: SignedInvitation) {
@@ -508,10 +515,10 @@ export class CollectionInvitationManager {
     return await this.onlineManager.fetchUserProfile(username);
   }
 
-  public async invite(col: Collection, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<void> {
+  public async invite(colType: string, col: Collection, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
-    const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, username, pubkey, accessLevel);
+    const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, colType, username, pubkey, accessLevel);
     await this.onlineManager.invite(invitation);
   }
 

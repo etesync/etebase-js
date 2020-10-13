@@ -1,8 +1,9 @@
 import * as Constants from "./Constants";
 
 import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
-import { IntegrityError, MissingContentError } from "./Exceptions";
+import { IntegrityError, MissingContentError, ProgrammingError } from "./Exceptions";
 import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadMeta } from "./Helpers";
+import { SignedInvitationContent } from "./Etebase";
 
 export type CollectionType = string;
 
@@ -516,10 +517,15 @@ export class EncryptedCollection {
     return memcmp(accountCryptoManager.colTypeToUid(colType), this.collectionType);
   }
 
-  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
+  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, collectionType: string, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
+    if (!this.isType(parentCryptoManager, collectionType)) {
+      throw new ProgrammingError(`Collection (${this.uid}) is not of type ${collectionType}`);
+    }
     const uid = randomBytes(32);
     const encryptionKey = this.getCollectionKey(parentCryptoManager);
-    const signedEncryptionKey = identCryptoManager.encrypt(encryptionKey, pubkey);
+    const content: SignedInvitationContent = { encryptionKey, collectionType };
+    const rawContent = bufferPadMeta(msgpackEncode(content));
+    const signedEncryptionKey = identCryptoManager.encrypt(rawContent, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
       uid: toBase64(uid),
@@ -527,7 +533,7 @@ export class EncryptedCollection {
       collection: this.uid,
       accessLevel,
 
-      signedEncryptionKey: signedEncryptionKey,
+      signedEncryptionKey,
     };
 
     return ret;

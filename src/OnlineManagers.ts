@@ -527,10 +527,11 @@ export class CollectionInvitationManagerOnline extends BaseManager {
     };
   }
 
-  public async accept(invitation: SignedInvitationRead, encryptionKey: Uint8Array): Promise<{}> {
+  public async accept(invitation: SignedInvitationRead, collectionType: Uint8Array, encryptionKey: Uint8Array): Promise<{}> {
     const extra = {
       method: "post",
       body: msgpackEncode({
+        collectionType,
         encryptionKey,
       }),
     };

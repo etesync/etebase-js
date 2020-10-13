@@ -1110,7 +1110,7 @@ it("Collection invitations", async () => {
   // Off-band verification:
   expect(Etebase.getPrettyFingerprint(user2Profile.pubkey)).toEqual(Etebase.getPrettyFingerprint(user2pubkey));
 
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(colType, col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   let invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1129,7 +1129,7 @@ it("Collection invitations", async () => {
   }
 
   // Invite and then disinvite
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(colType, col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1148,7 +1148,7 @@ it("Collection invitations", async () => {
 
 
   // Invite again, this time accept
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(colType, col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1170,6 +1170,7 @@ it("Collection invitations", async () => {
     expect(collections.data.length).toBe(1);
 
     await collections.data[0].getMeta();
+    expect(collections.data[0].isType(colType)).toBeTruthy();
   }
 
   {
@@ -1189,7 +1190,7 @@ it("Collection invitations", async () => {
   }
 
   // Add again
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(colType, col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1246,7 +1247,7 @@ it("Iterating invitations", async () => {
     const col = await collectionManager.create(colType, colMeta, "");
 
     await collectionManager.upload(col);
-    await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+    await collectionInvitationManager.invite(colType, col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
     collections.push(col);
   }
@@ -1330,7 +1331,7 @@ it("Collection access level", async () => {
   const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
 
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(colType, col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   const collectionInvitationManager2 = etebase2.getInvitationManager();
 
