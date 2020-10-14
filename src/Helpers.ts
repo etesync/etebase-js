@@ -107,6 +107,14 @@ export function bufferUnpad(buf: Uint8Array): Uint8Array {
   return sodium.unpad(buf, buf.length);
 }
 
+export function bufferPadFixed(buf: Uint8Array, blocksize: number): Uint8Array {
+  return sodium.pad(buf, blocksize);
+}
+
+export function bufferUnpadFixed(buf: Uint8Array, blocksize: number): Uint8Array {
+  return sodium.unpad(buf, blocksize);
+}
+
 export function msgpackEncode(value: unknown): Uint8Array {
   const options = { ignoreUndefined: true };
   return msgpack.encode(value, options);

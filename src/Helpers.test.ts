@@ -1,4 +1,4 @@
-import { numToUint8Array, numFromUint8Array, getPadding, shuffle } from "./Helpers";
+import { numToUint8Array, numFromUint8Array, getPadding, shuffle, bufferPadFixed, bufferUnpadFixed } from "./Helpers";
 import { ready } from "./Crypto";
 
 it("Buffer to number", () => {
@@ -31,6 +31,19 @@ it("Padding is larger than content", async () => {
   }
 
   expect(getPadding(2343242)).toEqual(2359296);
+});
+
+it("Padding fixed size", async () => {
+  await ready;
+
+  const blocksize = 32;
+  for (let i = 1 ; i < blocksize * 2 ; i++) {
+    const buf = new Uint8Array(i);
+    buf.fill(60);
+    const padded = bufferPadFixed(buf, blocksize);
+    const unpadded = bufferUnpadFixed(padded, blocksize);
+    expect(unpadded).toEqual(buf);
+  }
 });
 
 it("Shuffle", async () => {
