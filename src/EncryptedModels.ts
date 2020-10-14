@@ -519,6 +519,12 @@ export class EncryptedCollection {
   }
 
   public async getCollectionType(parentCryptoManager: AccountCryptoManager): Promise<string> {
+    // FIXME: remove this condition "collection-type-migration" is done
+    if (!this.collectionType) {
+      const cryptoManager = this.getCryptoManager(parentCryptoManager);
+      const meta = await this.getMeta(cryptoManager);
+      return meta.type!!;
+    }
     return parentCryptoManager.colTypeFromUid(this.collectionType);
   }
 
@@ -549,7 +555,8 @@ export class EncryptedCollection {
   }
 
   private getCollectionKey(parentCryptoManager: AccountCryptoManager) {
-    return parentCryptoManager.decrypt(this.collectionKey, this.collectionType).subarray(0, symmetricKeyLength);
+    // FIXME: remove the ?? null once "collection-type-migration" is done
+    return parentCryptoManager.decrypt(this.collectionKey, this.collectionType ?? null).subarray(0, symmetricKeyLength);
   }
 }
 
