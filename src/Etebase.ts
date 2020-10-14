@@ -515,10 +515,10 @@ export class CollectionInvitationManager {
     return await this.onlineManager.fetchUserProfile(username);
   }
 
-  public async invite(colType: string, col: Collection, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<void> {
+  public async invite(col: Collection, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<void> {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
-    const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, colType, username, pubkey, accessLevel);
+    const invitation = await col.encryptedCollection.createInvitation(mainCryptoManager, identCryptoManager, username, pubkey, accessLevel);
     await this.onlineManager.invite(invitation);
   }
 
@@ -630,8 +630,8 @@ export class Collection {
     return this.encryptedCollection.accessLevel;
   }
 
-  public isType(colType: string): boolean {
-    return this.encryptedCollection.isType(this.cryptoManager.accountCryptoManager, colType);
+  public async getCollectionType(): Promise<string> {
+    return this.encryptedCollection.getCollectionType(this.cryptoManager.accountCryptoManager);
   }
 
   public get item() {

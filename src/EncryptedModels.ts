@@ -1,8 +1,8 @@
 import * as Constants from "./Constants";
 
 import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
-import { IntegrityError, MissingContentError, ProgrammingError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadSmall } from "./Helpers";
+import { IntegrityError, MissingContentError } from "./Exceptions";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadSmall, bufferPadFixed, bufferUnpadFixed } from "./Helpers";
 import { SignedInvitationContent } from "./Etebase";
 
 export type CollectionType = string;
@@ -104,13 +104,18 @@ export class MainCryptoManager extends CryptoManager {
 
 export class AccountCryptoManager extends CryptoManager {
   protected Account = true; // So classes are different
+  private colTypePadSize = 32;
 
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, "Acct", version);
   }
 
   public colTypeToUid(colType: string): Uint8Array {
-    return this.calculateMac(fromString(colType));
+    return this.deterministicEncrypt(bufferPadFixed(fromString(colType), this.colTypePadSize));
+  }
+
+  public colTypeFromUid(colTypeUid: Uint8Array): string {
+    return toString(bufferUnpadFixed(this.deterministicDecrypt(colTypeUid), this.colTypePadSize));
   }
 }
 
@@ -513,16 +518,14 @@ export class EncryptedCollection {
     return this.item.version;
   }
 
-  public isType(accountCryptoManager: AccountCryptoManager, colType: string): boolean {
-    return memcmp(accountCryptoManager.colTypeToUid(colType), this.collectionType);
+  public async getCollectionType(parentCryptoManager: AccountCryptoManager): Promise<string> {
+    return parentCryptoManager.colTypeFromUid(this.collectionType);
   }
 
-  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, collectionType: string, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
-    if (!this.isType(parentCryptoManager, collectionType)) {
-      throw new ProgrammingError(`Collection (${this.uid}) is not of type ${collectionType}`);
-    }
+  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = randomBytes(32);
     const encryptionKey = this.getCollectionKey(parentCryptoManager);
+    const collectionType = await this.getCollectionType(parentCryptoManager);
     const content: SignedInvitationContent = { encryptionKey, collectionType };
     const rawContent = bufferPadSmall(msgpackEncode(content));
     const signedEncryptionKey = identCryptoManager.encrypt(rawContent, pubkey);
