@@ -1,6 +1,6 @@
 {
   "name": "etebase",
-  "version": "0.14.0",
+  "version": "0.20.0",
   "description": "Etebase TypeScript API for the web and node",
   "main": "dist/Etebase.js",
   "files": [
