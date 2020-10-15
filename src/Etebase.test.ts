@@ -11,7 +11,9 @@ const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
 let etebase: Etebase.Account;
 
-async function verifyCollection(col: Etebase.Collection, meta: Etebase.CollectionMetadata, content: Uint8Array) {
+const colType = "some.coltype";
+
+async function verifyCollection(col: Etebase.Collection, meta: Etebase.ItemMetadata, content: Uint8Array) {
   await col.verify();
   const decryptedMeta = await col.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -103,19 +105,18 @@ it("Getting dashboard url", async () => {
 
 it("Simple collection handling", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const meta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const content = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(meta, content);
+  const col = await collectionManager.create(colType, meta, content);
+  expect(await col.getCollectionType()).toEqual(colType);
   await verifyCollection(col, meta, content);
 
   const meta2 = {
-    type: "COLTYPE",
     name: "Calendar2",
     description: "Someone",
     color: "#000000",
@@ -133,15 +134,14 @@ it("Simple collection handling", async () => {
 
 it("Simple item handling", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   const itemManager = collectionManager.getItemManager(col);
 
@@ -170,15 +170,14 @@ it("Simple item handling", async () => {
 
 it("Content formats", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const meta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const content = "Hello";
-  const col = await collectionManager.create(meta, content);
+  const col = await collectionManager.create(colType, meta, content);
   {
     const decryptedContent = await col.getContent(Etebase.OutputFormat.String);
     expect(decryptedContent).toEqual(content);
@@ -206,40 +205,38 @@ it("Content formats", async () => {
 
 it("Simple collection sync", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const meta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const content = Uint8Array.from([1, 2, 3, 5]);
-  let col = await collectionManager.create(meta, content);
+  let col = await collectionManager.create(colType, meta, content);
   await verifyCollection(col, meta, content);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(0);
   }
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta, content);
   }
 
   {
     col = await collectionManager.fetch(col.uid);
-    const collections = await collectionManager.list({ stoken: col.stoken });
+    const collections = await collectionManager.list(colType, { stoken: col.stoken });
     expect(collections.data.length).toBe(0);
   }
 
   const colOld = await collectionManager.fetch(col.uid);
 
   const meta2 = {
-    type: "COLTYPE",
     name: "Calendar2",
     description: "Someone",
     color: "#000000",
@@ -249,13 +246,13 @@ it("Simple collection sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta2, content);
   }
 
   {
-    const collections = await collectionManager.list({ stoken: col.stoken });
+    const collections = await collectionManager.list(colType, { stoken: col.stoken });
     expect(collections.data.length).toBe(1);
   }
 
@@ -275,13 +272,13 @@ it("Simple collection sync", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], meta2, content2);
   }
 
   // Try uploadign the same collection twice as new
-  col = await collectionManager.create(meta, content);
+  col = await collectionManager.create(colType, meta, content);
   const cachedCollection = collectionManager.cacheSave(col);
   const colCopy = collectionManager.cacheLoad(cachedCollection);
   await colCopy.setContent("Something else"); // Just so it has a different revision uid
@@ -289,22 +286,63 @@ it("Simple collection sync", async () => {
   await expect(collectionManager.upload(colCopy)).rejects.toBeInstanceOf(Etebase.ConflictError);
 });
 
+it("Collection types", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const meta: Etebase.ItemMetadata = {
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const content = Uint8Array.from([1, 2, 3, 5]);
+  const col = await collectionManager.create(colType, meta, content);
+  await verifyCollection(col, meta, content);
+
+  {
+    const collections = await collectionManager.list(colType);
+    expect(collections.data.length).toBe(0);
+  }
+
+  await collectionManager.upload(col);
+
+  {
+    const collections = await collectionManager.list(colType);
+    expect(collections.data.length).toBe(1);
+    await verifyCollection(collections.data[0], meta, content);
+  }
+
+  {
+    const collections = await collectionManager.list("bad.coltype");
+    expect(collections.data.length).toBe(0);
+  }
+
+  {
+    const collections = await collectionManager.list(["bad.coltype", colType, "anotherbad"]);
+    expect(collections.data.length).toBe(1);
+  }
+
+  {
+    const collections = await collectionManager.list(["bad.coltype", "anotherbad"]);
+    expect(collections.data.length).toBe(0);
+  }
+});
+
+
 it("Simple item sync", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -354,20 +392,19 @@ it("Simple item sync", async () => {
 
 it("Collection as item", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -408,7 +445,7 @@ it("Collection as item", async () => {
   await itemManager.batch([col.item]);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], colMeta, fromString("test"));
   }
@@ -418,7 +455,7 @@ it("Collection as item", async () => {
   await itemManager.transaction([col.item]);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
     await verifyCollection(collections.data[0], colMeta, fromString("test2"));
   }
@@ -434,32 +471,30 @@ it("Collection as item", async () => {
 it("Item multiple collections", async () => {
   const collectionManager = etebase.getCollectionManager();
 
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
-  const colMeta2: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta2: Etebase.ItemMetadata = {
     name: "Calendar 2",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent2 = Uint8Array.from([]);
-  const col2 = await collectionManager.create(colMeta2, colContent2);
+  const col2 = await collectionManager.create(colType, colMeta2, colContent2);
 
   await collectionManager.upload(col2);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(2);
   }
 
@@ -502,20 +537,19 @@ it("Item multiple collections", async () => {
 
 it("Collection and item deletion", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
   await verifyCollection(col, colMeta, colContent);
 
   await collectionManager.upload(col);
 
-  const collections = await collectionManager.list();
+  const collections = await collectionManager.list(colType);
 
   const itemManager = collectionManager.getItemManager(col);
   const meta: Etebase.ItemMetadata = {
@@ -548,7 +582,7 @@ it("Collection and item deletion", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections2 = await collectionManager.list({ stoken: collections.stoken });
+    const collections2 = await collectionManager.list(colType, { stoken: collections.stoken });
     expect(collections2.data.length).toBe(1);
 
     const col2 = collections2.data[0];
@@ -560,15 +594,14 @@ it("Collection and item deletion", async () => {
 
 it("Empty content", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const meta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const content = Uint8Array.from([]);
-  let col = await collectionManager.create(meta, content);
+  let col = await collectionManager.create(colType, meta, content);
   await verifyCollection(col, meta, content);
   await collectionManager.upload(col);
 
@@ -595,19 +628,18 @@ it("Empty content", async () => {
 
 it("List response correctness", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
-  const collections = await collectionManager.list();
+  const collections = await collectionManager.list(colType);
   expect(collections.data.length).toBe(1);
 
   const itemManager = collectionManager.getItemManager(col);
@@ -646,22 +678,22 @@ it("List response correctness", async () => {
   {
     for (let i = 0 ; i < 4 ; i++) {
       const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
-      const col2 = await collectionManager.create(colMeta, content2);
+      const col2 = await collectionManager.create(colType, colMeta, content2);
       await collectionManager.upload(col2);
     }
   }
 
   {
-    let collections = await collectionManager.list();
+    let collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(5);
     expect(collections.done).toBeTruthy();
-    collections = await collectionManager.list({ limit: 5 });
+    collections = await collectionManager.list(colType, { limit: 5 });
     expect(collections.done).toBeTruthy();
   }
 
   stoken = null;
   for (let i = 0 ; i < 3 ; i++) {
-    const collections = await collectionManager.list({ limit: 2, stoken });
+    const collections = await collectionManager.list(colType, { limit: 2, stoken });
     expect(collections.done).toBe(i === 2);
     stoken = collections.stoken as string;
   }
@@ -669,20 +701,19 @@ it("List response correctness", async () => {
 
 it("Item transactions", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -787,20 +818,19 @@ it("Item transactions", async () => {
 
 it("Item batch stoken", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -868,20 +898,19 @@ it("Item batch stoken", async () => {
 
 it("Item fetch updates", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -975,14 +1004,13 @@ it("Item fetch updates", async () => {
 
 it("Item revisions", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
-  const col = await collectionManager.create(colMeta, "");
+  const col = await collectionManager.create(colType, colMeta, "");
   await collectionManager.upload(col);
 
 
@@ -1034,20 +1062,19 @@ it("Item revisions", async () => {
 
 it("Collection invitations", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -1091,7 +1118,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.reject(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(0);
   }
 
@@ -1109,7 +1136,7 @@ it("Collection invitations", async () => {
   await collectionInvitationManager.disinvite(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(0);
   }
 
@@ -1138,10 +1165,11 @@ it("Collection invitations", async () => {
   await collectionInvitationManager2.accept(invitations.data[0]);
 
   {
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
 
     await collections.data[0].getMeta();
+    expect(await collections.data[0].getCollectionType()).toEqual(colType);
   }
 
   {
@@ -1155,7 +1183,7 @@ it("Collection invitations", async () => {
   await collectionMemberManager2.leave();
 
   {
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
   }
@@ -1171,7 +1199,7 @@ it("Collection invitations", async () => {
     const newCol = await collectionManager.fetch(col.uid);
     expect(stoken).not.toEqual(newCol.stoken);
 
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(1);
     expect(collections.data[0].uid).toEqual(col.uid);
     expect(collections.removedMemberships).not.toBeDefined();
@@ -1185,7 +1213,7 @@ it("Collection invitations", async () => {
     const collectionMemberManager = collectionManager.getMemberManager(col);
     await collectionMemberManager.remove(USER2.username);
 
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
 
@@ -1193,7 +1221,7 @@ it("Collection invitations", async () => {
   }
 
   {
-    const collections = await collectionManager2.list({ stoken });
+    const collections = await collectionManager2.list(colType, { stoken });
     expect(collections.data.length).toBe(0);
     expect(collections.removedMemberships?.length).toBe(1);
   }
@@ -1211,12 +1239,11 @@ it("Iterating invitations", async () => {
   const collections = [];
 
   for (let i = 0 ; i < 3 ; i++) {
-    const colMeta: Etebase.CollectionMetadata = {
-      type: "COLTYPE",
+    const colMeta: Etebase.ItemMetadata = {
       name: `Calendar ${i}`,
     };
 
-    const col = await collectionManager.create(colMeta, "");
+    const col = await collectionManager.create(colType, colMeta, "");
 
     await collectionManager.upload(col);
     await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
@@ -1261,20 +1288,19 @@ it("Iterating invitations", async () => {
 
 it("Collection access level", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager.create(colMeta, colContent);
+  const col = await collectionManager.create(colType, colMeta, colContent);
 
   await collectionManager.upload(col);
 
   {
-    const collections = await collectionManager.list();
+    const collections = await collectionManager.list(colType);
     expect(collections.data.length).toBe(1);
   }
 
@@ -1396,12 +1422,11 @@ it("Collection access level", async () => {
 
 it("Session store and restore", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const meta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const meta: Etebase.ItemMetadata = {
     name: "Calendar",
   };
 
-  const col = await collectionManager.create(meta, "test");
+  const col = await collectionManager.create(colType, meta, "test");
   await collectionManager.upload(col);
 
   // Verify we can store and restore without an encryption key
@@ -1411,7 +1436,7 @@ it("Session store and restore", async () => {
 
     // Verify we can access the data
     const collectionManager2 = etebase2.getCollectionManager();
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
     expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
   }
@@ -1427,7 +1452,7 @@ it("Session store and restore", async () => {
 
     // Verify we can access the data
     const collectionManager2 = etebase2.getCollectionManager();
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
     expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
   }
@@ -1435,12 +1460,11 @@ it("Session store and restore", async () => {
 
 it("Cache collections and items", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
   };
 
-  const col = await collectionManager.create(colMeta, "test");
+  const col = await collectionManager.create(colType, colMeta, "test");
   await collectionManager.upload(col);
 
   const itemManager = collectionManager.getItemManager(col);
@@ -1486,12 +1510,11 @@ it("Cache collections and items", async () => {
 
 it("Chunk pre-upload and download-missing", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
   };
 
-  const col = await collectionManager.create(colMeta, "");
+  const col = await collectionManager.create(colType, colMeta, "");
   await collectionManager.upload(col);
 
   const itemManager = collectionManager.getItemManager(col);
@@ -1522,13 +1545,12 @@ it("Chunk pre-upload and download-missing", async () => {
 
 it("Chunking large data", async () => {
   const collectionManager = etebase.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
   };
 
   const buf = randomBytesDeterministic(120 * 1024, new Uint8Array(32)); // 120kb of psuedorandom data
-  const col = await collectionManager.create(colMeta, "");
+  const col = await collectionManager.create(colType, colMeta, "");
   const itemManager = collectionManager.getItemManager(col);
   const item = await itemManager.create({}, buf);
   await verifyItem(item, {}, buf);
@@ -1589,15 +1611,14 @@ it.skip("Login and password change", async () => {
   const etebase2 = await Etebase.Account.login(USER2.username, USER2.password, testApiBase);
 
   const collectionManager2 = etebase2.getCollectionManager();
-  const colMeta: Etebase.CollectionMetadata = {
-    type: "COLTYPE",
+  const colMeta: Etebase.ItemMetadata = {
     name: "Calendar",
     description: "Mine",
     color: "#ffffff",
   };
 
   const colContent = Uint8Array.from([1, 2, 3, 5]);
-  const col = await collectionManager2.create(colMeta, colContent);
+  const col = await collectionManager2.create(colType, colMeta, colContent);
 
   await collectionManager2.upload(col);
 
@@ -1605,7 +1626,7 @@ it.skip("Login and password change", async () => {
 
   {
     // Verify we can still access the data
-    const collections = await collectionManager2.list();
+    const collections = await collectionManager2.list(colType);
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 
@@ -1619,7 +1640,7 @@ it.skip("Login and password change", async () => {
 
   {
     // Verify we can still access the data
-    const collections = await collectionManager3.list();
+    const collections = await collectionManager3.list(colType);
     expect(colMeta).toEqual(await collections.data[0].getMeta());
   }
 

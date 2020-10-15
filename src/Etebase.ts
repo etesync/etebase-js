@@ -6,14 +6,13 @@ import { deriveKey, concatArrayBuffers, BoxCryptoManager, ready } from "./Crypto
 export { ready, getPrettyFingerprint, _setRnSodium } from "./Crypto";
 import { ConflictError, UnauthorizedError } from "./Exceptions";
 export * from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferUnpad } from "./Helpers";
 export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
 
 import {
   CollectionAccessLevel,
   CollectionCryptoManager,
   CollectionItemCryptoManager,
-  CollectionMetadata,
   ItemMetadata,
   EncryptedCollection,
   EncryptedCollectionItem,
@@ -289,10 +288,10 @@ export class CollectionManager {
     this.onlineManager = new CollectionManagerOnline(this.etebase);
   }
 
-  public async create(meta: CollectionMetadata, content: Uint8Array | string): Promise<Collection> {
+  public async create(colType: string, meta: ItemMetadata, content: Uint8Array | string): Promise<Collection> {
     const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const mainCryptoManager = this.etebase._getCryptoManager();
-    const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, meta, uintcontent);
+    const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, colType, meta, uintcontent);
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
@@ -302,9 +301,11 @@ export class CollectionManager {
     return new Collection(encryptedCollection.getCryptoManager(mainCryptoManager), encryptedCollection);
   }
 
-  public async list(options?: FetchOptions) {
+  public async list(colType: string | string[], options?: FetchOptions) {
     const mainCryptoManager = this.etebase._getCryptoManager();
-    const ret = await this.onlineManager.list(options);
+    const colTypes = (Array.isArray(colType)) ? colType : [colType];
+    const collectionTypes = colTypes.map((x) => mainCryptoManager.colTypeToUid(x));
+    const ret = await this.onlineManager.list(collectionTypes, options);
     return {
       ...ret,
       data: ret.data.map((x) => new Collection(x.getCryptoManager(mainCryptoManager), x)),
@@ -461,6 +462,12 @@ export class ItemManager {
     return new Item(this.collectionUid, encItem.getCryptoManager(this.collectionCryptoManager), encItem);
   }
 }
+
+export interface SignedInvitationContent {
+  encryptionKey: Uint8Array;
+  collectionType: string;
+}
+
 export interface SignedInvitation {
   uid: base64;
   version: number;
@@ -494,9 +501,10 @@ export class CollectionInvitationManager {
   public async accept(invitation: SignedInvitation) {
     const mainCryptoManager = this.etebase._getCryptoManager();
     const identCryptoManager = this.etebase._getIdentityCryptoManager();
-    const encryptionKey = identCryptoManager.decrypt(invitation.signedEncryptionKey, invitation.fromPubkey);
-    const encryptedEncryptionKey = mainCryptoManager.encrypt(encryptionKey);
-    return this.onlineManager.accept(invitation, encryptedEncryptionKey);
+    const content = msgpackDecode(bufferUnpad(identCryptoManager.decrypt(invitation.signedEncryptionKey, invitation.fromPubkey))) as SignedInvitationContent;
+    const colTypeUid = mainCryptoManager.colTypeToUid(content.collectionType);
+    const encryptedEncryptionKey = mainCryptoManager.encrypt(content.encryptionKey, colTypeUid);
+    return this.onlineManager.accept(invitation, colTypeUid, encryptedEncryptionKey);
   }
 
   public async reject(invitation: SignedInvitation) {
@@ -568,11 +576,11 @@ export class Collection {
     return this.encryptedCollection.verify(this.cryptoManager);
   }
 
-  public async setMeta(meta: CollectionMetadata): Promise<void> {
+  public async setMeta(meta: ItemMetadata): Promise<void> {
     await this.encryptedCollection.setMeta(this.cryptoManager, meta);
   }
 
-  public async getMeta(): Promise<CollectionMetadata> {
+  public async getMeta(): Promise<ItemMetadata> {
     return this.encryptedCollection.getMeta(this.cryptoManager);
   }
 
@@ -620,6 +628,10 @@ export class Collection {
 
   public get accessLevel() {
     return this.encryptedCollection.accessLevel;
+  }
+
+  public async getCollectionType(): Promise<string> {
+    return this.encryptedCollection.getCollectionType(this.cryptoManager.accountCryptoManager);
   }
 
   public get item() {

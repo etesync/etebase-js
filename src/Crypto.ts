@@ -72,6 +72,7 @@ export class CryptoManager {
   protected macKey: Uint8Array;
   protected asymKeySeed: Uint8Array;
   protected subDerivationKey: Uint8Array;
+  protected determinsticEncryptionKey: Uint8Array;
 
   constructor(key: Uint8Array, keyContext: string, version: number = Constants.CURRENT_VERSION) {
     keyContext = keyContext.padEnd(8);
@@ -82,6 +83,7 @@ export class CryptoManager {
     this.macKey = sodium.crypto_kdf_derive_from_key(32, 2, keyContext, key);
     this.asymKeySeed = sodium.crypto_kdf_derive_from_key(32, 3, keyContext, key);
     this.subDerivationKey = sodium.crypto_kdf_derive_from_key(32, 4, keyContext, key);
+    this.determinsticEncryptionKey = sodium.crypto_kdf_derive_from_key(32, 5, keyContext, key);
   }
 
   public encrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
@@ -113,6 +115,21 @@ export class CryptoManager {
     const ciphertext = nonceCiphertext.subarray(symmetricNonceSize);
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(null, ciphertext, mac, additionalData, nonce, this.cipherKey, null);
     return true;
+  }
+
+  public deterministicEncrypt(message: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
+    // FIXME: we could me slightly more efficient (save 8 bytes) and use crypto_stream_xchacha20_xor directly, and
+    // just have the mac be used to verify. Though that function is not exposed in libsodium.js (the slimmer version),
+    // and it's easier to get wrong, so we are just using the full xchacha20poly1305 we already use anyway.
+    const nonce = this.calculateMac(message).subarray(0, symmetricNonceSize);
+    return concatArrayBuffers(nonce,
+      sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(message, additionalData, null, nonce, this.determinsticEncryptionKey));
+  }
+
+  public deterministicDecrypt(nonceCiphertext: Uint8Array, additionalData: Uint8Array | null = null): Uint8Array {
+    const nonce = nonceCiphertext.subarray(0, symmetricNonceSize);
+    const ciphertext = nonceCiphertext.subarray(symmetricNonceSize);
+    return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, additionalData, nonce, this.determinsticEncryptionKey);
   }
 
   public deriveSubkey(salt: Uint8Array): Uint8Array {

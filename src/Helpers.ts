@@ -89,7 +89,8 @@ export function getPadding(length: number): number {
 }
 
 // FIXME: we should properly pad the meta and probably change these functions
-export function bufferPadMeta(buf: Uint8Array): Uint8Array {
+// This function is the same as bufferPad, but doesn't enforce a large minimum padding size
+export function bufferPadSmall(buf: Uint8Array): Uint8Array {
   return sodium.pad(buf, buf.length + 1);
 }
 
@@ -104,6 +105,14 @@ export function bufferUnpad(buf: Uint8Array): Uint8Array {
 
   // We pass the buffer's length as the block size because due to padme there's always some variable-sized padding.
   return sodium.unpad(buf, buf.length);
+}
+
+export function bufferPadFixed(buf: Uint8Array, blocksize: number): Uint8Array {
+  return sodium.pad(buf, blocksize);
+}
+
+export function bufferUnpadFixed(buf: Uint8Array, blocksize: number): Uint8Array {
+  return sodium.unpad(buf, blocksize);
 }
 
 export function msgpackEncode(value: unknown): Uint8Array {

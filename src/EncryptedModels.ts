@@ -2,24 +2,20 @@ import * as Constants from "./Constants";
 
 import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
 import { IntegrityError, MissingContentError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadMeta } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadSmall, bufferPadFixed, bufferUnpadFixed } from "./Helpers";
+import { SignedInvitationContent } from "./Etebase";
 
 export type CollectionType = string;
 
 export type ContentType = File | Blob | Uint8Array | string | null;
 
-export interface CollectionMetadata extends ItemMetadata {
-  type: string;
-  name: string;
-  description?: string;
-  color?: string;
-}
-
 export interface ItemMetadata {
   type?: string;
   name?: string; // The name of the item, e.g. filename in case of files
   mtime?: number; // The modification time
-  extra?: {[key: string]: any}; // This is how per-type data should be set. The key is a unique name for the extra data
+
+  description?: string;
+  color?: string;
 }
 
 export type ChunkJson = [base64, Uint8Array?];
@@ -55,6 +51,8 @@ export enum CollectionAccessLevel {
 export interface CollectionJsonWrite {
   collectionKey: Uint8Array;
   item: CollectionItemJsonWrite;
+
+  collectionType: Uint8Array;
 }
 
 export interface CollectionJsonRead extends CollectionJsonWrite {
@@ -106,17 +104,28 @@ export class MainCryptoManager extends CryptoManager {
 
 export class AccountCryptoManager extends CryptoManager {
   protected Account = true; // So classes are different
+  private colTypePadSize = 32;
 
   constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, "Acct", version);
+  }
+
+  public colTypeToUid(colType: string): Uint8Array {
+    return this.deterministicEncrypt(bufferPadFixed(fromString(colType), this.colTypePadSize));
+  }
+
+  public colTypeFromUid(colTypeUid: Uint8Array): string {
+    return toString(bufferUnpadFixed(this.deterministicDecrypt(colTypeUid), this.colTypePadSize));
   }
 }
 
 export class CollectionCryptoManager extends CryptoManager {
   protected Collection = true; // So classes are different
+  public accountCryptoManager: AccountCryptoManager;
 
-  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+  constructor(accountCryptoManager: AccountCryptoManager, key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, "Col", version);
+    this.accountCryptoManager = accountCryptoManager;
   }
 }
 
@@ -244,7 +253,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public async setMeta(cryptoManager: CM, additionalData: Uint8Array, meta: any): Promise<void> {
     const adHash = await this.calculateAdHash(cryptoManager, additionalData);
 
-    const encContent = cryptoManager.encryptDetached(bufferPadMeta(msgpackEncode(meta)), adHash);
+    const encContent = cryptoManager.encryptDetached(bufferPadSmall(msgpackEncode(meta)), adHash);
 
     this.meta = encContent[1];
     this.uid = toBase64(encContent[0]);
@@ -382,14 +391,16 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
 export class EncryptedCollection {
   private collectionKey: Uint8Array;
+  private collectionType: Uint8Array;
   public item: EncryptedCollectionItem;
 
   public accessLevel: CollectionAccessLevel;
   public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
-  public static async create(parentCryptoManager: AccountCryptoManager, meta: CollectionMetadata, content: Uint8Array): Promise<EncryptedCollection> {
+  public static async create(parentCryptoManager: AccountCryptoManager, collectionTypeName: string, meta: ItemMetadata, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
-    ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength));
+    ret.collectionType = parentCryptoManager.colTypeToUid(collectionTypeName);
+    ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength), ret.collectionType);
 
     ret.accessLevel = CollectionAccessLevel.Admin;
     ret.stoken = null;
@@ -402,11 +413,12 @@ export class EncryptedCollection {
   }
 
   public static deserialize(json: CollectionJsonRead): EncryptedCollection {
-    const { stoken, accessLevel, collectionKey } = json;
+    const { stoken, accessLevel, collectionType, collectionKey } = json;
     const ret = new EncryptedCollection();
     ret.collectionKey = collectionKey;
 
     ret.item = EncryptedCollectionItem.deserialize(json.item);
+    ret.collectionType = collectionType;
 
     ret.accessLevel = accessLevel;
     ret.stoken = stoken;
@@ -417,6 +429,7 @@ export class EncryptedCollection {
   public serialize() {
     const ret: CollectionJsonWrite = {
       item: this.item.serialize(),
+      collectionType: this.collectionType,
 
       collectionKey: this.collectionKey,
     };
@@ -432,6 +445,7 @@ export class EncryptedCollection {
     ret.accessLevel = cached[2];
     ret.stoken = cached[3];
     ret.item = EncryptedCollectionItem.cacheLoad(cached[4]);
+    ret.collectionType = cached[5];
 
     return ret;
   }
@@ -444,6 +458,7 @@ export class EncryptedCollection {
       this.stoken,
 
       this.item.cacheSave(saveContent),
+      this.collectionType,
     ]);
   }
 
@@ -456,15 +471,15 @@ export class EncryptedCollection {
     return this.item.verify(itemCryptoManager);
   }
 
-  public async setMeta(cryptoManager: CollectionCryptoManager, meta: CollectionMetadata): Promise<void> {
+  public async setMeta(cryptoManager: CollectionCryptoManager, meta: ItemMetadata): Promise<void> {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.setMeta(itemCryptoManager, meta);
   }
 
-  public async getMeta(cryptoManager: CollectionCryptoManager): Promise<CollectionMetadata> {
+  public async getMeta(cryptoManager: CollectionCryptoManager): Promise<ItemMetadata> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
-    return this.item.getMeta(itemCryptoManager) as Promise<CollectionMetadata>;
+    return this.item.getMeta(itemCryptoManager) as Promise<ItemMetadata>;
   }
 
   public async setContent(cryptoManager: CollectionCryptoManager, content: Uint8Array): Promise<void> {
@@ -503,11 +518,23 @@ export class EncryptedCollection {
     return this.item.version;
   }
 
+  public async getCollectionType(parentCryptoManager: AccountCryptoManager): Promise<string> {
+    // FIXME: remove this condition "collection-type-migration" is done
+    if (!this.collectionType) {
+      const cryptoManager = this.getCryptoManager(parentCryptoManager);
+      const meta = await this.getMeta(cryptoManager);
+      return meta.type!!;
+    }
+    return parentCryptoManager.colTypeFromUid(this.collectionType);
+  }
 
   public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
     const uid = randomBytes(32);
-    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
-    const signedEncryptionKey = identCryptoManager.encrypt(encryptionKey, pubkey);
+    const encryptionKey = this.getCollectionKey(parentCryptoManager);
+    const collectionType = await this.getCollectionType(parentCryptoManager);
+    const content: SignedInvitationContent = { encryptionKey, collectionType };
+    const rawContent = bufferPadSmall(msgpackEncode(content));
+    const signedEncryptionKey = identCryptoManager.encrypt(rawContent, pubkey);
     const ret: SignedInvitationWrite = {
       version: Constants.CURRENT_VERSION,
       uid: toBase64(uid),
@@ -515,16 +542,21 @@ export class EncryptedCollection {
       collection: this.uid,
       accessLevel,
 
-      signedEncryptionKey: signedEncryptionKey,
+      signedEncryptionKey,
     };
 
     return ret;
   }
 
   public getCryptoManager(parentCryptoManager: AccountCryptoManager, version?: number) {
-    const encryptionKey = parentCryptoManager.decrypt(this.collectionKey);
+    const encryptionKey = this.getCollectionKey(parentCryptoManager);
 
-    return new CollectionCryptoManager(encryptionKey, version ?? this.version);
+    return new CollectionCryptoManager(parentCryptoManager, encryptionKey, version ?? this.version);
+  }
+
+  private getCollectionKey(parentCryptoManager: AccountCryptoManager) {
+    // FIXME: remove the ?? null once "collection-type-migration" is done
+    return parentCryptoManager.decrypt(this.collectionKey, this.collectionType ?? null).subarray(0, symmetricKeyLength);
   }
 }
 
