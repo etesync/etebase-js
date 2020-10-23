@@ -59,4 +59,4 @@ async function requestNode(url: string, options: RequestInit = {}): Promise<Resp
   return ret;
 }
 
-export default (global as any).XMLHttpRequest ? request : requestNode;
+export default ((typeof global === "undefined") || (global as any).XMLHttpRequest) ? request : requestNode;

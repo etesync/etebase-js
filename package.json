@@ -2,13 +2,16 @@
   "name": "etebase",
   "version": "0.20.0",
   "description": "Etebase TypeScript API for the web and node",
-  "main": "dist/Etebase.js",
+  "type": "commonjs",
+  "main": "dist/lib-cjs/Etebase.js",
+  "module": "dist/lib/Etebase.js",
+  "browser": "dist/umd/Etebase.js",
   "files": [
     "dist/**/*"
   ],
   "types": "dist/Etebase.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc -m commonjs --outDir dist/lib-cjs && webpack",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx src",
     "test": "jest",
     "prepare": "yarn build",
@@ -40,7 +43,10 @@
     "eslint": "^6.6.0",
     "jest": "^24.9.0",
     "react-native-sodium": "^0.3.8",
-    "typescript": "^3.9.6"
+    "ts-loader": "^8.0.6",
+    "typescript": "^3.9.6",
+    "webpack": "^5.2.0",
+    "webpack-cli": "^4.1.0"
   },
   "jest": {
     "testPathIgnorePatterns": [

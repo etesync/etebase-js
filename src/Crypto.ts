@@ -1,5 +1,5 @@
 // Shim document if it doesn't exist (e.g. on React native)
-if (!(global as any).document) {
+if ((typeof global !== "undefined") && !(global as any).document) {
   (global as any).document = {};
 }
 import _sodium from "libsodium-wrappers";
