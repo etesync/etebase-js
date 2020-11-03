@@ -9,7 +9,7 @@
   "files": [
     "dist/**/*"
   ],
-  "types": "dist/Etebase.d.ts",
+  "types": "dist/lib/Etebase.d.ts",
   "scripts": {
     "build": "tsc && tsc -m commonjs --outDir dist/lib-cjs && webpack",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx src",
