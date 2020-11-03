@@ -14,8 +14,8 @@ let etebase: Etebase.Account;
 const colType = "some.coltype";
 
 async function verifyCollection(col: Etebase.Collection, meta: Etebase.ItemMetadata, content: Uint8Array) {
-  await col.verify();
-  const decryptedMeta = await col.getMeta();
+  col.verify();
+  const decryptedMeta = col.getMeta();
   expect(decryptedMeta).toEqual(meta);
   const decryptedContent = await col.getContent();
   expect(toBase64(decryptedContent)).toEqual(toBase64(content));
@@ -23,7 +23,7 @@ async function verifyCollection(col: Etebase.Collection, meta: Etebase.ItemMetad
 
 async function verifyItem(item: Etebase.Item, meta: Etebase.ItemMetadata, content: Uint8Array) {
   item.verify();
-  const decryptedMeta = await item.getMeta();
+  const decryptedMeta = item.getMeta();
   expect(decryptedMeta).toEqual(meta);
   const decryptedContent = await item.getContent();
   expect(toBase64(decryptedContent)).toEqual(toBase64(content));
@@ -113,7 +113,7 @@ it("Simple collection handling", async () => {
 
   const content = Uint8Array.from([1, 2, 3, 5]);
   const col = await collectionManager.create(colType, meta, content);
-  expect(await col.getCollectionType()).toEqual(colType);
+  expect(col.getCollectionType()).toEqual(colType);
   await verifyCollection(col, meta, content);
 
   const meta2 = {
@@ -121,13 +121,13 @@ it("Simple collection handling", async () => {
     description: "Someone",
     color: "#000000",
   };
-  await col.setMeta(meta2);
+  col.setMeta(meta2);
 
   await verifyCollection(col, meta2, content);
-  expect(meta).not.toEqual(await col.getMeta());
+  expect(meta).not.toEqual(col.getMeta());
 
   expect(col.isDeleted).toBeFalsy();
-  await col.delete(true);
+  col.delete(true);
   expect(col.isDeleted).toBeTruthy();
   await verifyCollection(col, meta2, content);
 });
@@ -157,13 +157,13 @@ it("Simple item handling", async () => {
     type: "ITEMTYPE",
     someval: "someval",
   };
-  await item.setMeta(meta2);
+  item.setMeta(meta2);
 
   await verifyItem(item, meta2, content);
-  expect(meta).not.toEqual(await col.getMeta());
+  expect(meta).not.toEqual(col.getMeta());
 
   expect(item.isDeleted).toBeFalsy();
-  await item.delete(true);
+  item.delete(true);
   expect(item.isDeleted).toBeTruthy();
   await verifyItem(item, meta2, content);
 });
@@ -241,7 +241,7 @@ it("Simple collection sync", async () => {
     description: "Someone",
     color: "#000000",
   };
-  await col.setMeta(meta2);
+  col.setMeta(meta2);
 
   await collectionManager.upload(col);
 
@@ -368,7 +368,7 @@ it("Simple item sync", async () => {
     type: "ITEMTYPE",
     someval: "someval",
   };
-  await item.setMeta(meta2);
+  item.setMeta(meta2);
 
   await itemManager.batch([item]);
 
@@ -565,7 +565,7 @@ it("Collection and item deletion", async () => {
   const items = await itemManager.list();
   expect(items.data.length).toBe(1);
 
-  await item.delete(true);
+  item.delete(true);
   await itemManager.batch([item]);
 
   {
@@ -578,7 +578,7 @@ it("Collection and item deletion", async () => {
     expect(item2.isDeleted).toBeTruthy();
   }
 
-  await col.delete(true);
+  col.delete(true);
   await collectionManager.upload(col);
 
   {
@@ -758,7 +758,7 @@ it("Item transactions", async () => {
 
   {
     const meta3 = { ...meta, someval: "some" };
-    await item.setMeta(meta3);
+    item.setMeta(meta3);
   }
 
   await itemManager.transaction([item], items);
@@ -770,7 +770,7 @@ it("Item transactions", async () => {
 
   {
     const meta3 = { ...meta, someval: "some2" };
-    await item.setMeta(meta3);
+    item.setMeta(meta3);
 
     // Old in the deps
     await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(Etebase.ConflictError);
@@ -779,7 +779,7 @@ it("Item transactions", async () => {
 
     await itemManager.transaction([item]);
 
-    await itemOld2.setMeta(meta3);
+    itemOld2.setMeta(meta3);
 
     // Old stoken in the item itself
     await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(Etebase.ConflictError);
@@ -788,23 +788,23 @@ it("Item transactions", async () => {
   {
     const meta3 = { ...meta, someval: "some2" };
     const item2 = await itemManager.fetch(items[0].uid);
-    await item2.setMeta(meta3);
+    item2.setMeta(meta3);
 
     const itemOld2 = itemOld._clone();
-    await itemOld2.setMeta(meta3);
+    itemOld2.setMeta(meta3);
 
     // Part of the transaction is bad, and part is good
     await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     // Verify it hasn't changed after the transaction above failed
     const item2Fetch = await itemManager.fetch(item2.uid);
-    expect(await item2Fetch.getMeta()).not.toEqual(await item2.getMeta());
+    expect(item2Fetch.getMeta()).not.toEqual(item2.getMeta());
   }
 
   {
     // Global stoken test
     const meta3 = { ...meta, someval: "some2" };
-    await item.setMeta(meta3);
+    item.setMeta(meta3);
 
     const newCol = await collectionManager.fetch(col.uid);
     const stoken = newCol.stoken;
@@ -869,11 +869,11 @@ it("Item batch stoken", async () => {
     const meta3 = { ...meta, someval: "some2" };
     const item2 = item._clone();
 
-    await item2.setMeta(meta3);
+    item2.setMeta(meta3);
     await itemManager.batch([item2]);
 
     meta3.someval = "some3";
-    await item.setMeta(meta3);
+    item.setMeta(meta3);
 
     // Old stoken in the item itself should work for batch and fail for transaction or batch with deps
     await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(Etebase.ConflictError);
@@ -884,7 +884,7 @@ it("Item batch stoken", async () => {
   {
     // Global stoken test
     const meta3 = { ...meta, someval: "some2" };
-    await item.setMeta(meta3);
+    item.setMeta(meta3);
 
     const newCol = await collectionManager.fetch(col.uid);
     const stoken = newCol.stoken;
@@ -970,7 +970,7 @@ it("Item fetch updates", async () => {
     const meta3 = { ...meta, someval: "some2" };
     const item2 = items[0]._clone();
 
-    await item2.setMeta(meta3);
+    item2.setMeta(meta3);
     await itemManager.batch([item2]);
   }
 
@@ -1168,8 +1168,8 @@ it("Collection invitations", async () => {
     const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
 
-    await collections.data[0].getMeta();
-    expect(await collections.data[0].getCollectionType()).toEqual(colType);
+    collections.data[0].getMeta();
+    expect(collections.data[0].getCollectionType()).toEqual(colType);
   }
 
   {
@@ -1487,7 +1487,7 @@ it("Cache collections and items", async () => {
 
     expect(col.uid).toEqual(cachedCollection.uid);
     expect(col.etag).toEqual(cachedCollection.etag);
-    expect(await col.getMeta()).toEqual(await cachedCollection.getMeta());
+    expect(col.getMeta()).toEqual(cachedCollection.getMeta());
 
 
     const savedCachedItem = itemManager.cacheSave(item, options);
@@ -1495,7 +1495,7 @@ it("Cache collections and items", async () => {
 
     expect(item.uid).toEqual(cachedItem.uid);
     expect(item.etag).toEqual(cachedItem.etag);
-    expect(await item.getMeta()).toEqual(await cachedItem.getMeta());
+    expect(item.getMeta()).toEqual(cachedItem.getMeta());
   }
 
   // Verify content
@@ -1531,7 +1531,7 @@ it("Chunk pre-upload and download-missing", async () => {
 
   {
     const item2 = await itemManager.fetch(item.uid, { prefetch: PrefetchOption.Medium });
-    const meta2 = await item2.getMeta();
+    const meta2 = item2.getMeta();
     expect(meta2).toEqual(meta);
     // We can't get the content of partial item
     await expect(item2.getContent()).rejects.toBeInstanceOf(Etebase.MissingContentError);
@@ -1627,7 +1627,7 @@ it.skip("Login and password change", async () => {
   {
     // Verify we can still access the data
     const collections = await collectionManager2.list(colType);
-    expect(colMeta).toEqual(await collections.data[0].getMeta());
+    expect(colMeta).toEqual(collections.data[0].getMeta());
   }
 
   await etebase2.logout();
@@ -1641,7 +1641,7 @@ it.skip("Login and password change", async () => {
   {
     // Verify we can still access the data
     const collections = await collectionManager3.list(colType);
-    expect(colMeta).toEqual(await collections.data[0].getMeta());
+    expect(colMeta).toEqual(collections.data[0].getMeta());
   }
 
   await etebase3.changePassword(USER2.password);

@@ -572,15 +572,15 @@ export class Collection {
     this.encryptedCollection = encryptedCollection;
   }
 
-  public async verify() {
+  public verify() {
     return this.encryptedCollection.verify(this.cryptoManager);
   }
 
-  public async setMeta(meta: ItemMetadata): Promise<void> {
-    await this.encryptedCollection.setMeta(this.cryptoManager, meta);
+  public setMeta(meta: ItemMetadata): void {
+    this.encryptedCollection.setMeta(this.cryptoManager, meta);
   }
 
-  public async getMeta(): Promise<ItemMetadata> {
+  public getMeta(): ItemMetadata {
     return this.encryptedCollection.getMeta(this.cryptoManager);
   }
 
@@ -603,11 +603,8 @@ export class Collection {
     }
   }
 
-  public async delete(preserveContent = false): Promise<void> {
-    if (!preserveContent) {
-      await this.setContent(Uint8Array.from([]));
-    }
-    await this.encryptedCollection.delete(this.cryptoManager);
+  public delete(preserveContent = false): void {
+    this.encryptedCollection.delete(this.cryptoManager, preserveContent);
   }
 
   public get uid() {
@@ -630,7 +627,7 @@ export class Collection {
     return this.encryptedCollection.accessLevel;
   }
 
-  public async getCollectionType(): Promise<string> {
+  public getCollectionType(): string {
     return this.encryptedCollection.getCollectionType(this.cryptoManager.accountCryptoManager);
   }
 
@@ -651,15 +648,15 @@ export class Item {
     this.collectionUid = collectionUid;
   }
 
-  public async verify() {
+  public verify() {
     return this.encryptedItem.verify(this.cryptoManager);
   }
 
-  public async setMeta(meta: ItemMetadata): Promise<void> {
-    await this.encryptedItem.setMeta(this.cryptoManager, meta);
+  public setMeta(meta: ItemMetadata): void {
+    this.encryptedItem.setMeta(this.cryptoManager, meta);
   }
 
-  public async getMeta(): Promise<ItemMetadata> {
+  public getMeta(): ItemMetadata {
     return this.encryptedItem.getMeta(this.cryptoManager);
   }
 
@@ -682,11 +679,8 @@ export class Item {
     }
   }
 
-  public async delete(preserveContent = false): Promise<void> {
-    if (!preserveContent) {
-      await this.setContent(Uint8Array.from([]));
-    }
-    await this.encryptedItem.delete(this.cryptoManager);
+  public delete(preserveContent = false): void {
+    this.encryptedItem.delete(this.cryptoManager, preserveContent);
   }
 
   public get uid() {
