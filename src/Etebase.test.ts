@@ -382,6 +382,8 @@ it("Simple item sync", async () => {
   await item.setContent(content2);
 
   await itemManager.batch([item]);
+  // Adding the same item twice should work
+  await itemManager.batch([item]);
 
   {
     const items = await itemManager.list();
