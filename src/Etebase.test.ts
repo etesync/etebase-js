@@ -382,14 +382,44 @@ it("Simple item sync", async () => {
   await item.setContent(content2);
 
   await itemManager.batch([item]);
-  // Adding the same item twice should work
-  await itemManager.batch([item]);
 
   {
     const items = await itemManager.list();
     expect(items.data.length).toBe(1);
     await verifyItem(items.data[0], meta2, content2);
   }
+});
+
+it("Item re-uploaded revisions", async () => {
+  const collectionManager = etebase.getCollectionManager();
+  const colMeta: Etebase.ItemMetadata = {
+    name: "Calendar",
+    description: "Mine",
+    color: "#ffffff",
+  };
+
+  const col = await collectionManager.create(colType, colMeta, "");
+  await collectionManager.upload(col);
+
+
+  const itemManager = collectionManager.getItemManager(col);
+
+  const meta: Etebase.ItemMetadata = {
+    type: "ITEMTYPE",
+  };
+
+  const item = await itemManager.create(meta, "");
+
+  await itemManager.batch([item]);
+  // Adding the same item twice should work
+  await itemManager.batch([item]);
+
+  const itemOld = item._clone();
+
+  await item.setContent("Test");
+  await itemManager.batch([item]);
+
+  await expect(itemManager.batch([itemOld])).rejects.toBeInstanceOf(Etebase.HttpError);
 });
 
 it("Collection as item", async () => {
