@@ -15,7 +15,7 @@ export const sodium = _sodium;
 
 let rnsodium: typeof rnsodiumType;
 
-export function _setRnSodium(rnsodium_: typeof rnsodiumType) {
+export function _setRnSodium(rnsodium_: any) {
   rnsodium = rnsodium_;
 }
 
