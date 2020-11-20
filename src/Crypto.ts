@@ -1,7 +1,3 @@
-// Shim document if it doesn't exist (e.g. on React native)
-if ((typeof global !== "undefined") && !(global as any).document) {
-  (global as any).document = {};
-}
 import _sodium from "libsodium-wrappers";
 
 import * as Constants from "./Constants";
@@ -9,14 +5,24 @@ import { numToUint8Array, symmetricNonceSize } from "./Helpers";
 
 import { Rollsum } from "./Chunker";
 
-import type rnsodiumType from "react-native-sodium";
-
 export const sodium = _sodium;
 
-let rnsodium: typeof rnsodiumType;
+type DeriveKeyImplementation = (salt: Uint8Array, password: string) => Promise<Uint8Array>;
 
-export function _setRnSodium(rnsodium_: any) {
-  rnsodium = rnsodium_;
+let deriveKeyImplementation: DeriveKeyImplementation = async function defaultDeriveKeyImplementation(salt: Uint8Array, password: string) {
+  return sodium.crypto_pwhash(
+    32,
+    sodium.from_string(password),
+    salt,
+    sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    sodium.crypto_pwhash_ALG_DEFAULT
+  );
+};
+
+
+export function _setDeriveKeyImplementation(implementation: DeriveKeyImplementation) {
+  deriveKeyImplementation = implementation;
 }
 
 export const ready = (async () => {
@@ -42,28 +48,7 @@ export function concatArrayBuffersArrays(buffers: Uint8Array[]): Uint8Array {
 }
 
 export async function deriveKey(salt: Uint8Array, password: string): Promise<Uint8Array> {
-  salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
-
-  if (rnsodium) {
-    const ret = await rnsodium.crypto_pwhash(
-      32,
-      sodium.to_base64(sodium.from_string(password), sodium.base64_variants.ORIGINAL),
-      sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
-      sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
-      sodium.crypto_pwhash_MEMLIMIT_MODERATE,
-      sodium.crypto_pwhash_ALG_DEFAULT
-    );
-    return sodium.from_base64(ret, sodium.base64_variants.ORIGINAL);
-  }
-
-  return sodium.crypto_pwhash(
-    32,
-    sodium.from_string(password),
-    salt,
-    sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
-    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
-    sodium.crypto_pwhash_ALG_DEFAULT
-  );
+  return deriveKeyImplementation(salt.subarray(0, sodium.crypto_pwhash_SALTBYTES), password);
 }
 
 export class CryptoManager {
