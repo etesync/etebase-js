@@ -288,7 +288,7 @@ export class CollectionManager {
     this.onlineManager = new CollectionManagerOnline(this.etebase);
   }
 
-  public async create(colType: string, meta: ItemMetadata, content: Uint8Array | string): Promise<Collection> {
+  public async create<T>(colType: string, meta: ItemMetadata<T>, content: Uint8Array | string): Promise<Collection> {
     const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const mainCryptoManager = this.etebase._getCryptoManager();
     const encryptedCollection = await EncryptedCollection.create(mainCryptoManager, colType, meta, uintcontent);
@@ -366,7 +366,7 @@ export class ItemManager {
     this.collectionUid = col.uid;
   }
 
-  public async create(meta: ItemMetadata, content: Uint8Array | string): Promise<Item> {
+  public async create<T>(meta: ItemMetadata<T>, content: Uint8Array | string): Promise<Item> {
     const uintcontent = (content instanceof Uint8Array) ? content : fromString(content);
     const encryptedItem = await EncryptedCollectionItem.create(this.collectionCryptoManager, meta, uintcontent);
     return new Item(this.collectionUid, encryptedItem.getCryptoManager(this.collectionCryptoManager), encryptedItem);
@@ -576,11 +576,11 @@ export class Collection {
     return this.encryptedCollection.verify(this.cryptoManager);
   }
 
-  public setMeta(meta: ItemMetadata): void {
+  public setMeta<T>(meta: ItemMetadata<T>): void {
     this.encryptedCollection.setMeta(this.cryptoManager, meta);
   }
 
-  public getMeta(): ItemMetadata {
+  public getMeta<T>(): ItemMetadata<T> {
     return this.encryptedCollection.getMeta(this.cryptoManager);
   }
 
@@ -652,11 +652,11 @@ export class Item {
     return this.encryptedItem.verify(this.cryptoManager);
   }
 
-  public setMeta(meta: ItemMetadata): void {
+  public setMeta<T>(meta: ItemMetadata<T>): void {
     this.encryptedItem.setMeta(this.cryptoManager, meta);
   }
 
-  public getMeta(): ItemMetadata {
+  public getMeta<T>(): ItemMetadata<T> {
     return this.encryptedItem.getMeta(this.cryptoManager);
   }
 
