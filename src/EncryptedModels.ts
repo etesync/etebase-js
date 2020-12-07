@@ -9,14 +9,14 @@ export type CollectionType = string;
 
 export type ContentType = File | Blob | Uint8Array | string | null;
 
-export interface ItemMetadata {
+export type ItemMetadata<T = {}> = {
   type?: string;
   name?: string; // The name of the item, e.g. filename in case of files
   mtime?: number; // The modification time
 
   description?: string;
   color?: string;
-}
+} & T;
 
 export type ChunkJson = [base64, Uint8Array?];
 
@@ -400,7 +400,7 @@ export class EncryptedCollection {
   public accessLevel: CollectionAccessLevel;
   public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
-  public static async create(parentCryptoManager: AccountCryptoManager, collectionTypeName: string, meta: ItemMetadata, content: Uint8Array): Promise<EncryptedCollection> {
+  public static async create<T>(parentCryptoManager: AccountCryptoManager, collectionTypeName: string, meta: ItemMetadata<T>, content: Uint8Array): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
     ret.collectionType = parentCryptoManager.colTypeToUid(collectionTypeName);
     ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength), ret.collectionType);
@@ -474,12 +474,12 @@ export class EncryptedCollection {
     return this.item.verify(itemCryptoManager);
   }
 
-  public setMeta(cryptoManager: CollectionCryptoManager, meta: ItemMetadata): void {
+  public setMeta<T>(cryptoManager: CollectionCryptoManager, meta: ItemMetadata<T>): void {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     this.item.setMeta(itemCryptoManager, meta);
   }
 
-  public getMeta(cryptoManager: CollectionCryptoManager): ItemMetadata {
+  public getMeta<T>(cryptoManager: CollectionCryptoManager): ItemMetadata<T> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.getMeta(itemCryptoManager);
@@ -571,7 +571,7 @@ export class EncryptedCollectionItem {
 
   public lastEtag: string | null;
 
-  public static async create(parentCryptoManager: CollectionCryptoManager, meta: ItemMetadata, content: Uint8Array): Promise<EncryptedCollectionItem> {
+  public static async create<T>(parentCryptoManager: CollectionCryptoManager, meta: ItemMetadata<T>, content: Uint8Array): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
     ret.uid = genUidBase64();
     ret.version = Constants.CURRENT_VERSION;
@@ -659,7 +659,7 @@ export class EncryptedCollectionItem {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
-  public setMeta(cryptoManager: CollectionItemCryptoManager, meta: ItemMetadata): void {
+  public setMeta<T>(cryptoManager: CollectionItemCryptoManager, meta: ItemMetadata<T>): void {
     let rev = this.content;
     if (!this.isLocallyChanged()) {
       rev = this.content.clone();
@@ -669,7 +669,7 @@ export class EncryptedCollectionItem {
     this.content = rev;
   }
 
-  public getMeta(cryptoManager: CollectionItemCryptoManager): ItemMetadata {
+  public getMeta<T>(cryptoManager: CollectionItemCryptoManager): ItemMetadata<T> {
     this.verify(cryptoManager);
     return this.content.getMeta(cryptoManager, this.getAdditionalMacData());
   }

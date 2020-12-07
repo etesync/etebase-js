@@ -13,7 +13,7 @@ let etebase: Etebase.Account;
 
 const colType = "some.coltype";
 
-async function verifyCollection(col: Etebase.Collection, meta: Etebase.ItemMetadata, content: Uint8Array) {
+async function verifyCollection<T>(col: Etebase.Collection, meta: Etebase.ItemMetadata<T>, content: Uint8Array) {
   col.verify();
   const decryptedMeta = col.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -21,7 +21,7 @@ async function verifyCollection(col: Etebase.Collection, meta: Etebase.ItemMetad
   expect(toBase64(decryptedContent)).toEqual(toBase64(content));
 }
 
-async function verifyItem(item: Etebase.Item, meta: Etebase.ItemMetadata, content: Uint8Array) {
+async function verifyItem<T>(item: Etebase.Item, meta: Etebase.ItemMetadata<T>, content: Uint8Array) {
   item.verify();
   const decryptedMeta = item.getMeta();
   expect(decryptedMeta).toEqual(meta);
