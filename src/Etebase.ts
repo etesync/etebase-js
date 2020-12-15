@@ -425,7 +425,7 @@ export class ItemManager {
     });
   }
 
-  public async preUploadContent(item: Item) {
+  public async uploadContent(item: Item) {
     const [encryptedItem] = this.itemsPrepareForUpload([item])!;
     const pendingChunks = encryptedItem.__getPendingChunks();
     for (const chunk of pendingChunks) {
@@ -442,7 +442,7 @@ export class ItemManager {
     }
   }
 
-  public async downloadMissingContent(item: Item) {
+  public async downloadContent(item: Item) {
     const [encryptedItem] = this.itemsPrepareForUpload([item])!;
     const missingChunks = encryptedItem.__getMissingChunks();
     for (const chunk of missingChunks) {

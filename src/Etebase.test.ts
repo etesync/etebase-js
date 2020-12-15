@@ -1556,9 +1556,9 @@ it("Chunk pre-upload and download-missing", async () => {
   const content = "Something";
   const item = await itemManager.create(meta, content);
   expect(item.isMissingContent).not.toBeTruthy();
-  await itemManager.preUploadContent(item);
+  await itemManager.uploadContent(item);
   // Verify we don't fail even when already uploaded
-  await itemManager.preUploadContent(item);
+  await itemManager.uploadContent(item);
   await itemManager.batch([item]);
 
   {
@@ -1569,7 +1569,7 @@ it("Chunk pre-upload and download-missing", async () => {
     await expect(item2.getContent()).rejects.toBeInstanceOf(Etebase.MissingContentError);
     expect(item2.isMissingContent).toBeTruthy();
     // Fetch the content and then try to get it
-    await itemManager.downloadMissingContent(item2);
+    await itemManager.downloadContent(item2);
     expect(item2.isMissingContent).not.toBeTruthy();
     expect(await item2.getContent(Etebase.OutputFormat.String)).toEqual(content);
   }
