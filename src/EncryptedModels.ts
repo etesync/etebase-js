@@ -18,7 +18,8 @@ export type ItemMetadata<T = {}> = {
   color?: string;
 } & T;
 
-export type ChunkJson = [base64, Uint8Array?];
+// Last boolean indicates whether chunk is new and needs uploading (true means new).
+export type ChunkJson = [base64, Uint8Array?, boolean?];
 
 export interface CollectionItemRevisionJsonWrite {
   uid: base64;
@@ -154,7 +155,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   public meta: Uint8Array;
   public deleted: boolean;
 
-  public chunks: [base64, Uint8Array?][];
+  public chunks: ChunkJson[];
 
   constructor() {
     this.deleted = false;
@@ -188,7 +189,10 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       meta: this.meta,
       deleted: this.deleted,
 
-      chunks: this.chunks.map((chunk) => [chunk[0], chunk[1] ?? undefined]),
+      chunks: this.chunks.map((chunk) => [
+        chunk[0],
+        (chunk[2] && chunk[1]) ? chunk[1] : undefined, // Only pass content if it's a new chunk
+      ]),
     };
 
     return ret;
@@ -204,6 +208,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     ret.chunks = cached[3].map((chunk: Uint8Array[]) => [
       toBase64(chunk[0]),
       chunk[1] ?? undefined,
+      chunk[2] ?? undefined,
     ]);
 
     return ret;
@@ -215,8 +220,8 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       this.meta,
       this.deleted,
       ((saveContent) ?
-        this.chunks.map((chunk) => [fromBase64(chunk[0]), chunk[1] ?? null]) :
-        this.chunks.map((chunk) => [fromBase64(chunk[0])])
+        this.chunks.map((chunk) => [fromBase64(chunk[0]), chunk[1] ?? null, chunk[2]]) :
+        this.chunks.map((chunk) => [fromBase64(chunk[0]), null, chunk[2]])
       ),
     ]);
   }
@@ -267,6 +272,13 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
   }
 
   public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
+    const existingChunks = new Set();
+    for (const chunk of this.chunks) {
+      if (!chunk[2]) {
+        existingChunks.add(chunk[0]);
+      }
+    }
+
     const meta = this.getMeta(cryptoManager, additionalData);
 
     let chunks: [base64, Uint8Array][] = [];
@@ -329,8 +341,12 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       }
     }
 
-    // Encrypt all of the chunks
-    this.chunks = chunks.map((chunk) => [chunk[0], cryptoManager.encrypt(bufferPad(chunk[1]))]);
+    // Encrypt all of the chunks and mark as new
+    this.chunks = chunks.map((chunk) => [
+      chunk[0],
+      cryptoManager.encrypt(bufferPad(chunk[1])),
+      !existingChunks.has(chunk[0]),
+    ]);
 
     this.setMeta(cryptoManager, additionalData, meta);
   }
@@ -644,7 +660,7 @@ export class EncryptedCollectionItem {
   }
 
   public __getPendingChunks(): ChunkJson[] {
-    return this.content.chunks;
+    return this.content.chunks.filter(([_uid, _content, pending]) => pending);
   }
 
   public __getMissingChunks(): ChunkJson[] {

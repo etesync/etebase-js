@@ -432,6 +432,7 @@ export class ItemManager {
       // FIXME: Upload multiple in parallel
       try {
         await this.onlineManager.chunkUpload(encryptedItem, chunk);
+        chunk[2] = false;
       } catch (e) {
         if (e instanceof ConflictError) {
           // Skip if we arleady have the chunk
