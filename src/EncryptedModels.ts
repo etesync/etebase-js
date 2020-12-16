@@ -339,7 +339,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     let indices: number[] = [0];
     const decryptedChunks: Uint8Array[] = this.chunks.map((chunk) => {
       if (!chunk[1]) {
-        throw new MissingContentError("Missing content for item. Please download it using `downloadMissingContent`");
+        throw new MissingContentError("Missing content for item. Please download it using `downloadContent`");
       }
 
       const buf = bufferUnpad(cryptoManager.decrypt(chunk[1]));
