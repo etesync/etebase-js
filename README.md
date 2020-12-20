@@ -11,4 +11,6 @@ The Etebase TypeScript client API for the web, node and react-native!
 [![Build Status](https://travis-ci.com/etesync/etebase-js.svg?branch=master)](https://travis-ci.com/etesync/etebase-js)
 [![Chat with us](https://img.shields.io/badge/chat-IRC%20|%20Matrix%20|%20Web-blue.svg)](https://www.etebase.com/community-chat/)
 
-## [Documentation](https://docs.etebase.com/)
+# Documentation
+
+In addition to the API documentation, there are docs available at https://docs.etebase.com
