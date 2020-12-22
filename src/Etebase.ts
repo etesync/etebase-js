@@ -411,6 +411,14 @@ export class ItemManager {
     };
   }
 
+  public async fetchMulti(items: base64[], options?: ItemFetchOptions) {
+    const ret = await this.onlineManager.fetchMulti(items, options);
+    return {
+      ...ret,
+      data: ret.data.map((x) => new Item(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
+    };
+  }
+
   public async batch(items: Item[], deps?: Item[] | null, options?: ItemFetchOptions) {
     await this.onlineManager.batch(this.itemsPrepareForUpload(items)!, this.itemsPrepareForUpload(deps), options);
     items.forEach((item) => {

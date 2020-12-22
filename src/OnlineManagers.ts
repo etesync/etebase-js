@@ -436,7 +436,23 @@ export class CollectionItemManagerOnline extends BaseManager {
 
     const extra = {
       method: "post",
-      body: msgpackEncode(items?.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.lastEtag : undefined) }))),
+      body: msgpackEncode(items.map((x) => ({ uid: x.uid, etag: ((wantEtag) ? x.lastEtag : undefined) }))),
+    };
+
+    const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(["fetch_updates"], extra, apiBase);
+    const data = json.data;
+    return {
+      ...json,
+      data: data.map((val) => EncryptedCollectionItem.deserialize(val)),
+    };
+  }
+
+  public async fetchMulti(items: base64[], options?: ItemFetchOptions): Promise<CollectionItemListResponse<EncryptedCollectionItem>> {
+    const apiBase = this.urlFromFetchOptions(options);
+
+    const extra = {
+      method: "post",
+      body: msgpackEncode(items.map((x) => ({ uid: x }))),
     };
 
     const json = await this.newCall<CollectionItemListResponse<CollectionItemJsonRead>>(["fetch_updates"], extra, apiBase);

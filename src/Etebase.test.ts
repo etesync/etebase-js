@@ -982,6 +982,19 @@ it("Item fetch updates", async () => {
     expect(items.data.length).toBe(6);
   }
 
+  // Fetch multi
+  {
+    let items2 = await itemManager.fetchMulti(items.map((x) => x.uid));
+    expect(items2.data.length).toBe(5);
+
+    items2 = await itemManager.fetchMulti(["L4QQdlkCDJ9ySmrGD5fM0DsFo08MnWel", items[0].uid]);
+    // Only 1 because only one of the items exists
+    expect(items2.data.length).toBe(1);
+
+    // Fail handling invalid UIDs
+    await expect(itemManager.fetchMulti(["baduid", items[0].uid])).rejects.toBeInstanceOf(Etebase.HttpError);
+  }
+
 
   let stoken: string | null = null;
 
