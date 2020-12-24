@@ -9,6 +9,8 @@ export type base64 = string;
 export const symmetricKeyLength = 32; // sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES;
 export const symmetricTagLength = 16; // sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
 export const symmetricNonceSize = 24; // sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
+export const asymmetricKeySize = 32; // sodium.crypto_box_PUBLICKEYBYTES
+export const asymmetricNonceSize = 24; // sodium.crypto_box_NONCEBYTES
 
 export function randomBytes(length: number): Uint8Array {
   return sodium.randombytes_buf(length);

@@ -1,8 +1,8 @@
 import * as Constants from "./Constants";
 
-import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
+import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays, concatArrayBuffers, hmac } from "./Crypto";
 import { IntegrityError, MissingContentError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadSmall, bufferPadFixed, bufferUnpadFixed } from "./Helpers";
+import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadSmall, bufferPadFixed, bufferUnpadFixed, symmetricTagLength, asymmetricKeySize } from "./Helpers";
 import { SignedInvitationContent } from "./Etebase";
 
 export type CollectionType = string;
@@ -74,6 +74,18 @@ export interface SignedInvitationWrite {
 }
 
 export interface SignedInvitationRead extends SignedInvitationWrite {
+  fromUsername?: string;
+  fromPubkey: Uint8Array;
+}
+
+export interface EncryptedSimpleMessageWrite {
+  uid: base64;
+  version: number;
+
+  content: Uint8Array;
+}
+
+export interface EncryptedSimpleMessageRead extends EncryptedSimpleMessageWrite {
   fromUsername?: string;
   fromPubkey: Uint8Array;
 }
@@ -721,6 +733,71 @@ export class EncryptedCollectionItem {
 
   protected getAdditionalMacData() {
     return fromString(this.uid);
+  }
+}
+
+export class EncryptedSimpleMessage {
+  private constructor(
+    public readonly uid: base64,
+    public readonly version: number,
+    private readonly content: Uint8Array,
+    public readonly fromPubkey: Uint8Array,
+    public readonly fromUsername: string | undefined
+  ) {}
+
+  private static async createCommon(identCryptoManager: BoxCryptoManager, identCryptoManagerMessage: BoxCryptoManager, pubkey: Uint8Array, message: Uint8Array): Promise<EncryptedSimpleMessage> {
+    const uid = randomBytes(32);
+    const messagePubkey = identCryptoManagerMessage.pubkey;
+    const encPubkey = identCryptoManager.encrypt(messagePubkey, pubkey, uid);
+    const messageNonce = hmac(messagePubkey, uid);
+    const encMessage = identCryptoManagerMessage.encrypt(bufferPadSmall(message), pubkey, messageNonce);
+    const content = concatArrayBuffers(encPubkey, encMessage);
+    return new EncryptedSimpleMessage(
+      toBase64(uid),
+      Constants.CURRENT_VERSION,
+      content,
+      identCryptoManager.pubkey,
+      undefined
+    );
+  }
+
+  public static async create(identCryptoManager: BoxCryptoManager, pubkey: Uint8Array, message: Uint8Array): Promise<EncryptedSimpleMessage> {
+    return this.createCommon(identCryptoManager, identCryptoManager, pubkey, message);
+  }
+
+  public static async createSealed(identCryptoManager: BoxCryptoManager, pubkey: Uint8Array, message: Uint8Array): Promise<EncryptedSimpleMessage> {
+    const identCryptoManagerMessage = BoxCryptoManager.keygen();
+    return this.createCommon(identCryptoManager, identCryptoManagerMessage, pubkey, message);
+  }
+
+  public static deserialize(json: EncryptedSimpleMessageRead): EncryptedSimpleMessage {
+    return new EncryptedSimpleMessage(
+      json.uid,
+      json.version,
+      json.content,
+      json.fromPubkey,
+      json.fromUsername
+    );
+  }
+
+  public serialize() {
+    const ret: EncryptedSimpleMessageWrite = {
+      uid: this.uid,
+      version: this.version,
+      content: this.content,
+    };
+
+    return ret;
+  }
+
+  public async getContent(identCryptoManager: BoxCryptoManager): Promise<Uint8Array> {
+    const uid = fromBase64(this.uid);
+    const encPubkeyLength = asymmetricKeySize + symmetricTagLength;
+    const encPubkey = this.content.subarray(0, encPubkeyLength);
+    const encMessage = this.content.subarray(encPubkeyLength);
+    const messagePubkey = identCryptoManager.decrypt(encPubkey, this.fromPubkey, uid);
+    const messageNonce = hmac(messagePubkey, uid);
+    return bufferUnpad(identCryptoManager.decrypt(encMessage, messagePubkey, messageNonce));
   }
 }
 

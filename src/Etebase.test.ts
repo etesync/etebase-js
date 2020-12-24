@@ -1328,6 +1328,69 @@ it("Iterating invitations", async () => {
   await etebase2.logout();
 });
 
+it("Simple message", async () => {
+  const etebase2 = await prepareUserForTest(USER2);
+
+  const msgManager = etebase._experimental_getSimpleMessageManager();
+  const msgManager2 = etebase2._experimental_getSimpleMessageManager();
+
+  {
+    const msgs = await msgManager2.list();
+    expect(msgs.done).toBeTruthy();
+    expect(msgs.data.length).toEqual(0);
+  }
+
+  const msg1 = "Hello world!";
+  await msgManager.send(USER2.username, msgManager2.pubkey, msg1);
+
+  {
+    const msgs = await msgManager2.list();
+    expect(msgs.done).toBeTruthy();
+    expect(msgs.data.length).toEqual(1);
+    const msg = msgs.data[0];
+    expect(await msg.getContent()).toEqual(fromString(msg1));
+    expect(await msg.getContent(Etebase.OutputFormat.String)).toEqual(msg1);
+
+    await msgManager2.clear(msgs.data[0].uid);
+  }
+
+  {
+    const msgs = await msgManager2.list();
+    expect(msgs.done).toBeTruthy();
+    expect(msgs.data.length).toEqual(0);
+  }
+
+  for (let i = 0 ; i < 3 ; i++) {
+    await msgManager2.send(USER.username, msgManager.pubkey, Uint8Array.from([1, 2, 3, i]));
+  }
+
+  {
+    const msgs = await msgManager.list();
+    expect(msgs.done).toBeTruthy();
+    expect(msgs.data.length).toEqual(3);
+    for (let i = 0 ; i < 3 ; i++) {
+      const msg = msgs.data[i];
+      expect(await msg.getContent()).toEqual(Uint8Array.from([1, 2, 3, i]));
+    }
+
+    let iterator: string | null = null;
+    for (let i = 0 ; i < 2 ; i++) {
+      const invitations = await msgManager.list({ limit: 2, iterator });
+      expect(invitations.done).toBe(i === 1);
+      iterator = invitations.iterator as string;
+    }
+
+    await msgManager.clear(msgs.data[1].uid);
+    await msgManager.clear(msgs.data[2].uid);
+  }
+
+  {
+    const msgs = await msgManager.list();
+    expect(msgs.done).toBeTruthy();
+    expect(msgs.data.length).toEqual(1);
+  }
+});
+
 it("Collection access level", async () => {
   const collectionManager = etebase.getCollectionManager();
   const colMeta: Etebase.ItemMetadata = {

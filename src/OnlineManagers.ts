@@ -15,6 +15,9 @@ import {
   EncryptedCollectionItem,
   SignedInvitationRead,
   SignedInvitationWrite,
+  EncryptedSimpleMessage,
+  EncryptedSimpleMessageRead,
+  EncryptedSimpleMessageWrite,
   CollectionItemRevisionJsonRead,
   ChunkJson,
 } from "./EncryptedModels";
@@ -70,6 +73,8 @@ export type CollectionMemberListResponse<T> = IteratorListResponse<T>;
 
 export type CollectionInvitationListResponse<T> = IteratorListResponse<T>;
 
+export type SimpleMessageListResponse<T> = IteratorListResponse<T>;
+
 export interface RemovedCollection {
   uid: base64;
 }
@@ -108,6 +113,8 @@ export interface IteratorFetchOptions extends ListFetchOptions {
 export type MemberFetchOptions = IteratorFetchOptions;
 
 export type InvitationFetchOptions = IteratorFetchOptions;
+
+export type SimpleMessageFetchOptions = IteratorFetchOptions;
 
 export interface RevisionsFetchOptions extends IteratorFetchOptions {
   prefetch?: PrefetchOption;
@@ -625,5 +632,40 @@ export class CollectionMemberManagerOnline extends BaseManager {
     };
 
     return this.newCall([username], extra);
+  }
+}
+
+export class SimpleMessageManagerOnline extends BaseManager {
+  constructor(etebase: AccountOnlineData) {
+    super(etebase, ["simplemessage"]);
+  }
+
+  public async list(options?: SimpleMessageFetchOptions): Promise<SimpleMessageListResponse<EncryptedSimpleMessage>> {
+    const apiBase = this.urlFromFetchOptions(options);
+
+    const json = await this.newCall<SimpleMessageListResponse<EncryptedSimpleMessageRead>>(undefined, undefined, apiBase);
+    return {
+      ...json,
+      data: json.data.map((val) => EncryptedSimpleMessage.deserialize(val)),
+    };
+  }
+
+  public send(username: string, encryptedMessage: EncryptedSimpleMessage, options?: FetchOptions): Promise<{}> {
+    const apiBase = this.urlFromFetchOptions(options);
+
+    const extra = {
+      method: "post",
+      body: msgpackEncode({ ...encryptedMessage.serialize(), toUsername: username }),
+    };
+
+    return this.newCall(undefined, extra, apiBase);
+  }
+
+  public async clear(uid: base64): Promise<{}> {
+    const extra = {
+      method: "delete",
+    };
+
+    return this.newCall([uid], extra);
   }
 }

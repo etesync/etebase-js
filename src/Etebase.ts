@@ -18,6 +18,7 @@ import {
   EncryptedCollectionItem,
   getMainCryptoManager,
   StorageCryptoManager,
+  EncryptedSimpleMessage,
 } from "./EncryptedModels";
 export * from "./EncryptedModels"; // FIXME: cherry-pick what we export
 import {
@@ -33,6 +34,8 @@ import {
   MemberFetchOptions,
   InvitationFetchOptions,
   RevisionsFetchOptions,
+  SimpleMessageManagerOnline,
+  SimpleMessageFetchOptions,
 } from "./OnlineManagers";
 import { ProgrammingError } from "./Exceptions";
 export { User, CollectionMember, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
@@ -257,7 +260,11 @@ export class Account {
 
   public getInvitationManager() {
     return new CollectionInvitationManager(this);
+  }
 
+  // eslint-disable-next-line @typescript-eslint/camelcase
+  public _experimental_getSimpleMessageManager() {
+    return new SimpleMessageManager(this);
   }
 
   public _getCryptoManager() {
@@ -566,6 +573,49 @@ export class CollectionMemberManager {
   }
 }
 
+export class SimpleMessageManager {
+  private readonly etebase: Account;
+  private readonly onlineManager: SimpleMessageManagerOnline;
+
+  constructor(etebase: Account) {
+    this.etebase = etebase;
+    this.onlineManager = new SimpleMessageManagerOnline(this.etebase);
+  }
+
+  public async list(options?: SimpleMessageFetchOptions) {
+    const ret = await this.onlineManager.list(options);
+    const identCryptoManager = this.etebase._getIdentityCryptoManager();
+    return {
+      ...ret,
+      data: ret.data.map((x) => new SimpleMessage(identCryptoManager, x)),
+    };
+  }
+
+  public async send(username: string, pubkey: Uint8Array, message: Uint8Array | string, options?: FetchOptions): Promise<{}> {
+    const uintmessage = (message instanceof Uint8Array) ? message : fromString(message);
+    const identCryptoManager = this.etebase._getIdentityCryptoManager();
+    const encryptedMessage = await EncryptedSimpleMessage.create(identCryptoManager, pubkey, uintmessage);
+    return this.onlineManager.send(username, encryptedMessage, options);
+  }
+
+  public async sendSealed(username: string, pubkey: Uint8Array, message: Uint8Array | string, options?: FetchOptions): Promise<{}> {
+    const uintmessage = (message instanceof Uint8Array) ? message : fromString(message);
+    const identCryptoManager = this.etebase._getIdentityCryptoManager();
+    const encryptedMessage = await EncryptedSimpleMessage.createSealed(identCryptoManager, pubkey, uintmessage);
+    return this.onlineManager.send(username, encryptedMessage, options);
+  }
+
+  public async clear(uid: base64) {
+    return this.onlineManager.clear(uid);
+  }
+
+  // Same as the invitation pubkey
+  public get pubkey() {
+    const identCryptoManager = this.etebase._getIdentityCryptoManager();
+    return identCryptoManager.pubkey;
+  }
+}
+
 export enum OutputFormat {
   Uint8Array,
   String,
@@ -709,5 +759,30 @@ export class Item {
 
   public _clone() {
     return new Item(this.collectionUid, this.cryptoManager, EncryptedCollectionItem.deserialize(this.encryptedItem.serialize()));
+  }
+}
+
+export class SimpleMessage {
+  public constructor(
+    private readonly identCryptoManager: BoxCryptoManager,
+    public readonly encryptedMessage: EncryptedSimpleMessage
+  ) { }
+
+  public async getContent(outputFormat?: OutputFormat.Uint8Array): Promise<Uint8Array>;
+  public async getContent(outputFormat?: OutputFormat.String): Promise<string>;
+  public async getContent(outputFormat: OutputFormat = OutputFormat.Uint8Array): Promise<any> {
+    const ret = await this.encryptedMessage.getContent(this.identCryptoManager);
+    switch (outputFormat) {
+      case OutputFormat.Uint8Array:
+        return ret;
+      case OutputFormat.String:
+        return toString(ret);
+      default:
+        throw new Error("Bad output format");
+    }
+  }
+
+  public get uid() {
+    return this.encryptedMessage.uid;
   }
 }

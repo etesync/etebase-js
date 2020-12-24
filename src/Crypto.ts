@@ -5,7 +5,7 @@ if ((typeof global !== "undefined") && !(global as any).document) {
 import _sodium from "libsodium-wrappers";
 
 import * as Constants from "./Constants";
-import { numToUint8Array, symmetricNonceSize } from "./Helpers";
+import { numToUint8Array, symmetricNonceSize, asymmetricNonceSize } from "./Helpers";
 
 import { Rollsum } from "./Chunker";
 
@@ -198,17 +198,28 @@ export class BoxCryptoManager {
     });
   }
 
-  public encrypt(message: Uint8Array, pubkey: Uint8Array): Uint8Array {
-    const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
+  public encrypt(message: Uint8Array, pubkey: Uint8Array, nonce_?: Uint8Array): Uint8Array {
+    const nonce = nonce_?.subarray(0, asymmetricNonceSize) ?? sodium.randombytes_buf(asymmetricNonceSize);
     const ret = sodium.crypto_box_easy(message, nonce, pubkey, this.keypair.privateKey);
 
-    return concatArrayBuffers(nonce, ret);
+    if (nonce_) {
+      return ret;
+    } else {
+      return concatArrayBuffers(nonce, ret);
+    }
   }
 
-  public decrypt(nonceCiphertext: Uint8Array, pubkey: Uint8Array): Uint8Array {
-    const nonceSize = sodium.crypto_box_NONCEBYTES;
-    const nonce = nonceCiphertext.subarray(0, nonceSize);
-    const ciphertext = nonceCiphertext.subarray(nonceSize);
+  public decrypt(nonceCiphertext: Uint8Array, pubkey: Uint8Array, nonce_?: Uint8Array): Uint8Array {
+    const nonceSize = asymmetricNonceSize;
+    let nonce: Uint8Array;
+    let ciphertext: Uint8Array;
+    if (nonce_) {
+      nonce = nonce_.subarray(0, nonceSize);
+      ciphertext = nonceCiphertext;
+    } else {
+      nonce = nonceCiphertext.subarray(0, nonceSize);
+      ciphertext = nonceCiphertext.subarray(nonceSize);
+    }
 
     return sodium.crypto_box_open_easy(ciphertext, nonce, pubkey, this.keypair.privateKey);
   }
@@ -250,6 +261,10 @@ function getEncodedChunk(content: Uint8Array, offset: number) {
     (content[offset + 1] << 8) +
     content[offset + 2]) % 100000;
   return num.toString().padStart(5, "0");
+}
+
+export function hmac(message: Uint8Array, key: Uint8Array | null, length = 32) {
+  return sodium.crypto_generichash(length, message, key);
 }
 
 export function getPrettyFingerprint(content: Uint8Array, delimiter = "   ") {
