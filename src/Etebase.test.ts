@@ -42,10 +42,10 @@ async function prepareUserForTest(user: typeof USER) {
         username: user.username,
         email: user.email,
       },
-      salt: user.salt,
-      loginPubkey: user.loginPubkey,
-      encryptedContent: user.encryptedContent,
-      pubkey: user.pubkey,
+      salt: fromBase64(user.salt),
+      loginPubkey: fromBase64(user.loginPubkey),
+      encryptedContent: fromBase64(user.encryptedContent),
+      pubkey: fromBase64(user.pubkey),
     }),
   });
 
