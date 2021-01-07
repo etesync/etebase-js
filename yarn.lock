@@ -1532,10 +1532,10 @@ argon2-browser@^1.15.3:
   resolved "https://registry.yarnpkg.com/argon2-browser/-/argon2-browser-1.15.3.tgz#0bf95b9af8eb4a2171bacde00fabe455ad5f840c"
   integrity sha512-CLY1Y+hqdP305Wnkh7ZyWVDmBc3SRjaFETqQ0Sx2Rc2x0D/o+rSscL1P4hVI1Yz6qMHP469vc2DyJJesq9h8WQ==
 
-argon2-webworker@^0.1.0:
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/argon2-webworker/-/argon2-webworker-0.1.0.tgz#cf6c2ee5721a85b50d0feeeeeccfb4674d4a4cf3"
-  integrity sha512-auEl1dk/N3ZLL3GJY3dGVWzkGKjR6V/bhAcg5q8AxIIv28NwaLDBJ1emDxwfsFoqWs94DDA+vtbMJofBXe7oMA==
+argon2-webworker@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/argon2-webworker/-/argon2-webworker-0.1.1.tgz#be3f250627b6200fe8113db1d72f53f5ea0d7acc"
+  integrity sha512-OABEgMfYD533Z4E3x+53tZ+69O82xWfv587Zfwef6VL2EkPIcSiiqkYSaw5gG8Dwpvu+8EZJ/C189Ev9wEJ9GA==
   dependencies:
     argon2-browser "^1.15.3"
 
