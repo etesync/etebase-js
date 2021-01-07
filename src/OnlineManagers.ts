@@ -1,4 +1,6 @@
 import request from "./Request";
+import WebSocket from "isomorphic-ws";
+import ReconnectingWebSocket from "reconnecting-websocket";
 
 import URI from "urijs";
 
@@ -111,6 +113,14 @@ export type InvitationFetchOptions = IteratorFetchOptions;
 
 export interface RevisionsFetchOptions extends IteratorFetchOptions {
   prefetch?: PrefetchOption;
+}
+
+export interface WebSocketTicketRequest {
+  collection: string;
+}
+
+export interface WebSocketTicketResponse {
+  ticket: string;
 }
 
 interface AccountOnlineData {
@@ -516,6 +526,26 @@ export class CollectionItemManagerOnline extends BaseManager {
 
     return this.newCall([item.uid, "chunk", chunkUid, "download"], undefined, apiBase);
   }
+
+  public async subscribeChanges(cb: (data: CollectionItemListResponse<EncryptedCollectionItem>) => void): Promise<WebSocketHandle> {
+    const this_ = this;
+    async function getTicket(): Promise<string> {
+      const extra = {
+        method: "post",
+      };
+      const ret = await this_.newCall<WebSocketTicketResponse>(["subscription-ticket"], extra, undefined);
+      return ret.ticket;
+    }
+
+    const wsOnlineManager = new WebSocketManagerOnline(this.etebase, getTicket);
+    return wsOnlineManager.subscribe((raw) => {
+      const response = msgpackDecode(raw) as CollectionItemListResponse<CollectionItemJsonRead>;
+      cb({
+        ...response,
+        data: response.data.map((val) => EncryptedCollectionItem.deserialize(val)),
+      });
+    });
+  }
 }
 
 export class CollectionInvitationManagerOnline extends BaseManager {
@@ -625,5 +655,56 @@ export class CollectionMemberManagerOnline extends BaseManager {
     };
 
     return this.newCall([username], extra);
+  }
+}
+
+export type WebSocketCbType = (message: Uint8Array) => void;
+
+export class WebSocketHandle {
+  private rws: ReconnectingWebSocket;
+  public connected: boolean;
+
+  constructor(urlProvider: () => Promise<string>, cb: WebSocketCbType) {
+    this.connected = false;
+    const options = {
+      WebSocket,
+    };
+    this.rws = new ReconnectingWebSocket(urlProvider, [], options);
+    this.rws.addEventListener("open", () => {
+      this.connected = true;
+    });
+    this.rws.addEventListener("close", () => {
+      this.connected = false;
+    });
+    this.rws.addEventListener("error", () => {
+      this.connected = false;
+    });
+    this.rws.addEventListener("message", (ev) => {
+      cb(ev.data);
+    });
+  }
+
+  public async unsubscribe() {
+    this.rws.close();
+  }
+}
+
+export class WebSocketManagerOnline extends BaseManager {
+  private readonly getTicket: () => Promise<string>;
+
+  constructor(etebase: AccountOnlineData, getTicket: () => Promise<string>) {
+    super(etebase, ["ws"]);
+    this.getTicket = getTicket;
+  }
+
+  public async subscribe(cb: WebSocketCbType): Promise<WebSocketHandle> {
+    const protocol = (this.apiBase.protocol() === "https") ? "wss" : "ws";
+
+    const urlProvider = async () => {
+      const ticket = await this.getTicket();
+      return BaseNetwork.urlExtend(this.apiBase.clone().protocol(protocol), [ticket]).toString();
+    };
+
+    return new WebSocketHandle(urlProvider, cb);
   }
 }

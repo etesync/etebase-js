@@ -24,6 +24,7 @@ import {
   Authenticator,
   CollectionManagerOnline,
   CollectionItemManagerOnline,
+  CollectionItemListResponse,
   CollectionInvitationManagerOnline,
   CollectionMemberManagerOnline,
   FetchOptions,
@@ -33,6 +34,7 @@ import {
   MemberFetchOptions,
   InvitationFetchOptions,
   RevisionsFetchOptions,
+  WebSocketHandle,
 } from "./OnlineManagers";
 import { ProgrammingError } from "./Exceptions";
 export { User, CollectionMember, FetchOptions, ItemFetchOptions } from "./OnlineManagers";
@@ -459,6 +461,15 @@ export class ItemManager {
         chunk[1] = await this.onlineManager.chunkDownload(encryptedItem, chunk[0]);
       }
     }
+  }
+
+  public async subscribeChanges(cb: (data: CollectionItemListResponse<Item>) => void, _options?: ItemFetchOptions): Promise<WebSocketHandle> {
+    return this.onlineManager.subscribeChanges(async (ret) => {
+      cb({
+        ...ret,
+        data: ret.data.map((x) => new Item(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
+      });
+    });
   }
 
   public cacheSave(item: Item, options = defaultCacheOptions): Uint8Array {
