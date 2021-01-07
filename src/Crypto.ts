@@ -3,6 +3,7 @@ if ((typeof global !== "undefined") && !(global as any).document) {
   (global as any).document = {};
 }
 import _sodium from "libsodium-wrappers";
+import * as Argon2 from "argon2-webworker";
 
 import * as Constants from "./Constants";
 import { numToUint8Array, symmetricNonceSize } from "./Helpers";
@@ -43,6 +44,24 @@ export function concatArrayBuffersArrays(buffers: Uint8Array[]): Uint8Array {
 
 export async function deriveKey(salt: Uint8Array, password: string): Promise<Uint8Array> {
   salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+
+  try {
+    const ret = await Argon2.hash({
+      hashLen: 32,
+      pass: password,
+      salt,
+      time: sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+      mem: sodium.crypto_pwhash_MEMLIMIT_MODERATE / 1024,
+      parallelism: 1,
+      type: Argon2.ArgonType.Argon2id,
+    });
+    return ret.hash;
+  } catch (e) {
+    if (typeof(Worker) !== "undefined") {
+      // Web worker failed
+      console.warn("Failed loading web worker!", e);
+    }
+  }
 
   if (rnsodium) {
     const ret = await rnsodium.crypto_pwhash(

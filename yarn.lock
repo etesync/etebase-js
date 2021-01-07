@@ -1527,6 +1527,18 @@ anymatch@^3.0.3:
     normalize-path "^3.0.0"
     picomatch "^2.0.4"
 
+argon2-browser@^1.15.3:
+  version "1.15.3"
+  resolved "https://registry.yarnpkg.com/argon2-browser/-/argon2-browser-1.15.3.tgz#0bf95b9af8eb4a2171bacde00fabe455ad5f840c"
+  integrity sha512-CLY1Y+hqdP305Wnkh7ZyWVDmBc3SRjaFETqQ0Sx2Rc2x0D/o+rSscL1P4hVI1Yz6qMHP469vc2DyJJesq9h8WQ==
+
+argon2-webworker@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/argon2-webworker/-/argon2-webworker-0.1.0.tgz#cf6c2ee5721a85b50d0feeeeeccfb4674d4a4cf3"
+  integrity sha512-auEl1dk/N3ZLL3GJY3dGVWzkGKjR6V/bhAcg5q8AxIIv28NwaLDBJ1emDxwfsFoqWs94DDA+vtbMJofBXe7oMA==
+  dependencies:
+    argon2-browser "^1.15.3"
+
 argparse@^1.0.7:
   version "1.0.10"
   resolved "https://registry.yarnpkg.com/argparse/-/argparse-1.0.10.tgz#bcd6791ea5ae09725e17e5ad988134cd40b3d911"
