@@ -463,13 +463,13 @@ export class ItemManager {
     }
   }
 
-  public async subscribeChanges(cb: (data: CollectionItemListResponse<Item>) => void, _options?: ItemFetchOptions): Promise<WebSocketHandle> {
+  public async subscribeChanges(cb: (data: CollectionItemListResponse<Item>) => void, options?: ItemFetchOptions): Promise<WebSocketHandle> {
     return this.onlineManager.subscribeChanges(async (ret) => {
       cb({
         ...ret,
         data: ret.data.map((x) => new Item(this.collectionUid, x.getCryptoManager(this.collectionCryptoManager), x)),
       });
-    });
+    }, options);
   }
 
   public cacheSave(item: Item, options = defaultCacheOptions): Uint8Array {

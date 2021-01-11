@@ -527,19 +527,25 @@ export class CollectionItemManagerOnline extends BaseManager {
     return this.newCall([item.uid, "chunk", chunkUid, "download"], undefined, apiBase);
   }
 
-  public async subscribeChanges(cb: (data: CollectionItemListResponse<EncryptedCollectionItem>) => void): Promise<WebSocketHandle> {
-    const this_ = this;
-    async function getTicket(): Promise<string> {
+  public async subscribeChanges(cb: (data: CollectionItemListResponse<EncryptedCollectionItem>) => void, options_?: ItemFetchOptions): Promise<WebSocketHandle> {
+    const options: ItemFetchOptions = { ...options_ };
+    const getUrlOptions = async (): Promise<WebSocketUrlOptions> => {
       const extra = {
         method: "post",
       };
-      const ret = await this_.newCall<WebSocketTicketResponse>(["subscription-ticket"], extra, undefined);
-      return ret.ticket;
-    }
+      const ret = await this.newCall<WebSocketTicketResponse>(["subscription-ticket"], extra, undefined);
+      return {
+        ticket: ret.ticket,
+        fetchOptions: options,
+      };
+    };
 
-    const wsOnlineManager = new WebSocketManagerOnline(this.etebase, getTicket);
+    const wsOnlineManager = new WebSocketManagerOnline(this.etebase, getUrlOptions);
     return wsOnlineManager.subscribe((raw) => {
       const response = msgpackDecode(raw) as CollectionItemListResponse<CollectionItemJsonRead>;
+      // Update the stoken we fetch by when reconnecting every time we get data
+      options.stoken = response.stoken;
+
       cb({
         ...response,
         data: response.data.map((val) => EncryptedCollectionItem.deserialize(val)),
@@ -689,20 +695,26 @@ export class WebSocketHandle {
   }
 }
 
-export class WebSocketManagerOnline extends BaseManager {
-  private readonly getTicket: () => Promise<string>;
+interface WebSocketUrlOptions {
+  ticket: string;
+  fetchOptions?: FetchOptions;
+}
 
-  constructor(etebase: AccountOnlineData, getTicket: () => Promise<string>) {
+export class WebSocketManagerOnline extends BaseManager {
+  private readonly getUrlOptions: () => Promise<WebSocketUrlOptions>;
+
+  constructor(etebase: AccountOnlineData, getUrlOptions: () => Promise<WebSocketUrlOptions>) {
     super(etebase, ["ws"]);
-    this.getTicket = getTicket;
+    this.getUrlOptions = getUrlOptions;
   }
 
   public async subscribe(cb: WebSocketCbType): Promise<WebSocketHandle> {
     const protocol = (this.apiBase.protocol() === "https") ? "wss" : "ws";
 
     const urlProvider = async () => {
-      const ticket = await this.getTicket();
-      return BaseNetwork.urlExtend(this.apiBase.clone().protocol(protocol), [ticket]).toString();
+      const options = await this.getUrlOptions();
+      const apiBase = this.urlFromFetchOptions(options.fetchOptions).protocol(protocol);
+      return BaseNetwork.urlExtend(apiBase, [options.ticket]).toString();
     };
 
     return new WebSocketHandle(urlProvider, cb);
