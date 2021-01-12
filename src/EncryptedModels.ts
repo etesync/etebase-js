@@ -476,34 +476,34 @@ export class EncryptedCollection {
     this.item.__markSaved();
   }
 
-  public verify(cryptoManager: CollectionCryptoManager) {
+  public verify(cryptoManager: MinimalCollectionCryptoManager) {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.verify(itemCryptoManager);
   }
 
-  public setMeta<T>(cryptoManager: CollectionCryptoManager, meta: ItemMetadata<T>): void {
+  public setMeta<T>(cryptoManager: MinimalCollectionCryptoManager, meta: ItemMetadata<T>): void {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     this.item.setMeta(itemCryptoManager, meta);
   }
 
-  public getMeta<T>(cryptoManager: CollectionCryptoManager): ItemMetadata<T> {
+  public getMeta<T>(cryptoManager: MinimalCollectionCryptoManager): ItemMetadata<T> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.getMeta(itemCryptoManager);
   }
 
-  public async setContent(cryptoManager: CollectionCryptoManager, content: Uint8Array): Promise<void> {
+  public async setContent(cryptoManager: MinimalCollectionCryptoManager, content: Uint8Array): Promise<void> {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.setContent(itemCryptoManager, content);
   }
 
-  public async getContent(cryptoManager: CollectionCryptoManager): Promise<Uint8Array> {
+  public async getContent(cryptoManager: MinimalCollectionCryptoManager): Promise<Uint8Array> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.getContent(itemCryptoManager);
   }
 
-  public delete(cryptoManager: CollectionCryptoManager, preserveContent: boolean): void {
+  public delete(cryptoManager: MinimalCollectionCryptoManager, preserveContent: boolean): void {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     this.item.delete(itemCryptoManager, preserveContent);
   }
@@ -578,7 +578,7 @@ export class EncryptedCollectionItem {
 
   public lastEtag: string | null;
 
-  public static async create<T>(parentCryptoManager: CollectionCryptoManager, meta: ItemMetadata<T>, content: Uint8Array): Promise<EncryptedCollectionItem> {
+  public static async create<T>(parentCryptoManager: MinimalCollectionCryptoManager, meta: ItemMetadata<T>, content: Uint8Array): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
     ret.uid = genUidBase64();
     ret.version = Constants.CURRENT_VERSION;
@@ -718,12 +718,20 @@ export class EncryptedCollectionItem {
     return this.content.chunks.some(([_uid, content]) => !content);
   }
 
-  public getCryptoManager(parentCryptoManager: CollectionCryptoManager) {
+  public getCryptoManager(parentCryptoManager: MinimalCollectionCryptoManager) {
     const encryptionKey = (this.encryptionKey) ?
       parentCryptoManager.decrypt(this.encryptionKey) :
       parentCryptoManager.deriveSubkey(fromString(this.uid));
 
     return new CollectionItemCryptoManager(encryptionKey, this.version);
+  }
+
+  public getHierarchicalCryptoManager(parentCryptoManager: MinimalCollectionCryptoManager) {
+    const encryptionKey = (this.encryptionKey) ?
+      parentCryptoManager.decrypt(this.encryptionKey) :
+      parentCryptoManager.deriveSubkey(fromString(this.uid));
+
+    return new MinimalCollectionCryptoManager(encryptionKey, this.version);
   }
 
   protected getAdditionalMacData() {

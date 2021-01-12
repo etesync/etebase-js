@@ -12,6 +12,7 @@ export { base64, fromBase64, toBase64, randomBytes } from "./Helpers";
 import {
   CollectionAccessLevel,
   CollectionCryptoManager,
+  MinimalCollectionCryptoManager,
   CollectionItemCryptoManager,
   ItemMetadata,
   EncryptedCollection,
@@ -348,8 +349,10 @@ export class CollectionManager {
     return new Collection(encCol.getCryptoManager(mainCryptoManager), encCol);
   }
 
-  public getItemManager(col: Collection) {
-    return new ItemManager(this.etebase, this, col.encryptedCollection);
+  public getItemManager(col_: Collection) {
+    const col = col_.encryptedCollection;
+    const collectionCryptoManager = col.getCryptoManager(this.etebase._getCryptoManager());
+    return new ItemManager(this.etebase, collectionCryptoManager, col.uid);
   }
 
   public getMemberManager(col: Collection) {
@@ -358,14 +361,14 @@ export class CollectionManager {
 }
 
 export class ItemManager {
-  private readonly collectionCryptoManager: CollectionCryptoManager;
+  private readonly collectionCryptoManager: MinimalCollectionCryptoManager;
   private readonly onlineManager: CollectionItemManagerOnline;
   private readonly collectionUid: string; // The uid of the collection this item belongs to
 
-  constructor(etebase: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
-    this.collectionCryptoManager = col.getCryptoManager(etebase._getCryptoManager());
-    this.onlineManager = new CollectionItemManagerOnline(etebase, col.uid);
-    this.collectionUid = col.uid;
+  constructor(etebase: Account, collectionCryptoManager: MinimalCollectionCryptoManager, colUid: string) {
+    this.collectionCryptoManager = collectionCryptoManager;
+    this.onlineManager = new CollectionItemManagerOnline(etebase, colUid);
+    this.collectionUid = colUid;
   }
 
   public async create<T>(meta: ItemMetadata<T>, content: Uint8Array | string): Promise<Item> {
