@@ -318,7 +318,7 @@ export class CollectionManager {
     const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
     if (col.lastEtag) {
-      const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col);
+      const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col.uid);
       await itemOnlineManager.batch([col.item], undefined, options);
     } else {
       await this.onlineManager.create(col, options);
@@ -330,7 +330,7 @@ export class CollectionManager {
     const col = collection.encryptedCollection;
     // If we have a etag, it means we previously fetched it.
     if (col.lastEtag) {
-      const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col);
+      const itemOnlineManager = new CollectionItemManagerOnline(this.etebase, col.uid);
       await itemOnlineManager.transaction([col.item], undefined, options);
     } else {
       await this.onlineManager.create(col, options);
@@ -364,7 +364,7 @@ export class ItemManager {
 
   constructor(etebase: Account, _collectionManager: CollectionManager, col: EncryptedCollection) {
     this.collectionCryptoManager = col.getCryptoManager(etebase._getCryptoManager());
-    this.onlineManager = new CollectionItemManagerOnline(etebase, col);
+    this.onlineManager = new CollectionItemManagerOnline(etebase, col.uid);
     this.collectionUid = col.uid;
   }
 
@@ -557,7 +557,7 @@ export class CollectionMemberManager {
 
   constructor(etebase: Account, _collectionManager: CollectionManager, encryptedCollection: EncryptedCollection) {
     this.etebase = etebase;
-    this.onlineManager = new CollectionMemberManagerOnline(this.etebase, encryptedCollection);
+    this.onlineManager = new CollectionMemberManagerOnline(this.etebase, encryptedCollection.uid);
   }
 
   public async list(options?: MemberFetchOptions) {

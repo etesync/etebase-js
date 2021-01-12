@@ -391,8 +391,8 @@ export class CollectionManagerOnline extends BaseManager {
 }
 
 export class CollectionItemManagerOnline extends BaseManager {
-  constructor(etebase: AccountOnlineData, col: EncryptedCollection) {
-    super(etebase, ["collection", col.uid, "item"]);
+  constructor(etebase: AccountOnlineData, colUid: string) {
+    super(etebase, ["collection", colUid, "item"]);
   }
 
   public async fetch(itemUid: string, options?: ItemFetchOptions): Promise<EncryptedCollectionItem> {
@@ -626,8 +626,8 @@ export class CollectionInvitationManagerOnline extends BaseManager {
 }
 
 export class CollectionMemberManagerOnline extends BaseManager {
-  constructor(etebase: AccountOnlineData, col: EncryptedCollection) {
-    super(etebase, ["collection", col.uid, "member"]);
+  constructor(etebase: AccountOnlineData, colUid: string) {
+    super(etebase, ["collection", colUid, "member"]);
   }
 
   public async list(options?: MemberFetchOptions): Promise<CollectionMemberListResponse<CollectionMember>> {
