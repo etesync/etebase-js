@@ -121,7 +121,7 @@ export class AccountCryptoManager extends CryptoManager {
 
 export class CollectionCryptoManager extends CryptoManager {
   protected Collection = true; // So classes are different
-  public accountCryptoManager: AccountCryptoManager;
+  public readonly accountCryptoManager: AccountCryptoManager;
 
   constructor(accountCryptoManager: AccountCryptoManager, key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
     super(key, "Col", version);
