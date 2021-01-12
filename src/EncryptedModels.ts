@@ -119,12 +119,19 @@ export class AccountCryptoManager extends CryptoManager {
   }
 }
 
-export class CollectionCryptoManager extends CryptoManager {
+export class MinimalCollectionCryptoManager extends CryptoManager {
   protected Collection = true; // So classes are different
+
+  constructor(key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+    super(key, "Col", version);
+  }
+}
+
+export class CollectionCryptoManager extends MinimalCollectionCryptoManager {
   public readonly accountCryptoManager: AccountCryptoManager;
 
   constructor(accountCryptoManager: AccountCryptoManager, key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
-    super(key, "Col", version);
+    super(key, version);
     this.accountCryptoManager = accountCryptoManager;
   }
 }
