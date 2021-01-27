@@ -1145,6 +1145,12 @@ it("Collection invitations", async () => {
 
   const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
 
+  {
+    // Also make sure we can invite by email
+    const user2Profile2 = await collectionInvitationManager.fetchUserProfile(USER2.email);
+    expect(user2Profile2.pubkey).toEqual(user2Profile.pubkey);
+  }
+
   // Should be verified by user1 off-band
   const user2pubkey = collectionInvitationManager2.pubkey;
   expect(user2Profile.pubkey).toEqual(user2pubkey);
@@ -1188,8 +1194,8 @@ it("Collection invitations", async () => {
   }
 
 
-  // Invite again, this time accept
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  // Invite again, this time use email, and this time accept
+  await collectionInvitationManager.invite(col, USER2.email, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1689,4 +1695,8 @@ it.skip("Login and password change", async () => {
   await etebase3.changePassword(USER2.password);
 
   await etebase3.logout();
+
+  // Login via email
+  const etebase4 = await Etebase.Account.login(USER2.email, USER2.password, testApiBase);
+  await etebase4.logout();
 }, 30000);
