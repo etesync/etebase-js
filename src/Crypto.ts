@@ -12,7 +12,7 @@ import { Rollsum } from "./Chunker";
 
 import type rnsodiumType from "react-native-sodium";
 
-export const sodium = _sodium;
+const sodium = _sodium;
 
 let rnsodium: typeof rnsodiumType;
 

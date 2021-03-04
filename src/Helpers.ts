@@ -2,7 +2,7 @@ import * as msgpack from "@msgpack/msgpack";
 
 import _sodium from "libsodium-wrappers";
 
-export const sodium = _sodium;
+const sodium = _sodium;
 
 export type base64 = string;
 

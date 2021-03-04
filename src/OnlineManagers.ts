@@ -128,16 +128,16 @@ interface AccountOnlineData {
   authToken: string | null;
 }
 
-class BaseNetwork {
-
-  public static urlExtend(baseUrlIn: URI, segments: string[]): URI {
-    const baseUrl = baseUrlIn.clone();
-    for (const segment of segments) {
-      baseUrl.segment(segment);
-    }
-    baseUrl.segment("");
-    return baseUrl.normalize();
+function urlExtend(baseUrlIn: URI, segments: string[]): URI {
+  const baseUrl = baseUrlIn.clone();
+  for (const segment of segments) {
+    baseUrl.segment(segment);
   }
+  baseUrl.segment("");
+  return baseUrl.normalize();
+}
+
+class BaseNetwork {
   public apiBase: URI;
 
   constructor(apiBase: string) {
@@ -145,7 +145,7 @@ class BaseNetwork {
   }
 
   public async newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBaseIn: URI = this.apiBase): Promise<T> {
-    const apiBase = BaseNetwork.urlExtend(apiBaseIn, segments);
+    const apiBase = urlExtend(apiBaseIn, segments);
 
     extra = {
       ...extra,
@@ -205,7 +205,7 @@ class BaseNetwork {
 export class Authenticator extends BaseNetwork {
   constructor(apiBase: string) {
     super(apiBase);
-    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1", "authentication"]);
+    this.apiBase = urlExtend(this.apiBase, ["api", "v1", "authentication"]);
   }
 
   public async isEtebase(): Promise<boolean> {
@@ -318,7 +318,7 @@ class BaseManager extends BaseNetwork {
   constructor(etebase: AccountOnlineData, segments: string[]) {
     super(etebase.serverUrl);
     this.etebase = etebase;
-    this.apiBase = BaseNetwork.urlExtend(this.apiBase, ["api", "v1"].concat(segments));
+    this.apiBase = urlExtend(this.apiBase, ["api", "v1"].concat(segments));
   }
 
   public newCall<T = any>(segments: string[] = [], extra: RequestInit = {}, apiBase: URI = this.apiBase): Promise<T> {
@@ -714,7 +714,7 @@ export class WebSocketManagerOnline extends BaseManager {
     const urlProvider = async () => {
       const options = await this.getUrlOptions();
       const apiBase = this.urlFromFetchOptions(options.fetchOptions).protocol(protocol);
-      return BaseNetwork.urlExtend(apiBase, [options.ticket]).toString();
+      return urlExtend(apiBase, [options.ticket]).toString();
     };
 
     return new WebSocketHandle(urlProvider, cb);
