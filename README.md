@@ -66,9 +66,9 @@ yarn install
 yarn run build
 ```
 
-Running tests requires a (test) [Etebase server]() running, defaulting to
-`http://localhost:8033`, but can be overridden with the environment variable
-`ETEBASE_TEST_API_URL`.
+Running tests requires a (test) [Etebase server](https://github.com/etesync/server)
+running, defaulting to `http://localhost:8033`, but can be overridden with the
+environment variable `ETEBASE_TEST_API_URL`.
 
 ```shell
 cd ..
