@@ -3,7 +3,7 @@ import URI from "urijs";
 import * as Constants from "./Constants";
 
 import { deriveKey, concatArrayBuffers, BoxCryptoManager, ready } from "./Crypto";
-export { ready, getPrettyFingerprint, _setRnSodium } from "./Crypto";
+export { ready, getPrettyFingerprint, _setRnSodium, deriveKey, KeyDerivationDifficulty } from "./Crypto";
 import { ConflictError, UnauthorizedError } from "./Exceptions";
 export * from "./Exceptions";
 import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferUnpad } from "./Helpers";
