@@ -11,6 +11,7 @@ import { numToUint8Array, symmetricNonceSize } from "./Helpers";
 import { Rollsum } from "./Chunker";
 
 import type rnsodiumType from "react-native-sodium";
+import { ProgrammingError } from "./Exceptions";
 
 const sodium = _sodium;
 
@@ -42,15 +43,37 @@ export function concatArrayBuffersArrays(buffers: Uint8Array[]): Uint8Array {
   return ret;
 }
 
-export async function deriveKey(salt: Uint8Array, password: string): Promise<Uint8Array> {
+export enum KeyDerivationDifficulty {
+  Hard = 90,
+  Medium = 50,
+  Easy = 10,
+}
+
+export async function deriveKey(salt: Uint8Array, password: string, difficulty = KeyDerivationDifficulty.Hard): Promise<Uint8Array> {
   salt = salt.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+  let opslimit: number;
+
+  switch (difficulty) {
+    case KeyDerivationDifficulty.Hard:
+      opslimit = sodium.crypto_pwhash_OPSLIMIT_SENSITIVE;
+      break;
+    case KeyDerivationDifficulty.Medium:
+      opslimit = sodium.crypto_pwhash_OPSLIMIT_MODERATE;
+      break;
+    case KeyDerivationDifficulty.Easy:
+      opslimit = sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE;
+      break;
+    default:
+      throw new ProgrammingError("Passed invalid difficulty.");
+
+  }
 
   try {
     const ret = await Argon2.hash({
       hashLen: 32,
       pass: password,
       salt,
-      time: sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+      time: opslimit,
       mem: sodium.crypto_pwhash_MEMLIMIT_MODERATE / 1024,
       parallelism: 1,
       type: Argon2.ArgonType.Argon2id,
@@ -68,7 +91,7 @@ export async function deriveKey(salt: Uint8Array, password: string): Promise<Uin
       32,
       sodium.to_base64(sodium.from_string(password), sodium.base64_variants.ORIGINAL),
       sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
-      sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+      opslimit,
       sodium.crypto_pwhash_MEMLIMIT_MODERATE,
       sodium.crypto_pwhash_ALG_DEFAULT
     );
@@ -79,7 +102,7 @@ export async function deriveKey(salt: Uint8Array, password: string): Promise<Uin
     32,
     sodium.from_string(password),
     salt,
-    sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+    opslimit,
     sodium.crypto_pwhash_MEMLIMIT_MODERATE,
     sodium.crypto_pwhash_ALG_DEFAULT
   );
