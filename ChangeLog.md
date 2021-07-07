@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## Version 0.43.0 - 2021-07-07
+
+### Added
+
+- Expose derive key for easy key derivation for users.
+
 ## Version 0.42.0 - 2021-01-12
 
 ### Added
