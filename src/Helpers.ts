@@ -126,7 +126,7 @@ export function msgpackDecode(buffer: ArrayLike<number> | ArrayBuffer): unknown 
 
 export function numToUint8Array(num: number): Uint8Array {
   // We are using little-endian because on most platforms it'll mean zero-conversion
-  return Uint8Array.from([
+  return new Uint8Array([
     num & 255,
     (num >> 8) & 255,
     (num >> 16) & 255,
