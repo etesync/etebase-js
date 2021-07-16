@@ -228,7 +228,7 @@ export class Account {
 
     const ret: AccountDataStored = {
       version,
-      encryptedData: cryptoManager.encrypt(msgpackEncode(content), Uint8Array.from([version])),
+      encryptedData: cryptoManager.encrypt(msgpackEncode(content), new Uint8Array([version])),
     };
 
     return toBase64(msgpackEncode(ret));
@@ -243,7 +243,7 @@ export class Account {
     const cryptoManager = new StorageCryptoManager(encryptionKey, accountDataStored.version);
 
     const accountData = msgpackDecode(
-      cryptoManager.decrypt(accountDataStored.encryptedData, Uint8Array.from([accountDataStored.version]))
+      cryptoManager.decrypt(accountDataStored.encryptedData, new Uint8Array([accountDataStored.version]))
     ) as AccountData;
 
     const ret = new this(cryptoManager.decrypt(accountData.key), accountData.version);

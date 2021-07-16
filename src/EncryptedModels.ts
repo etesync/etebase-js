@@ -242,7 +242,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   private calculateAdHash(cryptoManager: CM, additionalData: Uint8Array) {
     const cryptoMac = cryptoManager.getCryptoMac();
-    cryptoMac.update(Uint8Array.from([(this.deleted) ? 1 : 0]));
+    cryptoMac.update(new Uint8Array([(this.deleted) ? 1 : 0]));
     cryptoMac.updateWithLenPrefix(additionalData);
 
     // We hash the chunks separately so that the server can (in the future) return just the hash instead of the full
