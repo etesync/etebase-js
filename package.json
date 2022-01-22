@@ -23,7 +23,7 @@
     "argon2-webworker": "^0.1.1",
     "isomorphic-ws": "^4.0.1",
     "libsodium-wrappers": "0.7.6",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^3.1.1",
     "reconnecting-websocket": "^4.4.0",
     "urijs": "^1.19.1",
     "ws": "^7.4.2"
