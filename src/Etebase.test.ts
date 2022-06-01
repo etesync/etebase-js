@@ -5,7 +5,7 @@ import * as Etebase from "./Etebase";
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
 
 import { Authenticator, PrefetchOption } from "./OnlineManagers";
-import { fromBase64, fromString, msgpackEncode, msgpackDecode, randomBytesDeterministic, toBase64 } from "./Helpers";
+import { fromBase64, fromString, msgpackEncode, msgpackDecode, randomBytesDeterministic, toBase64, toString } from "./Helpers";
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
@@ -1700,3 +1700,52 @@ it.skip("Login and password change", async () => {
   const etebase4 = await Etebase.Account.login(USER2.email, USER2.password, testApiBase);
   await etebase4.logout();
 }, 30000);
+
+describe("Chunking files", () => {
+  it("Duplicate Chunks", async () => {
+    const collectionManager = etebase.getCollectionManager();
+    const col = await collectionManager.create(colType, {}, "");
+
+    const buf = randomBytesDeterministic(10 * 1024, new Uint8Array(32)); // 10kb of psuedorandom data
+    const content = JSON.stringify([buf, buf, buf, buf]);
+
+    await col.setContent(content);
+
+    await collectionManager.transaction(col);
+    const decryptedContent = await col.getContent();
+
+    const out = toString(decryptedContent);
+    expect(out).toEqual(content);
+  });
+
+  it("Regular Chunks", async () => {
+    const collectionManager = etebase.getCollectionManager();
+    const col = await collectionManager.create(colType, {}, "");
+
+    const buf = randomBytesDeterministic(100 * 1024, new Uint8Array(32));
+    const content = JSON.stringify(buf);
+
+    await col.setContent(content);
+
+    await collectionManager.transaction(col);
+    const decryptedContent = await col.getContent();
+
+    const out = toString(decryptedContent);
+    expect(out).toEqual(content);
+  });
+
+  it("Small file, no chunks", async () => {
+    const collectionManager = etebase.getCollectionManager();
+    const col = await collectionManager.create(colType, {}, "");
+
+    const content = JSON.stringify("foo");
+
+    await col.setContent(content);
+
+    await collectionManager.transaction(col);
+    const decryptedContent = await col.getContent();
+
+    const out = toString(decryptedContent);
+    expect(out).toEqual(content);
+  });
+});
