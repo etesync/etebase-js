@@ -309,31 +309,34 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       chunks.push([hash, buf]);
     }
 
-    // Shuffle the items and save the ordering if we have more than one
-    if (chunks.length > 0) {
+    // Shuffle the items, deduplicate and save the ordering
+    if (chunks.length > 1) {
       const indices = shuffle(chunks);
+      const uniqueChunksMap = new Map<string, [base64, Uint8Array]>();
 
-      // Filter duplicates and construct the indice list.
-      const uidIndices = new Map<string, number>();
-      chunks = chunks.filter((chunk, i) => {
+      chunks.forEach((chunk) => {
         const uid = chunk[0];
-        const previousIndex = uidIndices.get(uid);
-        if (previousIndex !== undefined) {
-          indices[i] = previousIndex;
-          return false;
-        } else {
-          uidIndices.set(uid, i);
-          return true;
+        if (!uniqueChunksMap.has(uid)) {
+          uniqueChunksMap.set(uid, chunk);
         }
       });
 
-      // If we have more than one chunk we need to encode the mapping header in the last chunk
-      if (indices.length > 1) {
-        // We encode it in an array so we can extend it later on if needed
-        const buf = msgpackEncode([indices]);
-        const hash = toBase64(cryptoManager.calculateMac(buf));
-        chunks.push([hash, buf]);
-      }
+      const chunkKeys = [...uniqueChunksMap.keys()];
+
+      // Change the original (shuffled) indices to point at the deduplicated chunks
+      const newIndices = indices.map((i) => {
+        const [id] = chunks[i];
+        return chunkKeys.indexOf(id);
+      });
+
+      chunks = [...uniqueChunksMap.values()];
+
+      // We encode it in an array so we can extend it later on if needed
+      const buf = msgpackEncode([newIndices]);
+      const hash = toBase64(cryptoManager.calculateMac(buf));
+
+      // Append a chunk wth the mapping
+      chunks.push([hash, buf]);
     }
 
     // Encrypt all of the chunks
