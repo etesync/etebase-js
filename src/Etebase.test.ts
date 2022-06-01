@@ -1918,8 +1918,6 @@ describe("chunking files", () => {
     const decryptedContent = await col.getContent();
 
     const out = to_string(decryptedContent);
-
-    console.log(out);
     expect(out).toEqual(content);
   });
 });
