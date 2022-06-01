@@ -429,9 +429,6 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       indices = lastChunk[0];
     }
 
-    console.log(indices);
-    console.log(this.chunks.length);
-
     // We need to unshuffle the chunks
     if (indices.length > 1) {
       const sortedChunks: Uint8Array[] = [];

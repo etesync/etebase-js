@@ -8,17 +8,15 @@ import { Authenticator, PrefetchOption } from "./OnlineManagers";
 import {
   fromBase64,
   fromString,
+  toString,
   msgpackEncode,
   msgpackDecode,
   randomBytesDeterministic,
   toBase64,
 } from "./Helpers";
-import { to_string } from "libsodium-wrappers";
+
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
-
-console.log(testApiBase);
-
 let etebase: Etebase.Account;
 
 const colType = "some.coltype";
@@ -1873,7 +1871,7 @@ it.skip("Login and password change", async () => {
   await etebase4.logout();
 }, 30000);
 
-describe("chunking files", () => {
+describe("Chunking files", () => {
   it("Duplicate Chunks", async () => {
     const collectionManager = etebase.getCollectionManager();
     const col = await collectionManager.create(colType, {}, "");
@@ -1886,7 +1884,7 @@ describe("chunking files", () => {
     await collectionManager.transaction(col);
     const decryptedContent = await col.getContent();
 
-    const out = to_string(decryptedContent);
+    const out = toString(decryptedContent);
     expect(out).toEqual(content);
   });
 
@@ -1902,7 +1900,7 @@ describe("chunking files", () => {
     await collectionManager.transaction(col);
     const decryptedContent = await col.getContent();
 
-    const out = to_string(decryptedContent);
+    const out = toString(decryptedContent);
     expect(out).toEqual(content);
   });
 
@@ -1917,7 +1915,7 @@ describe("chunking files", () => {
     await collectionManager.transaction(col);
     const decryptedContent = await col.getContent();
 
-    const out = to_string(decryptedContent);
+    const out = toString(decryptedContent);
     expect(out).toEqual(content);
   });
 });
