@@ -5,15 +5,29 @@ import * as Etebase from "./Etebase";
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
 
 import { Authenticator, PrefetchOption } from "./OnlineManagers";
-import { fromBase64, fromString, msgpackEncode, msgpackDecode, randomBytesDeterministic, toBase64 } from "./Helpers";
+import {
+  fromBase64,
+  fromString,
+  msgpackEncode,
+  msgpackDecode,
+  randomBytesDeterministic,
+  toBase64,
+} from "./Helpers";
+import { to_string } from "libsodium-wrappers";
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
+
+console.log(testApiBase);
 
 let etebase: Etebase.Account;
 
 const colType = "some.coltype";
 
-async function verifyCollection<T>(col: Etebase.Collection, meta: Etebase.ItemMetadata<T>, content: Uint8Array) {
+async function verifyCollection<T>(
+  col: Etebase.Collection,
+  meta: Etebase.ItemMetadata<T>,
+  content: Uint8Array
+) {
   col.verify();
   const decryptedMeta = col.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -21,7 +35,11 @@ async function verifyCollection<T>(col: Etebase.Collection, meta: Etebase.ItemMe
   expect(toBase64(decryptedContent)).toEqual(toBase64(content));
 }
 
-async function verifyItem<T>(item: Etebase.Item, meta: Etebase.ItemMetadata<T>, content: Uint8Array) {
+async function verifyItem<T>(
+  item: Etebase.Item,
+  meta: Etebase.ItemMetadata<T>,
+  content: Uint8Array
+) {
   item.verify();
   const decryptedMeta = item.getMeta();
   expect(decryptedMeta).toEqual(meta);
@@ -30,30 +48,36 @@ async function verifyItem<T>(item: Etebase.Item, meta: Etebase.ItemMetadata<T>, 
 }
 
 async function prepareUserForTest(user: typeof USER) {
-  const response = await request(testApiBase + "/api/v1/test/authentication/reset/", {
-    method: "post",
-    headers: {
-      "Accept": "application/msgpack",
-      "Content-Type": "application/msgpack",
-    },
-
-    body: msgpackEncode({
-      user: {
-        username: user.username,
-        email: user.email,
+  const response = await request(
+    testApiBase + "/api/v1/test/authentication/reset/",
+    {
+      method: "post",
+      headers: {
+        Accept: "application/msgpack",
+        "Content-Type": "application/msgpack",
       },
-      salt: fromBase64(user.salt),
-      loginPubkey: fromBase64(user.loginPubkey),
-      encryptedContent: fromBase64(user.encryptedContent),
-      pubkey: fromBase64(user.pubkey),
-    }),
-  });
+
+      body: msgpackEncode({
+        user: {
+          username: user.username,
+          email: user.email,
+        },
+        salt: fromBase64(user.salt),
+        loginPubkey: fromBase64(user.loginPubkey),
+        encryptedContent: fromBase64(user.encryptedContent),
+        pubkey: fromBase64(user.pubkey),
+      }),
+    }
+  );
 
   if (!response.ok) {
     throw new Error(response.statusText);
   }
 
-  const etebase = await Etebase.Account.restore(user.storedSession, fromBase64(sessionStorageKey));
+  const etebase = await Etebase.Account.restore(
+    user.storedSession,
+    fromBase64(sessionStorageKey)
+  );
   etebase.serverUrl = testApiBase;
   await etebase.fetchToken();
 
@@ -66,7 +90,13 @@ beforeAll(async () => {
   for (const user of [USER, USER2]) {
     try {
       const authenticator = new Authenticator(testApiBase);
-      await authenticator.signup(user, fromBase64(user.salt), fromBase64(user.loginPubkey), fromBase64(user.pubkey), fromBase64(user.encryptedContent));
+      await authenticator.signup(
+        user,
+        fromBase64(user.salt),
+        fromBase64(user.loginPubkey),
+        fromBase64(user.pubkey),
+        fromBase64(user.encryptedContent)
+      );
     } catch (e) {
       //
     }
@@ -85,9 +115,15 @@ afterEach(async () => {
 
 it("Check server is etebase", async () => {
   expect(await Etebase.Account.isEtebaseServer(testApiBase)).toBeTruthy();
-  expect(await Etebase.Account.isEtebaseServer(testApiBase + "/api/")).toBeFalsy();
-  await expect(Etebase.Account.isEtebaseServer("http://doesnotexist")).rejects.toBeInstanceOf(Error);
-  await expect(Etebase.Account.login(USER2.username, USER2.password, testApiBase + "/api/")).rejects.toBeInstanceOf(Etebase.NotFoundError);
+  expect(
+    await Etebase.Account.isEtebaseServer(testApiBase + "/api/")
+  ).toBeFalsy();
+  await expect(
+    Etebase.Account.isEtebaseServer("http://doesnotexist")
+  ).rejects.toBeInstanceOf(Error);
+  await expect(
+    Etebase.Account.login(USER2.username, USER2.password, testApiBase + "/api/")
+  ).rejects.toBeInstanceOf(Etebase.NotFoundError);
 });
 
 it("Getting dashboard url", async () => {
@@ -230,7 +266,9 @@ it("Simple collection sync", async () => {
 
   {
     col = await collectionManager.fetch(col.uid);
-    const collections = await collectionManager.list(colType, { stoken: col.stoken });
+    const collections = await collectionManager.list(colType, {
+      stoken: col.stoken,
+    });
     expect(collections.data.length).toBe(0);
   }
 
@@ -252,7 +290,9 @@ it("Simple collection sync", async () => {
   }
 
   {
-    const collections = await collectionManager.list(colType, { stoken: col.stoken });
+    const collections = await collectionManager.list(colType, {
+      stoken: col.stoken,
+    });
     expect(collections.data.length).toBe(1);
   }
 
@@ -261,9 +301,13 @@ it("Simple collection sync", async () => {
     const content2 = Uint8Array.from([7, 2, 3, 5]);
     await colOld.setContent(content2);
 
-    await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(collectionManager.transaction(colOld)).rejects.toBeInstanceOf(
+      Etebase.ConflictError
+    );
 
-    await expect(collectionManager.upload(colOld, { stoken: colOld.stoken })).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(
+      collectionManager.upload(colOld, { stoken: colOld.stoken })
+    ).rejects.toBeInstanceOf(Etebase.ConflictError);
   }
 
   const content2 = Uint8Array.from([7, 2, 3, 5]);
@@ -283,7 +327,9 @@ it("Simple collection sync", async () => {
   const colCopy = collectionManager.cacheLoad(cachedCollection);
   await colCopy.setContent("Something else"); // Just so it has a different revision uid
   await collectionManager.upload(col);
-  await expect(collectionManager.upload(colCopy)).rejects.toBeInstanceOf(Etebase.ConflictError);
+  await expect(collectionManager.upload(colCopy)).rejects.toBeInstanceOf(
+    Etebase.ConflictError
+  );
 });
 
 it("Collection types", async () => {
@@ -317,16 +363,22 @@ it("Collection types", async () => {
   }
 
   {
-    const collections = await collectionManager.list(["bad.coltype", colType, "anotherbad"]);
+    const collections = await collectionManager.list([
+      "bad.coltype",
+      colType,
+      "anotherbad",
+    ]);
     expect(collections.data.length).toBe(1);
   }
 
   {
-    const collections = await collectionManager.list(["bad.coltype", "anotherbad"]);
+    const collections = await collectionManager.list([
+      "bad.coltype",
+      "anotherbad",
+    ]);
     expect(collections.data.length).toBe(0);
   }
 });
-
 
 it("Simple item sync", async () => {
   const collectionManager = etebase.getCollectionManager();
@@ -401,7 +453,6 @@ it("Item re-uploaded revisions", async () => {
   const col = await collectionManager.create(colType, colMeta, "");
   await collectionManager.upload(col);
 
-
   const itemManager = collectionManager.getItemManager(col);
 
   const meta: Etebase.ItemMetadata = {
@@ -419,7 +470,9 @@ it("Item re-uploaded revisions", async () => {
   await item.setContent("Test");
   await itemManager.batch([item]);
 
-  await expect(itemManager.batch([itemOld])).rejects.toBeInstanceOf(Etebase.HttpError);
+  await expect(itemManager.batch([itemOld])).rejects.toBeInstanceOf(
+    Etebase.HttpError
+  );
 });
 
 it("Collection as item", async () => {
@@ -543,17 +596,27 @@ it("Item multiple collections", async () => {
 
   // With the bad item as the main
   await itemManager.batch([item]);
-  await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
-  await expect(itemManager2.transaction([item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+  await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(
+    Etebase.ProgrammingError
+  );
+  await expect(itemManager2.transaction([item])).rejects.toBeInstanceOf(
+    Etebase.ProgrammingError
+  );
 
   // With the bad item as a dep
   const item2 = await itemManager2.create(meta, "col2");
-  await expect(itemManager2.batch([item2], [item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
-  await expect(itemManager2.transaction([item2], [item])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+  await expect(itemManager2.batch([item2], [item])).rejects.toBeInstanceOf(
+    Etebase.ProgrammingError
+  );
+  await expect(
+    itemManager2.transaction([item2], [item])
+  ).rejects.toBeInstanceOf(Etebase.ProgrammingError);
   await itemManager2.batch([item2]);
 
   await itemManager.fetchUpdates([item]);
-  await expect(itemManager.fetchUpdates([item, item2])).rejects.toBeInstanceOf(Etebase.ProgrammingError);
+  await expect(itemManager.fetchUpdates([item, item2])).rejects.toBeInstanceOf(
+    Etebase.ProgrammingError
+  );
 
   // Verify we also set it correctly when fetched
   {
@@ -614,7 +677,9 @@ it("Collection and item deletion", async () => {
   await collectionManager.upload(col);
 
   {
-    const collections2 = await collectionManager.list(colType, { stoken: collections.stoken });
+    const collections2 = await collectionManager.list(colType, {
+      stoken: collections.stoken,
+    });
     expect(collections2.data.length).toBe(1);
 
     const col2 = collections2.data[0];
@@ -678,7 +743,7 @@ it("List response correctness", async () => {
 
   const items: Etebase.Item[] = [];
 
-  for (let i = 0 ; i < 5 ; i++) {
+  for (let i = 0; i < 5; i++) {
     const meta2 = {
       type: "ITEMTYPE",
       someval: "someval",
@@ -700,7 +765,7 @@ it("List response correctness", async () => {
   }
 
   let stoken: string | null = null;
-  for (let i = 0 ; i < 3 ; i++) {
+  for (let i = 0; i < 3; i++) {
     const items = await itemManager.list({ limit: 2, stoken });
     expect(items.done).toBe(i === 2);
     stoken = items.stoken as string;
@@ -708,7 +773,7 @@ it("List response correctness", async () => {
 
   // Also check collections
   {
-    for (let i = 0 ; i < 4 ; i++) {
+    for (let i = 0; i < 4; i++) {
       const content2 = Uint8Array.from([i, 7, 2, 3, 5]);
       const col2 = await collectionManager.create(colType, colMeta, content2);
       await collectionManager.upload(col2);
@@ -724,8 +789,11 @@ it("List response correctness", async () => {
   }
 
   stoken = null;
-  for (let i = 0 ; i < 3 ; i++) {
-    const collections = await collectionManager.list(colType, { limit: 2, stoken });
+  for (let i = 0; i < 3; i++) {
+    const collections = await collectionManager.list(colType, {
+      limit: 2,
+      stoken,
+    });
     expect(collections.done).toBe(i === 2);
     stoken = collections.stoken as string;
   }
@@ -770,7 +838,7 @@ it("Item transactions", async () => {
     expect(items.data.length).toBe(1);
   }
 
-  for (let i = 0 ; i < 5 ; i++) {
+  for (let i = 0; i < 5; i++) {
     const meta2 = {
       type: "ITEMTYPE",
       someval: "someval",
@@ -805,7 +873,9 @@ it("Item transactions", async () => {
     item.setMeta(meta3);
 
     // Old in the deps
-    await expect(itemManager.transaction([item], [...items, itemOld])).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(
+      itemManager.transaction([item], [...items, itemOld])
+    ).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     const itemOld2 = itemOld._clone();
 
@@ -814,7 +884,9 @@ it("Item transactions", async () => {
     itemOld2.setMeta(meta3);
 
     // Old stoken in the item itself
-    await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(itemManager.transaction([itemOld2])).rejects.toBeInstanceOf(
+      Etebase.ConflictError
+    );
   }
 
   {
@@ -826,7 +898,9 @@ it("Item transactions", async () => {
     itemOld2.setMeta(meta3);
 
     // Part of the transaction is bad, and part is good
-    await expect(itemManager.transaction([item2, itemOld2])).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(
+      itemManager.transaction([item2, itemOld2])
+    ).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     // Verify it hasn't changed after the transaction above failed
     const item2Fetch = await itemManager.fetch(item2.uid);
@@ -842,7 +916,9 @@ it("Item transactions", async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.transaction([item], undefined, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(
+      itemManager.transaction([item], undefined, { stoken: badEtag })
+    ).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     await itemManager.transaction([item], undefined, { stoken });
   }
@@ -884,7 +960,7 @@ it("Item batch stoken", async () => {
     expect(items.data.length).toBe(1);
   }
 
-  for (let i = 0 ; i < 5 ; i++) {
+  for (let i = 0; i < 5; i++) {
     const meta2 = {
       type: "ITEMTYPE",
       someval: "someval",
@@ -908,8 +984,12 @@ it("Item batch stoken", async () => {
     item.setMeta(meta3);
 
     // Old stoken in the item itself should work for batch and fail for transaction or batch with deps
-    await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(Etebase.ConflictError);
-    await expect(itemManager.batch([item], [item])).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(itemManager.transaction([item])).rejects.toBeInstanceOf(
+      Etebase.ConflictError
+    );
+    await expect(itemManager.batch([item], [item])).rejects.toBeInstanceOf(
+      Etebase.ConflictError
+    );
     await itemManager.batch([item]);
   }
 
@@ -922,7 +1002,9 @@ it("Item batch stoken", async () => {
     const stoken = newCol.stoken;
     const badEtag = col.etag;
 
-    await expect(itemManager.batch([item], null, { stoken: badEtag })).rejects.toBeInstanceOf(Etebase.ConflictError);
+    await expect(
+      itemManager.batch([item], null, { stoken: badEtag })
+    ).rejects.toBeInstanceOf(Etebase.ConflictError);
 
     await itemManager.batch([item], null, { stoken });
   }
@@ -964,7 +1046,7 @@ it("Item fetch updates", async () => {
     expect(items.data.length).toBe(1);
   }
 
-  for (let i = 0 ; i < 5 ; i++) {
+  for (let i = 0; i < 5; i++) {
     const meta2 = {
       type: "ITEMTYPE",
       someval: "someval",
@@ -987,11 +1069,13 @@ it("Item fetch updates", async () => {
     let items2 = await itemManager.fetchMulti(items.map((x) => x.uid));
     expect(items2.data.length).toBe(5);
 
-    items2 = await itemManager.fetchMulti(["L4QQdlkCDJ9ySmrGD5fM0DsFo08MnWel", items[0].uid]);
+    items2 = await itemManager.fetchMulti([
+      "L4QQdlkCDJ9ySmrGD5fM0DsFo08MnWel",
+      items[0].uid,
+    ]);
     // Only 1 because only one of the items exists
     expect(items2.data.length).toBe(1);
   }
-
 
   let stoken: string | null = null;
 
@@ -1055,7 +1139,6 @@ it("Item revisions", async () => {
   const col = await collectionManager.create(colType, colMeta, "");
   await collectionManager.upload(col);
 
-
   const itemManager = collectionManager.getItemManager(col);
 
   const meta: Etebase.ItemMetadata = {
@@ -1064,7 +1147,7 @@ it("Item revisions", async () => {
 
   const item = await itemManager.create(meta, "");
 
-  for (let i = 0 ; i < 5 ; i++) {
+  for (let i = 0; i < 5; i++) {
     const content = Uint8Array.from([1, 2, i]);
     await item.setContent(content);
 
@@ -1075,13 +1158,18 @@ it("Item revisions", async () => {
   await itemManager.batch([item]);
 
   {
-    let revisions = await itemManager.itemRevisions(item, { iterator: item.etag });
+    let revisions = await itemManager.itemRevisions(item, {
+      iterator: item.etag,
+    });
     expect(revisions.data.length).toBe(5);
     expect(revisions.done).toBeTruthy();
-    revisions = await itemManager.itemRevisions(item, { iterator: item.etag, limit: 5 });
+    revisions = await itemManager.itemRevisions(item, {
+      iterator: item.etag,
+      limit: 5,
+    });
     expect(revisions.done).toBeTruthy();
 
-    for (let i = 0 ; i < 5 ; i++) {
+    for (let i = 0; i < 5; i++) {
       const content = Uint8Array.from([1, 2, i]);
       // The revisions are ordered newest to oldest
       const rev = revisions.data[4 - i];
@@ -1093,14 +1181,16 @@ it("Item revisions", async () => {
   // Iterate through revisions
   {
     let iterator: string | null = item.etag;
-    for (let i = 0 ; i < 2 ; i++) {
-      const revisions = await itemManager.itemRevisions(item, { limit: 2, iterator });
+    for (let i = 0; i < 2; i++) {
+      const revisions = await itemManager.itemRevisions(item, {
+        limit: 2,
+        iterator,
+      });
       expect(revisions.done).toBe(i === 2);
       iterator = revisions.iterator as string;
     }
   }
 });
-
 
 it("Collection invitations", async () => {
   const collectionManager = etebase.getCollectionManager();
@@ -1124,7 +1214,7 @@ it("Collection invitations", async () => {
 
   const items: Etebase.Item[] = [];
 
-  for (let i = 0 ; i < 5 ; i++) {
+  for (let i = 0; i < 5; i++) {
     const meta2 = {
       type: "ITEMTYPE",
       someval: "someval",
@@ -1143,11 +1233,15 @@ it("Collection invitations", async () => {
   const collectionManager2 = etebase2.getCollectionManager();
   const collectionInvitationManager2 = etebase2.getInvitationManager();
 
-  const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
+  const user2Profile = await collectionInvitationManager.fetchUserProfile(
+    USER2.username
+  );
 
   {
     // Also make sure we can invite by email
-    const user2Profile2 = await collectionInvitationManager.fetchUserProfile(USER2.email);
+    const user2Profile2 = await collectionInvitationManager.fetchUserProfile(
+      USER2.email
+    );
     expect(user2Profile2.pubkey).toEqual(user2Profile.pubkey);
   }
 
@@ -1155,9 +1249,16 @@ it("Collection invitations", async () => {
   const user2pubkey = collectionInvitationManager2.pubkey;
   expect(user2Profile.pubkey).toEqual(user2pubkey);
   // Off-band verification:
-  expect(Etebase.getPrettyFingerprint(user2Profile.pubkey)).toEqual(Etebase.getPrettyFingerprint(user2pubkey));
+  expect(Etebase.getPrettyFingerprint(user2Profile.pubkey)).toEqual(
+    Etebase.getPrettyFingerprint(user2pubkey)
+  );
 
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(
+    col,
+    USER2.username,
+    user2Profile.pubkey,
+    Etebase.CollectionAccessLevel.ReadWrite
+  );
 
   let invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1176,7 +1277,12 @@ it("Collection invitations", async () => {
   }
 
   // Invite and then disinvite
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(
+    col,
+    USER2.username,
+    user2Profile.pubkey,
+    Etebase.CollectionAccessLevel.ReadWrite
+  );
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1193,9 +1299,13 @@ it("Collection invitations", async () => {
     expect(invitations.data.length).toBe(0);
   }
 
-
   // Invite again, this time use email, and this time accept
-  await collectionInvitationManager.invite(col, USER2.email, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(
+    col,
+    USER2.email,
+    user2Profile.pubkey,
+    Etebase.CollectionAccessLevel.ReadWrite
+  );
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1237,7 +1347,12 @@ it("Collection invitations", async () => {
   }
 
   // Add again
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(
+    col,
+    USER2.username,
+    user2Profile.pubkey,
+    Etebase.CollectionAccessLevel.ReadWrite
+  );
 
   invitations = await collectionInvitationManager2.listIncoming();
   expect(invitations.data.length).toBe(1);
@@ -1282,11 +1397,13 @@ it("Iterating invitations", async () => {
   const collectionManager = etebase.getCollectionManager();
 
   const collectionInvitationManager = etebase.getInvitationManager();
-  const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
+  const user2Profile = await collectionInvitationManager.fetchUserProfile(
+    USER2.username
+  );
 
   const collections = [];
 
-  for (let i = 0 ; i < 3 ; i++) {
+  for (let i = 0; i < 3; i++) {
     const colMeta: Etebase.ItemMetadata = {
       name: `Calendar ${i}`,
     };
@@ -1294,7 +1411,12 @@ it("Iterating invitations", async () => {
     const col = await collectionManager.create(colType, colMeta, "");
 
     await collectionManager.upload(col);
-    await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+    await collectionInvitationManager.invite(
+      col,
+      USER2.username,
+      user2Profile.pubkey,
+      Etebase.CollectionAccessLevel.ReadWrite
+    );
 
     collections.push(col);
   }
@@ -1309,8 +1431,11 @@ it("Iterating invitations", async () => {
 
   {
     let iterator: string | null = null;
-    for (let i = 0 ; i < 2 ; i++) {
-      const invitations = await collectionInvitationManager2.listIncoming({ limit: 2, iterator });
+    for (let i = 0; i < 2; i++) {
+      const invitations = await collectionInvitationManager2.listIncoming({
+        limit: 2,
+        iterator,
+      });
       expect(invitations.done).toBe(i === 1);
       iterator = invitations.iterator as string;
     }
@@ -1324,8 +1449,11 @@ it("Iterating invitations", async () => {
 
   {
     let iterator: string | null = null;
-    for (let i = 0 ; i < 2 ; i++) {
-      const invitations = await collectionInvitationManager.listOutgoing({ limit: 2, iterator });
+    for (let i = 0; i < 2; i++) {
+      const invitations = await collectionInvitationManager.listOutgoing({
+        limit: 2,
+        iterator,
+      });
       expect(invitations.done).toBe(i === 1);
       iterator = invitations.iterator as string;
     }
@@ -1356,7 +1484,7 @@ it("Collection access level", async () => {
 
   const items: Etebase.Item[] = [];
 
-  for (let i = 0 ; i < 5 ; i++) {
+  for (let i = 0; i < 5; i++) {
     const meta2 = {
       type: "ITEMTYPE",
       someval: "someval",
@@ -1375,10 +1503,16 @@ it("Collection access level", async () => {
   const etebase2 = await prepareUserForTest(USER2);
   const collectionManager2 = etebase2.getCollectionManager();
 
-  const user2Profile = await collectionInvitationManager.fetchUserProfile(USER2.username);
+  const user2Profile = await collectionInvitationManager.fetchUserProfile(
+    USER2.username
+  );
 
-
-  await collectionInvitationManager.invite(col, USER2.username, user2Profile.pubkey, Etebase.CollectionAccessLevel.ReadWrite);
+  await collectionInvitationManager.invite(
+    col,
+    USER2.username,
+    user2Profile.pubkey,
+    Etebase.CollectionAccessLevel.ReadWrite
+  );
 
   const collectionInvitationManager2 = etebase2.getInvitationManager();
 
@@ -1386,7 +1520,6 @@ it("Collection access level", async () => {
   expect(invitations.data.length).toBe(1);
 
   await collectionInvitationManager2.accept(invitations.data[0]);
-
 
   const col2 = await collectionManager2.fetch(col.uid);
   const itemManager2 = collectionManager2.getItemManager(col2);
@@ -1397,7 +1530,9 @@ it("Collection access level", async () => {
     expect(members.data.length).toBe(2);
     for (const member of members.data) {
       if (member.username === USER2.username) {
-        expect(member.accessLevel).toBe(Etebase.CollectionAccessLevel.ReadWrite);
+        expect(member.accessLevel).toBe(
+          Etebase.CollectionAccessLevel.ReadWrite
+        );
       }
     }
 
@@ -1410,7 +1545,10 @@ it("Collection access level", async () => {
     await itemManager2.batch([item]);
   }
 
-  await collectionMemberManager.modifyAccessLevel(USER2.username, Etebase.CollectionAccessLevel.ReadOnly);
+  await collectionMemberManager.modifyAccessLevel(
+    USER2.username,
+    Etebase.CollectionAccessLevel.ReadOnly
+  );
 
   // Item creation: fail
   {
@@ -1428,10 +1566,15 @@ it("Collection access level", async () => {
     const content = Uint8Array.from([1, 2, 3, 6]);
 
     const item = await itemManager2.create(meta, content);
-    await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(Etebase.PermissionDeniedError);
+    await expect(itemManager2.batch([item])).rejects.toBeInstanceOf(
+      Etebase.PermissionDeniedError
+    );
   }
 
-  await collectionMemberManager.modifyAccessLevel(USER2.username, Etebase.CollectionAccessLevel.Admin);
+  await collectionMemberManager.modifyAccessLevel(
+    USER2.username,
+    Etebase.CollectionAccessLevel.Admin
+  );
 
   // Item creation: success
   {
@@ -1456,7 +1599,10 @@ it("Collection access level", async () => {
   {
     const members = await collectionMemberManager.list({ limit: 1 });
     expect(members.data.length).toBe(1);
-    const members2 = await collectionMemberManager.list({ limit: 1, iterator: members.iterator });
+    const members2 = await collectionMemberManager.list({
+      limit: 1,
+      iterator: members.iterator,
+    });
     expect(members2.data.length).toBe(1);
     // Verify we got two different usersnames
     expect(members.data[0].username).not.toEqual(members2.data[0].username);
@@ -1486,7 +1632,9 @@ it("Session store and restore", async () => {
     const collectionManager2 = etebase2.getCollectionManager();
     const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
-    expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
+    expect(
+      await collections.data[0].getContent(Etebase.OutputFormat.String)
+    ).toEqual("test");
   }
 
   // Verify we can store and restore with an encryption key
@@ -1502,7 +1650,9 @@ it("Session store and restore", async () => {
     const collectionManager2 = etebase2.getCollectionManager();
     const collections = await collectionManager2.list(colType);
     expect(collections.data.length).toBe(1);
-    expect(await collections.data[0].getContent(Etebase.OutputFormat.String)).toEqual("test");
+    expect(
+      await collections.data[0].getContent(Etebase.OutputFormat.String)
+    ).toEqual("test");
   }
 });
 
@@ -1525,10 +1675,7 @@ it("Cache collections and items", async () => {
   const item = await itemManager.create(meta, content);
   await itemManager.batch([item]);
 
-  const optionsArray = [
-    { saveContent: true },
-    { saveContent: false },
-  ];
+  const optionsArray = [{ saveContent: true }, { saveContent: false }];
   for (const options of optionsArray) {
     const savedCachedCollection = collectionManager.cacheSave(col, options);
     const cachedCollection = collectionManager.cacheLoad(savedCachedCollection);
@@ -1536,7 +1683,6 @@ it("Cache collections and items", async () => {
     expect(col.uid).toEqual(cachedCollection.uid);
     expect(col.etag).toEqual(cachedCollection.etag);
     expect(col.getMeta()).toEqual(cachedCollection.getMeta());
-
 
     const savedCachedItem = itemManager.cacheSave(item, options);
     const cachedItem = itemManager.cacheLoad(savedCachedItem);
@@ -1578,16 +1724,22 @@ it("Chunk pre-upload and download-missing", async () => {
   await itemManager.batch([item]);
 
   {
-    const item2 = await itemManager.fetch(item.uid, { prefetch: PrefetchOption.Medium });
+    const item2 = await itemManager.fetch(item.uid, {
+      prefetch: PrefetchOption.Medium,
+    });
     const meta2 = item2.getMeta();
     expect(meta2).toEqual(meta);
     // We can't get the content of partial item
-    await expect(item2.getContent()).rejects.toBeInstanceOf(Etebase.MissingContentError);
+    await expect(item2.getContent()).rejects.toBeInstanceOf(
+      Etebase.MissingContentError
+    );
     expect(item2.isMissingContent).toBeTruthy();
     // Fetch the content and then try to get it
     await itemManager.downloadContent(item2);
     expect(item2.isMissingContent).not.toBeTruthy();
-    expect(await item2.getContent(Etebase.OutputFormat.String)).toEqual(content);
+    expect(await item2.getContent(Etebase.OutputFormat.String)).toEqual(
+      content
+    );
   }
 });
 
@@ -1605,9 +1757,15 @@ it("Chunking large data", async () => {
 
   async function itemGetChunkUids(it: Etebase.Item): Promise<string[]> {
     // XXX: hack - get the chunk uids from the cached saving
-    const cachedItem = msgpackDecode(itemManager.cacheSave(it, { saveContent: false })) as any[];
-    const cachedRevision = (msgpackDecode(cachedItem[cachedItem.length - 1]) as any[]);
-    const cachedChunks = cachedRevision[cachedRevision.length - 1] as [Uint8Array][];
+    const cachedItem = msgpackDecode(
+      itemManager.cacheSave(it, { saveContent: false })
+    ) as any[];
+    const cachedRevision = msgpackDecode(
+      cachedItem[cachedItem.length - 1]
+    ) as any[];
+    const cachedChunks = cachedRevision[cachedRevision.length - 1] as [
+      Uint8Array
+    ][];
     return cachedChunks.map((x) => toBase64(x[0]));
   }
 
@@ -1656,7 +1814,11 @@ it("Chunking large data", async () => {
 
 it.skip("Login and password change", async () => {
   const anotherPassword = "AnotherPassword";
-  const etebase2 = await Etebase.Account.login(USER2.username, USER2.password, testApiBase);
+  const etebase2 = await Etebase.Account.login(
+    USER2.username,
+    USER2.password,
+    testApiBase
+  );
 
   const collectionManager2 = etebase2.getCollectionManager();
   const colMeta: Etebase.ItemMetadata = {
@@ -1680,9 +1842,15 @@ it.skip("Login and password change", async () => {
 
   await etebase2.logout();
 
-  await expect(Etebase.Account.login(USER2.username, USER2.password, testApiBase)).rejects.toBeInstanceOf(Etebase.UnauthorizedError);
+  await expect(
+    Etebase.Account.login(USER2.username, USER2.password, testApiBase)
+  ).rejects.toBeInstanceOf(Etebase.UnauthorizedError);
 
-  const etebase3 = await Etebase.Account.login(USER2.username, anotherPassword, testApiBase);
+  const etebase3 = await Etebase.Account.login(
+    USER2.username,
+    anotherPassword,
+    testApiBase
+  );
 
   const collectionManager3 = etebase3.getCollectionManager();
 
@@ -1697,6 +1865,61 @@ it.skip("Login and password change", async () => {
   await etebase3.logout();
 
   // Login via email
-  const etebase4 = await Etebase.Account.login(USER2.email, USER2.password, testApiBase);
+  const etebase4 = await Etebase.Account.login(
+    USER2.email,
+    USER2.password,
+    testApiBase
+  );
   await etebase4.logout();
 }, 30000);
+
+describe("chunking files", () => {
+  it("Duplicate Chunks", async () => {
+    const collectionManager = etebase.getCollectionManager();
+    const col = await collectionManager.create(colType, {}, "");
+
+    const buf = randomBytesDeterministic(10 * 1024, new Uint8Array(32)); // 10kb of psuedorandom data
+    const content = JSON.stringify([buf, buf, buf, buf]);
+
+    await col.setContent(content);
+
+    await collectionManager.transaction(col);
+    const decryptedContent = await col.getContent();
+
+    const out = to_string(decryptedContent);
+    expect(out).toEqual(content);
+  });
+
+  it("Regular Chunks", async () => {
+    const collectionManager = etebase.getCollectionManager();
+    const col = await collectionManager.create(colType, {}, "");
+
+    const buf = randomBytesDeterministic(100 * 1024, new Uint8Array(32));
+    const content = JSON.stringify(buf);
+
+    await col.setContent(content);
+
+    await collectionManager.transaction(col);
+    const decryptedContent = await col.getContent();
+
+    const out = to_string(decryptedContent);
+    expect(out).toEqual(content);
+  });
+
+  it("Small file, no chunks", async () => {
+    const collectionManager = etebase.getCollectionManager();
+    const col = await collectionManager.create(colType, {}, "");
+
+    const content = JSON.stringify("foo");
+
+    await col.setContent(content);
+
+    await collectionManager.transaction(col);
+    const decryptedContent = await col.getContent();
+
+    const out = to_string(decryptedContent);
+
+    console.log(out);
+    expect(out).toEqual(content);
+  });
+});

@@ -1,8 +1,30 @@
 import * as Constants from "./Constants";
 
-import { CryptoManager, BoxCryptoManager, LoginCryptoManager, concatArrayBuffersArrays } from "./Crypto";
+import {
+  CryptoManager,
+  BoxCryptoManager,
+  LoginCryptoManager,
+  concatArrayBuffersArrays,
+} from "./Crypto";
 import { IntegrityError, MissingContentError } from "./Exceptions";
-import { base64, fromBase64, toBase64, fromString, toString, randomBytes, symmetricKeyLength, msgpackEncode, msgpackDecode, bufferPad, bufferUnpad, memcmp, shuffle, bufferPadSmall, bufferPadFixed, bufferUnpadFixed } from "./Helpers";
+import {
+  base64,
+  fromBase64,
+  toBase64,
+  fromString,
+  toString,
+  randomBytes,
+  symmetricKeyLength,
+  msgpackEncode,
+  msgpackDecode,
+  bufferPad,
+  bufferUnpad,
+  memcmp,
+  shuffle,
+  bufferPadSmall,
+  bufferPadFixed,
+  bufferUnpadFixed,
+} from "./Helpers";
 import { SignedInvitationContent } from "./Etebase";
 
 export type CollectionType = string;
@@ -111,11 +133,18 @@ export class AccountCryptoManager extends CryptoManager {
   }
 
   public colTypeToUid(colType: string): Uint8Array {
-    return this.deterministicEncrypt(bufferPadFixed(fromString(colType), this.colTypePadSize));
+    return this.deterministicEncrypt(
+      bufferPadFixed(fromString(colType), this.colTypePadSize)
+    );
   }
 
   public colTypeFromUid(colTypeUid: Uint8Array): string {
-    return toString(bufferUnpadFixed(this.deterministicDecrypt(colTypeUid), this.colTypePadSize));
+    return toString(
+      bufferUnpadFixed(
+        this.deterministicDecrypt(colTypeUid),
+        this.colTypePadSize
+      )
+    );
   }
 }
 
@@ -130,7 +159,11 @@ export class MinimalCollectionCryptoManager extends CryptoManager {
 export class CollectionCryptoManager extends MinimalCollectionCryptoManager {
   public readonly accountCryptoManager: AccountCryptoManager;
 
-  constructor(accountCryptoManager: AccountCryptoManager, key: Uint8Array, version: number = Constants.CURRENT_VERSION) {
+  constructor(
+    accountCryptoManager: AccountCryptoManager,
+    key: Uint8Array,
+    version: number = Constants.CURRENT_VERSION
+  ) {
     super(key, version);
     this.accountCryptoManager = accountCryptoManager;
   }
@@ -152,7 +185,10 @@ export class StorageCryptoManager extends CryptoManager {
   }
 }
 
-export function getMainCryptoManager(mainEncryptionKey: Uint8Array, version: number) {
+export function getMainCryptoManager(
+  mainEncryptionKey: Uint8Array,
+  version: number
+) {
   return new MainCryptoManager(mainEncryptionKey, version);
 }
 
@@ -167,7 +203,12 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     this.deleted = false;
   }
 
-  public static async create<CM extends CollectionItemCryptoManager>(cryptoManager: CM, additionalData: Uint8Array, meta: any, content: Uint8Array): Promise<EncryptedRevision<CM>> {
+  public static async create<CM extends CollectionItemCryptoManager>(
+    cryptoManager: CM,
+    additionalData: Uint8Array,
+    meta: any,
+    content: Uint8Array
+  ): Promise<EncryptedRevision<CM>> {
     const ret = new EncryptedRevision<CM>();
     ret.chunks = [];
     ret.setMeta(cryptoManager, additionalData, meta);
@@ -176,7 +217,9 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     return ret;
   }
 
-  public static deserialize<CM extends CollectionItemCryptoManager>(json: CollectionItemRevisionJsonRead) {
+  public static deserialize<CM extends CollectionItemCryptoManager>(
+    json: CollectionItemRevisionJsonRead
+  ) {
     const { uid, meta, chunks, deleted } = json;
     const ret = new EncryptedRevision<CM>();
     ret.uid = uid;
@@ -201,7 +244,9 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     return ret;
   }
 
-  public static cacheLoad<CM extends CollectionItemCryptoManager>(cached_: Uint8Array) {
+  public static cacheLoad<CM extends CollectionItemCryptoManager>(
+    cached_: Uint8Array
+  ) {
     const cached = msgpackDecode(cached_) as any[];
 
     const ret = new EncryptedRevision<CM>();
@@ -221,10 +266,9 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       fromBase64(this.uid),
       this.meta,
       this.deleted,
-      ((saveContent) ?
-        this.chunks.map((chunk) => [fromBase64(chunk[0]), chunk[1] ?? null]) :
-        this.chunks.map((chunk) => [fromBase64(chunk[0])])
-      ),
+      saveContent
+        ? this.chunks.map((chunk) => [fromBase64(chunk[0]), chunk[1] ?? null])
+        : this.chunks.map((chunk) => [fromBase64(chunk[0])]),
     ]);
   }
 
@@ -242,25 +286,30 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
 
   private calculateAdHash(cryptoManager: CM, additionalData: Uint8Array) {
     const cryptoMac = cryptoManager.getCryptoMac();
-    cryptoMac.update(new Uint8Array([(this.deleted) ? 1 : 0]));
+    cryptoMac.update(new Uint8Array([this.deleted ? 1 : 0]));
     cryptoMac.updateWithLenPrefix(additionalData);
 
     // We hash the chunks separately so that the server can (in the future) return just the hash instead of the full
     // chunk list if requested - useful for asking for collection updates
     const chunksHash = cryptoManager.getCryptoMac(false);
-    this.chunks.forEach((chunk) =>
-      chunksHash.update(fromBase64(chunk[0]))
-    );
+    this.chunks.forEach((chunk) => chunksHash.update(fromBase64(chunk[0])));
 
     cryptoMac.update(chunksHash.finalize());
 
     return cryptoMac.finalize();
   }
 
-  public setMeta(cryptoManager: CM, additionalData: Uint8Array, meta: any): void {
+  public setMeta(
+    cryptoManager: CM,
+    additionalData: Uint8Array,
+    meta: any
+  ): void {
     const adHash = this.calculateAdHash(cryptoManager, additionalData);
 
-    const encContent = cryptoManager.encryptDetached(bufferPadSmall(msgpackEncode(meta)), adHash);
+    const encContent = cryptoManager.encryptDetached(
+      bufferPadSmall(msgpackEncode(meta)),
+      adHash
+    );
 
     this.meta = encContent[1];
     this.uid = toBase64(encContent[0]);
@@ -270,10 +319,16 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     const mac = fromBase64(this.uid);
     const adHash = this.calculateAdHash(cryptoManager, additionalData);
 
-    return msgpackDecode(bufferUnpad(cryptoManager.decryptDetached(this.meta, mac, adHash)));
+    return msgpackDecode(
+      bufferUnpad(cryptoManager.decryptDetached(this.meta, mac, adHash))
+    );
   }
 
-  public async setContent(cryptoManager: CM, additionalData: Uint8Array, content: Uint8Array): Promise<void> {
+  public async setContent(
+    cryptoManager: CM,
+    additionalData: Uint8Array,
+    content: Uint8Array
+  ): Promise<void> {
     const meta = this.getMeta(cryptoManager, additionalData);
 
     let chunks: [base64, Uint8Array][] = [];
@@ -292,7 +347,7 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       while (pos < content.length) {
         buzhash.update(content[pos]);
         if (pos - chunkStart >= minChunk) {
-          if ((pos - chunkStart >= maxChunk) || (buzhash.split(mask))) {
+          if (pos - chunkStart >= maxChunk || buzhash.split(mask)) {
             const buf = content.subarray(chunkStart, pos);
             const hash = toBase64(cryptoManager.calculateMac(buf));
             chunks.push([hash, buf]);
@@ -309,35 +364,42 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       chunks.push([hash, buf]);
     }
 
-    // Shuffle the items and save the ordering if we have more than one
-    if (chunks.length > 0) {
+    // Shuffle the items, deduplicate and save the ordering
+    if (chunks.length > 1) {
       const indices = shuffle(chunks);
 
-      // Filter duplicates and construct the indice list.
-      const uidIndices = new Map<string, number>();
-      chunks = chunks.filter((chunk, i) => {
+      const uniqueChunksMap = new Map<string, [base64, Uint8Array]>();
+
+      chunks.forEach((chunk) => {
         const uid = chunk[0];
-        const previousIndex = uidIndices.get(uid);
-        if (previousIndex !== undefined) {
-          indices[i] = previousIndex;
-          return false;
-        } else {
-          uidIndices.set(uid, i);
-          return true;
+        if (!uniqueChunksMap.has(uid)) {
+          uniqueChunksMap.set(uid, chunk);
         }
       });
 
-      // If we have more than one chunk we need to encode the mapping header in the last chunk
-      if (indices.length > 1) {
-        // We encode it in an array so we can extend it later on if needed
-        const buf = msgpackEncode([indices]);
-        const hash = toBase64(cryptoManager.calculateMac(buf));
-        chunks.push([hash, buf]);
-      }
+      const chunkKeys = [...uniqueChunksMap.keys()];
+
+      // Change the original (shuffled) indices to point at the deduplicated chunks
+      const newIndices = indices.map((i) => {
+        const [id] = chunks[i];
+        return chunkKeys.indexOf(id);
+      });
+
+      chunks = [...uniqueChunksMap.values()];
+
+      // We encode it in an array so we can extend it later on if needed
+      const buf = msgpackEncode([newIndices]);
+      const hash = toBase64(cryptoManager.calculateMac(buf));
+
+      // Append a chunk wth the mapping
+      chunks.push([hash, buf]);
     }
 
-    // Encrypt all of the chunks
-    this.chunks = chunks.map((chunk) => [chunk[0], cryptoManager.encrypt(bufferPad(chunk[1]))]);
+    // Encrypt all the chunks
+    this.chunks = chunks.map((chunk) => [
+      chunk[0],
+      cryptoManager.encrypt(bufferPad(chunk[1])),
+    ]);
 
     this.setMeta(cryptoManager, additionalData, meta);
   }
@@ -346,13 +408,17 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     let indices: number[] = [0];
     const decryptedChunks: Uint8Array[] = this.chunks.map((chunk) => {
       if (!chunk[1]) {
-        throw new MissingContentError("Missing content for item. Please download it using `downloadContent`");
+        throw new MissingContentError(
+          "Missing content for item. Please download it using `downloadContent`"
+        );
       }
 
       const buf = bufferUnpad(cryptoManager.decrypt(chunk[1]));
       const hash = cryptoManager.calculateMac(buf);
       if (!memcmp(hash, fromBase64(chunk[0]))) {
-        throw new IntegrityError(`The content's mac is different to the expected mac (${chunk[0]})`);
+        throw new IntegrityError(
+          `The content's mac is different to the expected mac (${chunk[0]})`
+        );
       }
       return buf;
     });
@@ -362,6 +428,9 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
       const lastChunk = msgpackDecode(decryptedChunks.pop()!) as [number[]];
       indices = lastChunk[0];
     }
+
+    console.log(indices);
+    console.log(this.chunks.length);
 
     // We need to unshuffle the chunks
     if (indices.length > 1) {
@@ -378,7 +447,11 @@ class EncryptedRevision<CM extends CollectionItemCryptoManager> {
     }
   }
 
-  public delete(cryptoManager: CM, additionalData: Uint8Array, preserveContent: boolean): void {
+  public delete(
+    cryptoManager: CM,
+    additionalData: Uint8Array,
+    preserveContent: boolean
+  ): void {
     const meta = this.getMeta(cryptoManager, additionalData);
 
     if (!preserveContent) {
@@ -407,17 +480,32 @@ export class EncryptedCollection {
   public accessLevel: CollectionAccessLevel;
   public stoken: string | null; // FIXME: hack, we shouldn't expose it here...
 
-  public static async create<T>(parentCryptoManager: AccountCryptoManager, collectionTypeName: string, meta: ItemMetadata<T>, content: Uint8Array): Promise<EncryptedCollection> {
+  public static async create<T>(
+    parentCryptoManager: AccountCryptoManager,
+    collectionTypeName: string,
+    meta: ItemMetadata<T>,
+    content: Uint8Array
+  ): Promise<EncryptedCollection> {
     const ret = new EncryptedCollection();
     ret.collectionType = parentCryptoManager.colTypeToUid(collectionTypeName);
-    ret.collectionKey = parentCryptoManager.encrypt(randomBytes(symmetricKeyLength), ret.collectionType);
+    ret.collectionKey = parentCryptoManager.encrypt(
+      randomBytes(symmetricKeyLength),
+      ret.collectionType
+    );
 
     ret.accessLevel = CollectionAccessLevel.Admin;
     ret.stoken = null;
 
-    const cryptoManager = ret.getCryptoManager(parentCryptoManager, Constants.CURRENT_VERSION);
+    const cryptoManager = ret.getCryptoManager(
+      parentCryptoManager,
+      Constants.CURRENT_VERSION
+    );
 
-    ret.item = await EncryptedCollectionItem.create(cryptoManager, meta, content);
+    ret.item = await EncryptedCollectionItem.create(
+      cryptoManager,
+      meta,
+      content
+    );
 
     return ret;
   }
@@ -481,29 +569,42 @@ export class EncryptedCollection {
     return this.item.verify(itemCryptoManager);
   }
 
-  public setMeta<T>(cryptoManager: MinimalCollectionCryptoManager, meta: ItemMetadata<T>): void {
+  public setMeta<T>(
+    cryptoManager: MinimalCollectionCryptoManager,
+    meta: ItemMetadata<T>
+  ): void {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     this.item.setMeta(itemCryptoManager, meta);
   }
 
-  public getMeta<T>(cryptoManager: MinimalCollectionCryptoManager): ItemMetadata<T> {
+  public getMeta<T>(
+    cryptoManager: MinimalCollectionCryptoManager
+  ): ItemMetadata<T> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.getMeta(itemCryptoManager);
   }
 
-  public async setContent(cryptoManager: MinimalCollectionCryptoManager, content: Uint8Array): Promise<void> {
+  public async setContent(
+    cryptoManager: MinimalCollectionCryptoManager,
+    content: Uint8Array
+  ): Promise<void> {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.setContent(itemCryptoManager, content);
   }
 
-  public async getContent(cryptoManager: MinimalCollectionCryptoManager): Promise<Uint8Array> {
+  public async getContent(
+    cryptoManager: MinimalCollectionCryptoManager
+  ): Promise<Uint8Array> {
     this.verify(cryptoManager);
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     return this.item.getContent(itemCryptoManager);
   }
 
-  public delete(cryptoManager: MinimalCollectionCryptoManager, preserveContent: boolean): void {
+  public delete(
+    cryptoManager: MinimalCollectionCryptoManager,
+    preserveContent: boolean
+  ): void {
     const itemCryptoManager = this.item.getCryptoManager(cryptoManager);
     this.item.delete(itemCryptoManager, preserveContent);
   }
@@ -538,7 +639,13 @@ export class EncryptedCollection {
     return parentCryptoManager.colTypeFromUid(this.collectionType);
   }
 
-  public async createInvitation(parentCryptoManager: AccountCryptoManager, identCryptoManager: BoxCryptoManager, username: string, pubkey: Uint8Array, accessLevel: CollectionAccessLevel): Promise<SignedInvitationWrite> {
+  public async createInvitation(
+    parentCryptoManager: AccountCryptoManager,
+    identCryptoManager: BoxCryptoManager,
+    username: string,
+    pubkey: Uint8Array,
+    accessLevel: CollectionAccessLevel
+  ): Promise<SignedInvitationWrite> {
     const uid = randomBytes(32);
     const encryptionKey = this.getCollectionKey(parentCryptoManager);
     const collectionType = this.getCollectionType(parentCryptoManager);
@@ -558,15 +665,24 @@ export class EncryptedCollection {
     return ret;
   }
 
-  public getCryptoManager(parentCryptoManager: AccountCryptoManager, version?: number) {
+  public getCryptoManager(
+    parentCryptoManager: AccountCryptoManager,
+    version?: number
+  ) {
     const encryptionKey = this.getCollectionKey(parentCryptoManager);
 
-    return new CollectionCryptoManager(parentCryptoManager, encryptionKey, version ?? this.version);
+    return new CollectionCryptoManager(
+      parentCryptoManager,
+      encryptionKey,
+      version ?? this.version
+    );
   }
 
   private getCollectionKey(parentCryptoManager: AccountCryptoManager) {
     // FIXME: remove the ?? null once "collection-type-migration" is done
-    return parentCryptoManager.decrypt(this.collectionKey, this.collectionType ?? null).subarray(0, symmetricKeyLength);
+    return parentCryptoManager
+      .decrypt(this.collectionKey, this.collectionType ?? null)
+      .subarray(0, symmetricKeyLength);
   }
 }
 
@@ -578,7 +694,11 @@ export class EncryptedCollectionItem {
 
   public lastEtag: string | null;
 
-  public static async create<T>(parentCryptoManager: MinimalCollectionCryptoManager, meta: ItemMetadata<T>, content: Uint8Array): Promise<EncryptedCollectionItem> {
+  public static async create<T>(
+    parentCryptoManager: MinimalCollectionCryptoManager,
+    meta: ItemMetadata<T>,
+    content: Uint8Array
+  ): Promise<EncryptedCollectionItem> {
     const ret = new EncryptedCollectionItem();
     ret.uid = genUidBase64();
     ret.version = Constants.CURRENT_VERSION;
@@ -588,12 +708,19 @@ export class EncryptedCollectionItem {
 
     const cryptoManager = ret.getCryptoManager(parentCryptoManager);
 
-    ret.content = await EncryptedRevision.create(cryptoManager, ret.getAdditionalMacData(), meta, content);
+    ret.content = await EncryptedRevision.create(
+      cryptoManager,
+      ret.getAdditionalMacData(),
+      meta,
+      content
+    );
 
     return ret;
   }
 
-  public static deserialize(json: CollectionItemJsonRead): EncryptedCollectionItem {
+  public static deserialize(
+    json: CollectionItemJsonRead
+  ): EncryptedCollectionItem {
     const { uid, version, encryptionKey, content } = json;
     const ret = new EncryptedCollectionItem();
     ret.uid = uid;
@@ -627,7 +754,7 @@ export class EncryptedCollectionItem {
     ret.uid = toBase64(cached[1]);
     ret.version = cached[2];
     ret.encryptionKey = cached[3];
-    ret.lastEtag = (cached[4]) ? toBase64(cached[4]) : null;
+    ret.lastEtag = cached[4] ? toBase64(cached[4]) : null;
 
     ret.content = EncryptedRevision.cacheLoad(cached[5]);
 
@@ -640,7 +767,7 @@ export class EncryptedCollectionItem {
       fromBase64(this.uid),
       this.version,
       this.encryptionKey,
-      (this.lastEtag) ? fromBase64(this.lastEtag) : null,
+      this.lastEtag ? fromBase64(this.lastEtag) : null,
 
       this.content.cacheSave(saveContent),
     ]);
@@ -666,7 +793,10 @@ export class EncryptedCollectionItem {
     return this.content.verify(cryptoManager, this.getAdditionalMacData());
   }
 
-  public setMeta<T>(cryptoManager: CollectionItemCryptoManager, meta: ItemMetadata<T>): void {
+  public setMeta<T>(
+    cryptoManager: CollectionItemCryptoManager,
+    meta: ItemMetadata<T>
+  ): void {
     let rev = this.content;
     if (!this.isLocallyChanged()) {
       rev = this.content.clone();
@@ -676,12 +806,17 @@ export class EncryptedCollectionItem {
     this.content = rev;
   }
 
-  public getMeta<T>(cryptoManager: CollectionItemCryptoManager): ItemMetadata<T> {
+  public getMeta<T>(
+    cryptoManager: CollectionItemCryptoManager
+  ): ItemMetadata<T> {
     this.verify(cryptoManager);
     return this.content.getMeta(cryptoManager, this.getAdditionalMacData());
   }
 
-  public async setContent(cryptoManager: CollectionItemCryptoManager, content: Uint8Array): Promise<void> {
+  public async setContent(
+    cryptoManager: CollectionItemCryptoManager,
+    content: Uint8Array
+  ): Promise<void> {
     let rev = this.content;
     if (!this.isLocallyChanged()) {
       rev = this.content.clone();
@@ -691,12 +826,17 @@ export class EncryptedCollectionItem {
     this.content = rev;
   }
 
-  public async getContent(cryptoManager: CollectionItemCryptoManager): Promise<Uint8Array> {
+  public async getContent(
+    cryptoManager: CollectionItemCryptoManager
+  ): Promise<Uint8Array> {
     this.verify(cryptoManager);
     return this.content.getContent(cryptoManager);
   }
 
-  public delete(cryptoManager: CollectionItemCryptoManager, preserveContent: boolean): void {
+  public delete(
+    cryptoManager: CollectionItemCryptoManager,
+    preserveContent: boolean
+  ): void {
     let rev = this.content;
     if (!this.isLocallyChanged()) {
       rev = this.content.clone();
@@ -719,17 +859,19 @@ export class EncryptedCollectionItem {
   }
 
   public getCryptoManager(parentCryptoManager: MinimalCollectionCryptoManager) {
-    const encryptionKey = (this.encryptionKey) ?
-      parentCryptoManager.decrypt(this.encryptionKey) :
-      parentCryptoManager.deriveSubkey(fromString(this.uid));
+    const encryptionKey = this.encryptionKey
+      ? parentCryptoManager.decrypt(this.encryptionKey)
+      : parentCryptoManager.deriveSubkey(fromString(this.uid));
 
     return new CollectionItemCryptoManager(encryptionKey, this.version);
   }
 
-  public getHierarchicalCryptoManager(parentCryptoManager: MinimalCollectionCryptoManager) {
-    const encryptionKey = (this.encryptionKey) ?
-      parentCryptoManager.decrypt(this.encryptionKey) :
-      parentCryptoManager.deriveSubkey(fromString(this.uid));
+  public getHierarchicalCryptoManager(
+    parentCryptoManager: MinimalCollectionCryptoManager
+  ) {
+    const encryptionKey = this.encryptionKey
+      ? parentCryptoManager.decrypt(this.encryptionKey)
+      : parentCryptoManager.deriveSubkey(fromString(this.uid));
 
     return new MinimalCollectionCryptoManager(encryptionKey, this.version);
   }
@@ -738,4 +880,3 @@ export class EncryptedCollectionItem {
     return fromString(this.uid);
   }
 }
-
