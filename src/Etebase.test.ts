@@ -1705,32 +1705,22 @@ describe("Chunking files", () => {
   it("Duplicate Chunks", async () => {
     const collectionManager = etebase.getCollectionManager();
     const col = await collectionManager.create(colType, {}, "");
-
     const buf = randomBytesDeterministic(10 * 1024, new Uint8Array(32)); // 10kb of psuedorandom data
-    const content = JSON.stringify([buf, buf, buf, buf]);
-
+    const content = new Uint8Array([...buf, ...buf, ...buf, ...buf]);
     await col.setContent(content);
-
     await collectionManager.transaction(col);
-    const decryptedContent = await col.getContent();
-
-    const out = toString(decryptedContent);
+    const out = await col.getContent();
     expect(out).toEqual(content);
   });
 
   it("Regular Chunks", async () => {
     const collectionManager = etebase.getCollectionManager();
     const col = await collectionManager.create(colType, {}, "");
-
     const buf = randomBytesDeterministic(100 * 1024, new Uint8Array(32));
-    const content = JSON.stringify(buf);
-
+    const content = new Uint8Array(buf);
     await col.setContent(content);
-
     await collectionManager.transaction(col);
-    const decryptedContent = await col.getContent();
-
-    const out = toString(decryptedContent);
+    const out = await col.getContent();
     expect(out).toEqual(content);
   });
 
@@ -1738,14 +1728,10 @@ describe("Chunking files", () => {
     const collectionManager = etebase.getCollectionManager();
     const col = await collectionManager.create(colType, {}, "");
 
-    const content = JSON.stringify("foo");
-
+    const content = new Uint8Array([1]);
     await col.setContent(content);
-
     await collectionManager.transaction(col);
-    const decryptedContent = await col.getContent();
-
-    const out = toString(decryptedContent);
+    const out = await col.getContent();
     expect(out).toEqual(content);
   });
 });
