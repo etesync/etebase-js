@@ -5,7 +5,7 @@ import * as Etebase from "./Etebase";
 import { USER, USER2, sessionStorageKey } from "./TestConstants";
 
 import { Authenticator, PrefetchOption } from "./OnlineManagers";
-import { fromBase64, fromString, msgpackEncode, msgpackDecode, randomBytesDeterministic, toBase64, toString } from "./Helpers";
+import { fromBase64, fromString, msgpackEncode, msgpackDecode, randomBytesDeterministic, toBase64 } from "./Helpers";
 
 const testApiBase = process.env.ETEBASE_TEST_API_URL ?? "http://localhost:8033";
 
